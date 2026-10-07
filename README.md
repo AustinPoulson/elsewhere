@@ -4,7 +4,7 @@ An imaginary ecosystem that grows through our creative experiments. Every new ad
 
 Phase 1 is **The Luminous Tidepool**: a small overhead world inhabited by lucents. Place light in the water, watch them gather and feed, then discover the pigment they leave behind. There is no score or win condition. Playing means shaping the conditions and observing what follows.
 
-The local Phase 1 is verified. The public repository and GitHub Actions Pages source are configured. Daily development at 9 AM Central uses feature branches and reviewed PRs before deployment; initial public deployment is pending verification. See [the acceptance report](docs/phase-1.md) for local checks and their limits, and [scheduled expeditions](docs/automation.md) for the recurring workflow.
+Phase 1 is live at [austinpoulson.github.io/elsewhere](https://austinpoulson.github.io/elsewhere/) in the public [AustinPoulson/elsewhere repository](https://github.com/AustinPoulson/elsewhere). Daily development at 9 AM Central uses feature branches and reviewed PRs before deployment. See [the acceptance report](docs/phase-1.md) for local and live checks and their limits, and [scheduled expeditions](docs/automation.md) for the recurring workflow.
 
 ## Run locally
 
@@ -63,7 +63,7 @@ npm run build
 Remove-Item Env:PAGES_BASE_PATH
 ```
 
-The public repository and Pages source have been configured; a live application deployment has not yet been verified. GitHub Pages setup follows [GitHub's custom workflow documentation](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages).
+The initial release was merged through PR #1 and its live deployment was verified. GitHub Pages setup follows [GitHub's custom workflow documentation](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages).
 
 Every production build includes `release.json`. In GitHub Actions, its `commit` records the workflow's `GITHUB_SHA`; local builds record `null`. The daily task compares the live release commit with the intended deployed revision before reporting publication as verified.
 
