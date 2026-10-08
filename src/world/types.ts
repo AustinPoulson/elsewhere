@@ -1,7 +1,9 @@
 export const WORLD_WIDTH = 1440;
 export const WORLD_HEIGHT = 1000;
 export const FIXED_STEP = 1 / 30;
-export const LIMITS = { organisms: 42, lights: 32, sediment: 600, trail: 14 } as const;
+export const LIMITS = { organisms: 42, lights: 32, sediment: 600, trail: 14, grazers: 8, nests: 16 } as const;
+export const GRAZER_CAPACITY = 1.2;
+export const NEST_CAPACITY = 12;
 
 export interface Point { x: number; y: number }
 export interface Organism extends Point {
@@ -29,8 +31,27 @@ export interface Sediment extends Point {
   strength: number;
   age: number;
 }
+export interface Grazer extends Point {
+  id: number;
+  species: 'grazer';
+  vx: number;
+  vy: number;
+  size: number;
+  age: number;
+  phase: number;
+  hue: number;
+  cargo: number;
+  nestId: number;
+  returning: boolean;
+}
+export interface Nest extends Point {
+  id: number;
+  hue: number;
+  pigment: number;
+  age: number;
+}
 export interface World {
-  version: 1;
+  version: 2;
   seed: number;
   randomState: number;
   elapsed: number;
@@ -39,6 +60,8 @@ export interface World {
   organisms: Organism[];
   lights: LightSource[];
   sediment: Sediment[];
+  grazers: Grazer[];
+  nests: Nest[];
   consumed: number;
 }
 export type Tool = 'light' | 'observe';
@@ -48,6 +71,8 @@ export interface WorldStats {
   pigment: number;
   elapsed: number;
   consumed: number;
+  grazers: number;
+  nestPigment: number;
 }
 
 // One shared coastline for simulation, rendering, and input hit testing.

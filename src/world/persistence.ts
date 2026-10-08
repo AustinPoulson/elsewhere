@@ -1,6 +1,8 @@
 import {
-  LIMITS, isInPool, type LightSource, type Organism, type Sediment, type World,
+  GRAZER_CAPACITY, LIMITS, NEST_CAPACITY, isInPool,
+  type Grazer, type LightSource, type Nest, type Organism, type Sediment, type World,
 } from './types';
+import { initializeGrazers } from './simulation';
 
 const MAX_SAVE_LENGTH = 1_000_000;
 const MAX_NUMBER = Number.MAX_SAFE_INTEGER;
@@ -46,6 +48,24 @@ function sediment(value: unknown): boolean {
     && range(value.strength, 0.001, 1) && range(value.age, 0, MAX_NUMBER);
 }
 
+function grazer(value: unknown): boolean {
+  if (!record(value) || !range(value.size, 1, 24) || !point(value, value.size + 3)) return false;
+  return integer(value.id, 1) && value.species === 'grazer'
+    && range(value.vx, -80, 80) && range(value.vy, -80, 80)
+    && range(value.age, 0, MAX_NUMBER) && range(value.phase, 0, Math.PI * 2)
+    && range(value.hue, 0, 360) && value.hue < 360
+    && range(value.cargo, 0, GRAZER_CAPACITY) && integer(value.nestId, 1)
+    && typeof value.returning === 'boolean'
+    && (!value.returning || value.cargo > 0)
+    && (value.cargo < GRAZER_CAPACITY || value.returning);
+}
+
+function nest(value: unknown): boolean {
+  return point(value, 18) && integer(value.id, 1)
+    && range(value.hue, 0, 360) && value.hue < 360
+    && range(value.pigment, 0, NEST_CAPACITY) && range(value.age, 0, MAX_NUMBER);
+}
+
 export function serializeWorld(world: World): string {
   return JSON.stringify(world);
 }
@@ -59,7 +79,7 @@ export function restoreWorld(input: string): World | null {
     if (error instanceof SyntaxError) return null;
     throw error;
   }
-  if (!record(parsed) || parsed.version !== 1
+  if (!record(parsed) || (parsed.version !== 1 && parsed.version !== 2)
     || !integer(parsed.seed, 0, 0xffffffff) || !integer(parsed.randomState, 0, 0xffffffff)
     || !range(parsed.elapsed, 0, MAX_NUMBER) || !integer(parsed.tick)
     || !integer(parsed.nextId, 1) || !range(parsed.consumed, 0, MAX_NUMBER)) return null;
@@ -70,9 +90,21 @@ export function restoreWorld(input: string): World | null {
     || !Array.isArray(deposits) || deposits.length > LIMITS.sediment) return null;
   if (!organisms.every(organism) || !lights.every(light) || !deposits.every(sediment)) return null;
 
+  let grazers: Grazer[] = [];
+  let nests: Nest[] = [];
+  if (parsed.version === 2) {
+    if (!Array.isArray(parsed.grazers) || parsed.grazers.length > LIMITS.grazers
+      || !Array.isArray(parsed.nests) || parsed.nests.length > LIMITS.nests
+      || !parsed.grazers.every(grazer) || !parsed.nests.every(nest)) return null;
+    grazers = parsed.grazers as Grazer[];
+    nests = parsed.nests as Nest[];
+    const nestIds = new Set(nests.map((entry) => entry.id));
+    if (grazers.some((entry) => !nestIds.has(entry.nestId))) return null;
+  } else if (parsed.nextId > MAX_NUMBER - 8) return null;
+
   const ids = new Set<number>();
   let largestId = 0;
-  for (const entry of [...organisms, ...lights, ...deposits]) {
+  for (const entry of [...organisms, ...lights, ...deposits, ...grazers, ...nests]) {
     const id = (entry as Record<string, unknown>).id as number;
     if (ids.has(id)) return null;
     ids.add(id);
@@ -81,10 +113,12 @@ export function restoreWorld(input: string): World | null {
   if (parsed.nextId <= largestId) return null;
 
   // Only the versioned contract enters the simulation; storage is a UI concern.
-  return {
-    version: 1, seed: parsed.seed, randomState: parsed.randomState,
+  const world: World = {
+    version: 2, seed: parsed.seed, randomState: parsed.randomState,
     elapsed: parsed.elapsed, tick: parsed.tick, nextId: parsed.nextId,
     organisms: organisms as Organism[], lights: lights as LightSource[],
-    sediment: deposits as Sediment[], consumed: parsed.consumed,
+    sediment: deposits as Sediment[], grazers, nests, consumed: parsed.consumed,
   };
+  if (parsed.version === 1) initializeGrazers(world);
+  return world;
 }
