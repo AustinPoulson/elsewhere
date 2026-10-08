@@ -22,6 +22,8 @@ The world dimensions are `1440 × 1000`. A shared pool boundary keeps organisms,
 
 Lucents sense light, move toward it, consume its energy, and leave sediment. Light is temporary. Sediment carries the history of feeding and gives the next species something meaningful to interact with.
 
+Pigment grazers extend this relationship. Four slow shelled creatures seek sediment, collect its strength into bounded cargo, and return to their own fixed nests to deposit color. Shell cargo and woven nest rings show the transfer. Nest pigment fades gently and caps at 12 per nest. Observe and the field guide's Follow a grazer control expose cargo, nest pigment, and returning/gathering state.
+
 The opening world contains 24 lucents, four light sources, and sparse pigment around those sources. Lucent energy has a small floor, so a dark pool remains inhabited. The pigment readout sums sediment strength. Reset reconstructs the beginning from the active world's seed after confirmation.
 
 One type definition describes the world and its entities. A seeded random state is part of the world. Deterministic simulation means the same starting snapshot, commands applied at the same ticks, and number of simulation steps produce the same ecological state. Pointer timing and the display frame rate are not themselves a replay format.
@@ -36,12 +38,14 @@ The current explicit budgets are:
 | Active light sources | 32 |
 | Sediment marks | 600 |
 | Trail points per organism | 14 |
+| Pigment grazers | 8 |
+| Woven nests | 16 |
 
 New behavior must respect a budget. Accumulated visual history must age, compact, or remain capped. A beautiful trail should not become an unbounded list of draw calls after a long visit. Existing simple rules and loops are easier to inspect than a general plugin or entity framework at this stage.
 
 ## Snapshots and browser saves
 
-World snapshots use schema version `1`. They include the seed, random state, clock/tick, next entity ID, entities, and cumulative consumption. This lets a snapshot resume the world rather than merely reproducing its opening seed. Pause/tool selection and temporary rendering state belong to the interface rather than ecological history.
+World snapshots use schema version `2`. They include the seed, random state, clock/tick, next entity ID, entities, cumulative light consumption, grazer cargo and home references, and nest pigment. This lets a snapshot resume the world rather than merely reproducing its opening seed. Pause/tool selection and temporary rendering state belong to the interface rather than ecological history.
 
 Imports check the version, numeric ranges, collection limits, entity shapes, and identifiers before replacing the active world. A rejected import leaves the current world intact and shows visible feedback. Local storage failures are visible without preventing play. Future schema changes need either an explicit migration or a clear unsupported-version message.
 
@@ -49,7 +53,7 @@ The current importer accepts a selected JSON file of at most 2 MB and validates 
 
 The browser is the runtime and storage owner. Closing the page suspends this ecosystem. There is no server, shared online world, account, or simulation running on GitHub Pages while visitors are away.
 
-The autosave key is `elsewhere:tidepool:v1`. Saves are attempted every five seconds and before the page is hidden or unloaded. Portable exports use the name `elsewhere-tidepool-SEED.json`, where `SEED` is the world's numeric seed. A browser requesting reduced motion starts with ecological time paused.
+The autosave key remains `elsewhere:tidepool:v1` so existing visitors keep their pools. Valid version 1 snapshots migrate to version 2, adding four grazers and empty nests without altering prior entities, ecological time, or random state. Invalid old snapshots are rejected before migration. Version 2 validates all entity IDs and grazer home references. Saves are attempted every five seconds and before the page is hidden or unloaded. Portable exports use the name `elsewhere-tidepool-SEED.json`, where `SEED` is the world's numeric seed. A browser requesting reduced motion starts with ecological time paused.
 
 ## A brief for an agent addition
 
