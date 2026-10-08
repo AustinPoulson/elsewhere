@@ -1,5 +1,8 @@
 import { Application, Container, Graphics, Sprite, Texture } from 'pixi.js';
-import { WORLD_HEIGHT, WORLD_WIDTH, isInPool, type Point, type Tool, type World } from '../world/types';
+import {
+  GRAZER_CAPACITY, NEST_CAPACITY, WORLD_HEIGHT, WORLD_WIDTH, isInPool,
+  type Point, type Tool, type World,
+} from '../world/types';
 import { createBloom, createBody, createTerrain, poolPoint } from './terrain';
 import { fitHabitatCamera, viewportToWorld, type HabitatCamera } from './camera';
 
@@ -12,6 +15,26 @@ interface OrganismVisual {
   node: Container;
   glow: Sprite;
   body: Sprite;
+  frame: number;
+}
+
+interface GrazerVisual {
+  node: Container;
+  glow: Sprite;
+  limbs: Graphics;
+  payload: Sprite;
+  cargo: Graphics;
+  cargoBucket: number;
+  cargoHue: number;
+  frame: number;
+}
+
+interface NestVisual {
+  node: Container;
+  glow: Sprite;
+  weaving: Graphics;
+  pigmentBucket: number;
+  pigmentHue: number;
   frame: number;
 }
 
@@ -32,8 +55,10 @@ export class TidepoolRenderer {
   private readonly root = new Container();
   private readonly water = new Container();
   private readonly sedimentLayer = new Container();
+  private readonly nestLayer = new Container();
   private readonly lightLayer = new Container();
   private readonly organismLayer = new Container();
+  private readonly grazerLayer = new Container();
   private readonly tendrils = new Graphics();
   private readonly trails = new Graphics();
   private readonly caustics = new Graphics();
@@ -42,6 +67,8 @@ export class TidepoolRenderer {
   private readonly sediments = new Map<number, SpriteVisual>();
   private readonly lights = new Map<number, SpriteVisual>();
   private readonly organisms = new Map<number, OrganismVisual>();
+  private readonly grazers = new Map<number, GrazerVisual>();
+  private readonly nests = new Map<number, NestVisual>();
   private readonly textures: Texture[] = [];
   private readonly glowTexture: Texture;
   private readonly bodyTexture: Texture;
@@ -72,8 +99,8 @@ export class TidepoolRenderer {
     this.mask.closePath().fill(0xffffff);
     this.root.addChild(this.water, this.mask);
     this.water.mask = this.mask;
-    this.water.addChild(this.sedimentLayer, this.caustics, this.trails, this.lightLayer,
-      this.tendrils, this.organismLayer, this.indicator);
+    this.water.addChild(this.sedimentLayer, this.nestLayer, this.caustics, this.trails, this.lightLayer,
+      this.tendrils, this.organismLayer, this.grazerLayer, this.indicator);
     this.caustics.blendMode = 'add';
     this.trails.blendMode = 'add';
     this.tendrils.blendMode = 'add';
@@ -171,6 +198,7 @@ export class TidepoolRenderer {
       visual.sprite.alpha = Math.min(0.31, sediment.strength * 0.35);
     }
     this.pruneSprites(this.sediments);
+    this.drawNests(world);
 
     for (const light of world.lights) {
       let visual = this.lights.get(light.id);
@@ -256,13 +284,7 @@ export class TidepoolRenderer {
         this.tendrils.stroke({ color, width: 0.65, alpha: 0.32 });
       }
       if (organism.id === selectedId) {
-        const radius = size * 3 + 6;
-        for (let arc = 0; arc < 4; arc++) {
-          const start = arc * Math.PI / 2 + 0.18;
-          this.indicator.moveTo(organism.x + Math.cos(start) * radius, organism.y + Math.sin(start) * radius)
-            .arc(organism.x, organism.y, radius, start, start + 0.47)
-            .stroke({ color: 0xe1d7b4, alpha: 0.72, width: 1 });
-        }
+        this.drawSelection(organism, size * 3 + 6);
       }
     }
     for (const [id, visual] of this.organisms) {
@@ -271,6 +293,7 @@ export class TidepoolRenderer {
         this.organisms.delete(id);
       }
     }
+    this.drawGrazers(world, selectedId, time);
 
     if (cursor && isInPool(cursor.x, cursor.y)) {
       const radius = tool === 'light' ? 18 : 10;
@@ -279,6 +302,193 @@ export class TidepoolRenderer {
       this.indicator.circle(cursor.x, cursor.y, 1.2).fill({ color: 0xe3dbbe, alpha: 0.6 });
     }
     this.app.render();
+  }
+
+  private drawSelection(point: Point, radius: number): void {
+    for (let arc = 0; arc < 4; arc++) {
+      const start = arc * Math.PI / 2 + 0.18;
+      this.indicator.moveTo(point.x + Math.cos(start) * radius, point.y + Math.sin(start) * radius)
+        .arc(point.x, point.y, radius, start, start + 0.47)
+        .stroke({ color: 0xe1d7b4, alpha: 0.72, width: 1 });
+    }
+  }
+
+  private drawNests(world: World): void {
+    for (const nest of world.nests) {
+      let visual = this.nests.get(nest.id);
+      if (!visual) {
+        const node = new Container();
+        const glow = this.glow(node);
+        const weaving = new Graphics();
+        node.addChild(weaving);
+        this.nestLayer.addChild(node);
+        visual = { node, glow, weaving, pigmentBucket: -1, pigmentHue: -1, frame: this.frame };
+        this.nests.set(nest.id, visual);
+      }
+      visual.frame = this.frame;
+      visual.node.position.set(nest.x, nest.y);
+      const fill = Math.min(1, Math.max(0, nest.pigment / NEST_CAPACITY));
+      const hue = Math.round(nest.hue);
+      const bucket = Math.ceil(nest.pigment * 20);
+      visual.glow.tint = this.color(hue);
+      visual.glow.width = 86 + fill * 64;
+      visual.glow.height = visual.glow.width * 0.76;
+      visual.glow.alpha = fill * 0.16;
+      // Deposits change the weaving; elapsed time does not grow a graphics history.
+      if (bucket !== visual.pigmentBucket || hue !== visual.pigmentHue) {
+        visual.pigmentBucket = bucket;
+        visual.pigmentHue = hue;
+        const weaving = visual.weaving.clear();
+        for (let segment = 0; segment <= 48; segment++) {
+          const angle = segment / 48 * TAU;
+          const radius = 23 + Math.sin(angle * 5 + nest.id) * 1.1;
+          const x = Math.cos(angle) * radius;
+          const y = Math.sin(angle) * radius * 0.72;
+          if (segment === 0) weaving.moveTo(x, y);
+          else weaving.lineTo(x, y);
+        }
+        weaving.closePath().stroke({ color: 0xb49d73, width: 0.8, alpha: 0.46 });
+        for (let fleck = 0; fleck < 12; fleck++) {
+          const angle = fleck / 12 * TAU + nest.id;
+          weaving.circle(Math.cos(angle) * 23, Math.sin(angle) * 16.5, 0.55)
+            .fill({ color: 0xd3b984, alpha: 0.45 });
+        }
+        if (fill > 0) {
+          const rings = Math.min(7, Math.ceil(fill * 7));
+          for (let ring = 0; ring < rings; ring++) {
+            const radius = 19.5 - ring * 2.75;
+            const color = this.color(hue + Math.sin(ring * 1.7 + nest.id) * 13);
+            for (let segment = 0; segment <= 48; segment++) {
+              const angle = segment / 48 * TAU;
+              const woven = radius + Math.sin(angle * 9 + ring * 2) * 0.65;
+              const x = Math.cos(angle) * woven;
+              const y = Math.sin(angle) * woven * 0.72;
+              if (segment === 0) weaving.moveTo(x, y);
+              else weaving.lineTo(x, y);
+            }
+            weaving.closePath().stroke({ color, width: 1.15, alpha: 0.66 });
+            for (let knot = 0; knot < 8; knot++) {
+              const angle = knot / 8 * TAU + ring * 0.36;
+              weaving.circle(Math.cos(angle) * radius, Math.sin(angle) * radius * 0.72, 0.8)
+                .fill({ color, alpha: 0.73 });
+            }
+          }
+          weaving.ellipse(0, 0, 3 + fill * 4, 2 + fill * 3)
+            .fill({ color: this.color(hue), alpha: 0.22 + fill * 0.24 });
+        }
+      }
+    }
+    for (const [id, visual] of this.nests) {
+      if (visual.frame !== this.frame) {
+        visual.node.destroy({ children: true });
+        this.nests.delete(id);
+      }
+    }
+  }
+
+  private createGrazer(): GrazerVisual {
+    const node = new Container();
+    const glow = this.glow(node);
+    const limbs = new Graphics();
+    const shell = new Graphics();
+    node.addChild(limbs, shell);
+    // This amber shell is fixed art in local units, independent of collected pigment hue.
+    shell.ellipse(0.86, 0, 0.85, 0.47).fill({ color: 0x786b46, alpha: 0.88 })
+      .stroke({ color: 0xc3ae7b, alpha: 0.37, width: 0.045 });
+    shell.ellipse(-0.13, -0.07, 1.18, 1.01).fill({ color: 0x66533a, alpha: 0.94 })
+      .stroke({ color: 0xcfb183, alpha: 0.68, width: 0.07 });
+    shell.ellipse(-0.2, -0.16, 0.96, 0.79).fill({ color: 0x9b8150, alpha: 0.27 });
+    for (let groove = 0; groove < 15; groove++) {
+      const angle = groove / 15 * TAU;
+      shell.moveTo(-0.13 + Math.cos(angle) * 0.96, -0.07 + Math.sin(angle) * 0.8)
+        .lineTo(-0.13 + Math.cos(angle + 0.04) * 1.16, -0.07 + Math.sin(angle + 0.04) * 0.99)
+        .stroke({ color: 0xd2b785, width: 0.025, alpha: 0.31 });
+    }
+    for (let segment = 0; segment <= 64; segment++) {
+      const progress = segment / 64;
+      const angle = progress * TAU * 2.35;
+      const radius = 0.035 + progress * 0.87;
+      const x = -0.16 + Math.cos(angle) * radius;
+      const y = -0.1 + Math.sin(angle) * radius * 0.83;
+      if (segment === 0) shell.moveTo(x, y);
+      else shell.lineTo(x, y);
+    }
+    shell.stroke({ color: 0xe0c48d, width: 0.055, alpha: 0.83 });
+    shell.circle(-0.16, -0.1, 0.07).fill({ color: 0xf0d89f, alpha: 0.78 });
+    const payload = this.glow(node);
+    payload.position.set(-0.6, 0.54);
+    const cargo = new Graphics();
+    node.addChild(cargo);
+    this.grazerLayer.addChild(node);
+    return { node, glow, limbs, payload, cargo, cargoBucket: -1, cargoHue: -1, frame: this.frame };
+  }
+
+  private drawGrazers(world: World, selectedId: number | null, time: number): void {
+    for (const grazer of world.grazers) {
+      let visual = this.grazers.get(grazer.id);
+      if (!visual) {
+        visual = this.createGrazer();
+        this.grazers.set(grazer.id, visual);
+      }
+      visual.frame = this.frame;
+      visual.node.position.set(grazer.x, grazer.y);
+      visual.node.rotation = Math.atan2(grazer.vy, grazer.vx);
+      // A broader shell silhouette stays distinguishable from lucents at portrait scale.
+      visual.node.scale.set(grazer.size * 1.3);
+      visual.glow.tint = 0xb89a62;
+      visual.glow.width = 7.5;
+      visual.glow.height = 6;
+      visual.glow.alpha = 0.13;
+      const phase = this.reducedMotion ? grazer.id * 2.4 : grazer.phase;
+      const limbs = visual.limbs.clear();
+      for (let leg = 0; leg < 3; leg++) {
+        const x = (leg - 1) * 0.68;
+        const crawl = Math.sin(time * 3.5 + phase + leg * 1.8) * 0.15;
+        for (const side of [-1, 1]) {
+          limbs.moveTo(x, side * 0.7)
+            .quadraticCurveTo(x - 0.13 + crawl, side * 1.1, x - 0.31 + crawl, side * 1.26)
+            .stroke({ color: 0xb7a074, width: 0.05, alpha: 0.48 });
+        }
+      }
+      for (const side of [-1, 1]) {
+        const sway = Math.sin(time * 0.9 + phase + side) * 0.05;
+        limbs.moveTo(1.23, side * 0.22)
+          .quadraticCurveTo(1.65, side * 0.42, 1.88, side * (0.48 + sway))
+          .stroke({ color: 0xd6bd88, width: 0.045, alpha: 0.64 });
+      }
+
+      const load = Math.min(1, Math.max(0, grazer.cargo / GRAZER_CAPACITY));
+      const hue = Math.round(grazer.hue);
+      const cargoBucket = load > 0 ? Math.ceil(load * 16) : 0;
+      visual.payload.visible = load > 0;
+      visual.payload.tint = this.color(hue);
+      visual.payload.width = 3.3 + load;
+      visual.payload.height = 2.5 + load * 0.7;
+      visual.payload.alpha = 0.13 + load * 0.17;
+      if (cargoBucket !== visual.cargoBucket || hue !== visual.cargoHue) {
+        visual.cargoBucket = cargoBucket;
+        visual.cargoHue = hue;
+        visual.cargo.clear();
+        if (load > 0) {
+          const color = this.color(hue);
+          visual.cargo.ellipse(-0.6, 0.54, 0.67, 0.36).fill({ color, alpha: 0.68 });
+          const granules = Math.ceil(load * 6);
+          for (let bead = 0; bead < granules; bead++) {
+            const angle = bead * 2.39996;
+            const radius = bead === 0 ? 0 : 0.21 + bead * 0.045;
+            visual.cargo.circle(-0.6 + Math.cos(angle) * radius, 0.54 + Math.sin(angle) * radius * 0.64, 0.13)
+              .fill({ color, alpha: 0.94 }).stroke({ color: 0xe8dbc1, alpha: 0.32, width: 0.025 });
+          }
+        }
+      }
+      if (grazer.id === selectedId) this.drawSelection(grazer, grazer.size * 3 + 7);
+    }
+    for (const [id, visual] of this.grazers) {
+      if (visual.frame !== this.frame) {
+        visual.node.destroy({ children: true });
+        this.grazers.delete(id);
+      }
+    }
   }
 
   private drawWater(time: number): void {
@@ -314,6 +524,8 @@ export class TidepoolRenderer {
     this.sediments.clear();
     this.lights.clear();
     this.organisms.clear();
+    this.grazers.clear();
+    this.nests.clear();
     this.colors.clear();
   }
 }

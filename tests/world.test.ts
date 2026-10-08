@@ -32,6 +32,8 @@ describe('tidepool ecology', () => {
     world.organisms = [creature];
     world.lights = [];
     world.sediment = [];
+    world.grazers = [];
+    world.nests = [];
     Object.assign(creature, { x: 570, y: 500, vx: -30, vy: 0, energy: 0.5, trail: [] });
     addLight(world, 740, 500);
     const initialDistance = Math.hypot(creature.x - 740, creature.y - 500);
@@ -98,7 +100,7 @@ describe('versioned local snapshots', () => {
       expect(restoreWorld(payload)).toBeNull();
     }
     const mutations: ((world: World) => void)[] = [
-      (world) => { (world as { version: number }).version = 2; },
+      (world) => { (world as { version: number }).version = 3; },
       (world) => { world.elapsed = -1; },
       (world) => { world.randomState = -1; },
       (world) => { world.consumed = Infinity; },

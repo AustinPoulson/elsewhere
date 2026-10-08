@@ -2,11 +2,11 @@
 
 These are proposed creative directions, not work already implemented. Choose one relationship at a time, play with the result, and keep the additions that make the world more interesting.
 
-## 1. The pigment grazer
+## 1. The pigment grazer — implemented in Expedition 001
 
 A small organism consumes lucent sediment and gathers it into nests. Its arrival makes the history of feeding an active resource. Watching it should explain what it does without a tutorial.
 
-Start with a few grazers, cap their nests, and add field notes. Review whether the pool looks more alive and whether lucent activity remains readable. This is the strongest next expedition because it connects directly to the first species.
+Four grazers now gather pigment into their own bounded woven nests. [Expedition 001](expedition-001-pigment-grazers.md) records the behavior, migration, and acceptance evidence. Observe the first relationship before adding more species; weather is the next ecological proposal.
 
 ## 2. Weather that changes a relationship
 
@@ -25,6 +25,8 @@ Let the visitor pilot a luminous organism. Movement leaves or transports a resou
 Curate named snapshots of earlier worlds alongside short field notes about the experiment that created each one. The first version can be a static collection of reviewed snapshots. Automated capture and replay should follow a clear data format and storage budget.
 
 ## How to pick
+
+Maintenance to schedule separately: upgrade the baseline Vitest tooling to address its development-only audit advisories. The shipped runtime audit is currently clean. Review that dependency change on its own branch and PR before broadening the ecosystem.
 
 A good next expedition adds one visible relationship, fits a short review cycle, and leaves enough space for the following idea. The agent brief in [architecture.md](architecture.md) keeps behavior, limits, persistence, and verification concrete.
 
