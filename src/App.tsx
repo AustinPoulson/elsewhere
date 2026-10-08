@@ -167,13 +167,13 @@ export function App() {
       const origin = rendererRef.current!.screenToWorld(0, 0);
       const unit = rendererRef.current!.screenToWorld(1, 0);
       let distance = Math.max(48, Math.hypot(unit.x - origin.x, unit.y - origin.y) * 24);
-      for (const organism of worldRef.current.organisms) {
+      for (const organism of [...worldRef.current.organisms, ...worldRef.current.grazers]) {
         const d = Math.hypot(organism.x - point.x, organism.y - point.y);
         if (d < distance) { nearest = organism; distance = d; }
       }
       setSelectedId(nearest?.id ?? null);
-      if (nearest) { setPanel('specimen'); setNotice('A lucent, briefly known.'); }
-      else setNotice('Touch a luminous creature to look more closely.');
+      if (nearest) { setPanel('specimen'); setNotice(nearest.species === 'grazer' ? 'A keeper of borrowed colors.' : 'A lucent, briefly known.'); }
+      else setNotice('Touch a lucent or a shelled grazer to look more closely.');
     }
   }
   function pointerDown(event: PointerEvent<HTMLDivElement>) {
@@ -233,6 +233,7 @@ export function App() {
       if (!restored) { setNotice('That snapshot could not be read. Your tidepool is still here.'); return; }
       worldRef.current = restored;
       heldRef.current = false;
+      setHintVisible(false);
       setSelectedId(null);
       setStats(getStats(restored));
       saveWorld();
@@ -249,7 +250,8 @@ export function App() {
     resetRef.current?.close();
     resetTriggerRef.current?.focus();
   }
-  const selected = worldRef.current.organisms.find(organism => organism.id === selectedId);
+  const selected = [...worldRef.current.organisms, ...worldRef.current.grazers].find(organism => organism.id === selectedId);
+  const selectedNest = selected?.species === 'grazer' ? worldRef.current.nests.find(nest => nest.id === selected.nestId) : null;
   const openPanel = (next: Panel) => setPanel(current => current === next ? null : next);
 
   return <main className="elsewhere">
@@ -282,10 +284,11 @@ export function App() {
     <aside className="pool-readout" aria-label="Tidepool observations">
       <span className={`live-dot ${paused ? 'is-paused' : ''}`}/><span>{paused ? 'STILL, FOR A MOMENT' : 'A SMALL WORLD, ALIVE'}</span>
       <div className="readout-values"><span><strong>{stats.population}</strong> lucents</span><span className="readout-separator">·</span><span><strong>{Math.round(stats.pigment)}</strong> pigment</span><span className="readout-separator">·</span><time>{timeLabel(stats.elapsed)}</time></div>
+      <div className="grazer-readout"><span>{stats.grazers} grazers</span><span>·</span><span>{stats.nestPigment.toFixed(1)} color nested</span></div>
     </aside>
 
     <div className="toolbar-area">
-      <div className="tool-hint" id="habitat-instructions">{tool === 'light' ? 'Touch or hold to leave light' : 'Touch a lucent to observe'}<span className="keyboard-hint"> · Arrows + Enter when the pool is focused</span></div>
+      <div className="tool-hint" id="habitat-instructions">{tool === 'light' ? 'Touch or hold to leave light' : 'Touch a lucent or grazer to observe'}<span className="keyboard-hint"> · Arrows + Enter when the pool is focused</span></div>
       <nav className="tool-dock" aria-label="Tidepool tools">
         <button className={`tool-button ${tool === 'light' ? 'active' : ''}`} onClick={() => setTool('light')} aria-pressed={tool === 'light'} title="Leave light (L)"><Icon name="spark"/><span>Leave light</span><kbd>L</kbd></button>
         <button className={`tool-button ${tool === 'observe' ? 'active' : ''}`} onClick={() => { setTool('observe'); setHintVisible(false); }} aria-pressed={tool === 'observe'} title="Observe (O)"><Icon name="eye"/><span>Observe</span><kbd>O</kbd></button>
@@ -314,18 +317,20 @@ export function App() {
           <div className="specimen-art" aria-hidden="true"><svg viewBox="0 0 280 130"><defs><radialGradient id="body-glow"><stop stopColor="#d8ecc1" stopOpacity=".7"/><stop offset="1" stopColor="#99d1bb" stopOpacity="0"/></radialGradient></defs><ellipse cx="140" cy="62" rx="72" ry="58" fill="url(#body-glow)"/><path d="M145 63q-30 8-52 32t-25 13M144 69q-8 25-37 31t-20 16M149 73q10 30-8 42M155 64q30 20 37 39" fill="none" stroke="#b7d5ae" strokeWidth=".7"/><ellipse cx="150" cy="61" rx="22" ry="15" fill="#b0d8b6" fillOpacity=".2" stroke="#c1ddba" strokeWidth=".8" transform="rotate(-22 150 61)"/><circle cx="157" cy="56" r="3" fill="#e3f3c8"/><path d="M184 45h45m-16-4 16 4-16 4" fill="none" stroke="#66897c" strokeWidth=".6"/><text x="215" y="32" fill="#a6b8a6" fontSize="9" fontFamily="monospace">FIG. 001</text></svg></div>
           <div className="guide-entry"><span className="entry-number">01</span><div><h3>The lucent</h3><p>A little wanderer drawn to light. As it feeds, it grows brighter and leaves a trace of colored sediment.</p></div></div>
           <div className="guide-entry"><span className="entry-number">02</span><div><h3>A gift of light</h3><p>Touch or hold inside the shoreline. Your light slowly fades, and nearby lucents come to feed. A full pool needs a moment to catch up.</p></div></div>
-          <div className="guide-entry"><span className="entry-number">03</span><div><h3>What remains</h3><p>Pigment settles on the pool floor. Watch the landscape change as the lucents travel. Perhaps something else will learn to live on it.</p></div></div>
+          <div className="guide-entry"><span className="entry-number">03</span><div><h3>What remains</h3><p>Pigment settles on the pool floor. A meal becomes a trace, and a trace becomes something another creature can use.</p></div></div>
+          <div className="guide-entry"><span className="entry-number">04</span><div><h3>The pigment grazer</h3><p>Look for the small amber shells. They gather colored sediment, then carry it home. Their empty woven nests slowly fill with borrowed colors. Leave light near a nest to keep the story going.</p></div></div>
+          {worldRef.current.grazers.length > 0 && <button className="secondary-button" onClick={() => { setSelectedId(worldRef.current.grazers[0].id); setPanel('specimen'); setTool('observe'); setHintVisible(false); setNotice('A keeper of borrowed colors.'); }}>Follow a grazer <Icon name="eye"/></button>}
           <div className="guide-controls"><p className="eyebrow">WAYS TO VISIT</p><p><kbd>L</kbd> Leave light <kbd>O</kbd> Observe <kbd>Space</kbd> Pause</p><p>Tab to the pool, move with arrow keys, then press Enter. <kbd>Esc</kbd> closes these notes.</p></div>
         </>}
         {panel === 'specimen' && <>
-          <h2 id="panel-title">A lucent,<br/><em>briefly known.</em></h2>
+          <h2 id="panel-title">{selected?.species === 'grazer' ? <>A keeper<br/><em>of borrowed colors.</em></> : <>A lucent,<br/><em>briefly known.</em></>}</h2>
           <p className="panel-intro">Every wanderer is part of the same small story.</p>
-          {selected ? <><div className="specimen-orb" aria-hidden="true"/><p className="eyebrow">LUCENT / {String(selected.id).padStart(3, '0')}</p><dl className="specimen-details"><div><dt>Time in the pool</dt><dd>{timeLabel(selected.age)}</dd></div><div><dt>Energy</dt><dd>{Math.round(selected.energy * 50)}%</dd></div><div><dt>Disposition</dt><dd>{selected.energy > 1 ? 'Radiant' : selected.energy > 0.4 ? 'Wandering' : 'Seeking light'}</dd></div></dl><p className="guide-caption">Leave light nearby and watch this one's path change.</p></> : <p className="panel-intro">Choose Observe and touch a creature in the water.</p>}
+          {selected ? <><div className={`specimen-orb ${selected.species === 'grazer' ? 'grazer-orb' : ''}`} aria-hidden="true"/><p className="eyebrow">{selected.species === 'grazer' ? 'PIGMENT GRAZER' : 'LUCENT'} / {String(selected.id).padStart(3, '0')}</p><dl className="specimen-details"><div><dt>Time in the pool</dt><dd>{timeLabel(selected.age)}</dd></div>{selected.species === 'grazer' ? <><div><dt>Carrying color</dt><dd>{selected.cargo.toFixed(1)}</dd></div><div><dt>Color in its nest</dt><dd>{(selectedNest?.pigment ?? 0).toFixed(1)}</dd></div><div><dt>Disposition</dt><dd>{selected.returning ? 'Returning home' : 'Gathering pigment'}</dd></div></> : <><div><dt>Energy</dt><dd>{Math.round(selected.energy * 50)}%</dd></div><div><dt>Disposition</dt><dd>{selected.energy > 1 ? 'Radiant' : selected.energy > 0.4 ? 'Wandering' : 'Seeking light'}</dd></div></>}</dl><p className="guide-caption">{selected.species === 'grazer' ? 'Its shell carries the color of its last finds. Watch the woven nest fill as it returns.' : "Leave light nearby and watch this one's path change."}</p></> : <p className="panel-intro">Choose Observe and touch a creature in the water.</p>}
         </>}
         {panel === 'pocket' && <>
           <h2 id="panel-title">A world<br/><em>in your pocket.</em></h2>
           <p className="panel-intro">Your tidepool is {storageAvailable ? 'remembered automatically on this device' : 'running without automatic saves'}. Take a snapshot to carry it somewhere else.</p>
-          <div className="snapshot-stamp"><Icon name="spark" size={38}/><span>THE FIRST SHORE</span><strong>{timeLabel(stats.elapsed)}</strong><span>{stats.population} LUCENTS · SEED {worldRef.current.seed}</span></div>
+          <div className="snapshot-stamp"><Icon name="spark" size={38}/><span>THE FIRST SHORE</span><strong>{timeLabel(stats.elapsed)}</strong><span>{stats.population} LUCENTS · {stats.grazers} GRAZERS</span><span>SEED {worldRef.current.seed}</span></div>
           <button className="primary-button" onClick={exportSnapshot}><Icon name="download"/>Save a snapshot <Icon name="arrow"/></button>
           <button className="secondary-button" onClick={() => importRef.current?.click()}><Icon name="upload"/>Open a snapshot</button>
           <p className="snapshot-feedback" role="status">{notice}</p>
