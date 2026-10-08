@@ -2,7 +2,7 @@
 
 An imaginary ecosystem that grows through our creative experiments. Every new addition should interact with something already living here.
 
-Phase 1 is **The Luminous Tidepool**: a small overhead world inhabited by lucents. Place light in the water, watch them gather and feed, then discover the pigment they leave behind. There is no score or win condition. Playing means shaping the conditions and observing what follows.
+Phase 1 is **The Luminous Tidepool**: a small overhead world inhabited by lucents. Place light in the water, watch them gather and feed, then discover the pigment they leave behind. Pigment grazers now gather those traces and carry their colors into woven nests. There is no score or win condition. Playing means shaping the conditions and observing what follows.
 
 Phase 1 is live at [austinpoulson.github.io/elsewhere](https://austinpoulson.github.io/elsewhere/) in the public [AustinPoulson/elsewhere repository](https://github.com/AustinPoulson/elsewhere). Daily development at 9 AM Central uses feature branches and reviewed PRs before deployment. See [the acceptance report](docs/phase-1.md) for local and live checks and their limits, and [scheduled expeditions](docs/automation.md) for the recurring workflow.
 
@@ -37,7 +37,7 @@ The interface includes keyboard controls and a visible shortcut reference. Saves
 
 With the habitat focused, arrow keys move an interaction cursor and **Enter** applies the selected tool there. **L** selects Light, **O** selects Observe, **Space** pauses or resumes, and **Escape** clears the inspection. Global shortcuts yield to focused form controls and dialogs. The habitat starts paused when the browser requests reduced motion; resume when you want to explore it.
 
-The pigment readout measures the combined strength of sediment in the water. It is not a count of individual marks. Lucents become dimmer when light is scarce and persist so there is always a population to feed when you return.
+The pigment readout measures the combined strength of sediment in the water. The second line shows the grazer population and color stored in nests. These are resource amounts rather than counts of individual marks. Lucents become dimmer when light is scarce and persist so there is always a population to feed when you return. Open the Field guide and choose **Follow a grazer** to inspect its cargo and nest, or touch its amber shell with Observe. Earlier snapshots and browser saves migrate into the expanded ecosystem.
 
 ## Publish on GitHub Pages
 
