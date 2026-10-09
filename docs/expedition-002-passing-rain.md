@@ -31,3 +31,18 @@ Weather derives entirely from the saved ecological clock. Snapshots remain versi
 Portrait checks use an emulated viewport, not a physical touchscreen. Weather advances only while this browser world runs. A dark pool still receives rain, but rain cannot replenish its spent light; leave a new patch to see the widened feeding area.
 
 Observe where the wider pigment field meets the grazers' existing reach before introducing drought or a second pool. The remaining tooling upgrade should use its own maintenance branch and PR.
+
+## Visibility follow-up
+
+The visitor's feedback exposed a gap in the original visual acceptance: the feeding radius expanded, but the existing core bloom became almost transparent near its edge. Its widening was too subtle to explain the rain. A dark pool also had no active light to spread.
+
+The correction adds a broad, smooth golden patch beneath pigment and inhabitants. Its radius follows the actual 64–112 unit feeding reach, and its brightness follows rainfall and remaining light energy. One shared 512×512 texture serves at most 32 pruned sprites. The small bright core remains. The readout now says “Rain · wider light,” and the guide explains the six-second transition and suggests leaving fresh light during a shower. Ecology and saved-world formats are unchanged.
+
+Local verification on 2026-10-09:
+
+- `npm ci --cache .npm-cache --prefer-offline` and `npm run validate` pass, including all 28 tests, TypeScript, and production build.
+- Controlled desktop comparison holds source positions, light energy, and entities constant while changing only elapsed time to 00:15 and 00:45. Calm lights are small glows; rainy lights visibly illuminate broad golden patches with soft edges. These are renderer fixtures, not independently evolved ecological histories. Evidence: `.artifacts/rain-visibility/calm-desktop.jpg` and `rain-desktop.jpg`.
+- Playing a fixture from 00:29 into rain produces the larger patches. Pausing at 00:49 holds the weather and glow; keyboard placement adds a clearly visible fresh golden patch. Portrait 390×844 retains that patch, the rotated pool, readable controls, and no horizontal overflow.
+- A real browser export at 49.5333 seconds contains five lights and schema version 2. Confirmed reset removes the rainy patches and returns to 00:00; reimport restores the same time, five lights, 146 pigment, 9.6 nested color, and widened light. No stale extra patch remains after the reset/import transition. Browser warning/error logs are empty.
+
+The correction's PR discussion records its reviewed revisions, CI, merged commit, Pages deployment, and live release verification.
