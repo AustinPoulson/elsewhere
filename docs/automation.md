@@ -10,7 +10,7 @@ The active Codex task is **Grow Elsewhere** (`grow-elsewhere`), attached to the 
 
 ## Publishing access on this host
 
-Local Git authentication is currently unavailable, and the GitHub connector rejects tree writes with HTTP 403. The authenticated GitHub browser is a supported fallback for feature-branch uploads, pull requests, merges, and Pages workflow controls. Review the resulting remote diff and commit SHA just as with a Git push. Use authenticated local Git when it is available; do not expand account permissions to bypass these limitations. The expedition authority covers only Elsewhere.
+Use existing authenticated local Git when available; verify its access each run. Local Git was unavailable at initial launch, but Expedition 002's publication preflight succeeded with the existing credentials. The GitHub connector rejects tree writes with HTTP 403. The authenticated GitHub browser is a supported fallback for feature-branch uploads, pull requests, merges, and Pages workflow controls. Review the resulting remote diff and commit SHA just as with a Git push. Do not expand account permissions to bypass these limitations. The expedition authority covers only Elsewhere.
 
 The sandbox created this checkout under a different Windows account. If an authorized shell network operation reports dubious ownership, use `git -c safe.directory=C:/repos/MAGI/elsewhere` for that command. Keep the exception limited to this known checkout; do not change global trust settings.
 

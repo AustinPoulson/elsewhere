@@ -5,6 +5,7 @@ import { SimulationClock } from './app/clock';
 import { TidepoolRenderer } from './render/TidepoolRenderer';
 import { addLight, createWorld, getStats, stepWorld } from './world/simulation';
 import { restoreWorld, serializeWorld } from './world/persistence';
+import { getWeather } from './world/weather';
 import { isInPool, WORLD_HEIGHT, WORLD_WIDTH } from './world/types';
 import type { Point, Tool, World } from './world/types';
 
@@ -253,6 +254,7 @@ export function App() {
   const selected = [...worldRef.current.organisms, ...worldRef.current.grazers].find(organism => organism.id === selectedId);
   const selectedNest = selected?.species === 'grazer' ? worldRef.current.nests.find(nest => nest.id === selected.nestId) : null;
   const openPanel = (next: Panel) => setPanel(current => current === next ? null : next);
+  const weather = getWeather(stats.elapsed);
 
   return <main className="elsewhere">
     <div ref={hostRef} className={`habitat tool-${tool}`} role="group" tabIndex={0}
@@ -285,6 +287,9 @@ export function App() {
       <span className={`live-dot ${paused ? 'is-paused' : ''}`}/><span>{paused ? 'STILL, FOR A MOMENT' : 'A SMALL WORLD, ALIVE'}</span>
       <div className="readout-values"><span><strong>{stats.population}</strong> lucents</span><span className="readout-separator">·</span><span><strong>{Math.round(stats.pigment)}</strong> pigment</span><span className="readout-separator">·</span><time>{timeLabel(stats.elapsed)}</time></div>
       <div className="grazer-readout"><span>{stats.grazers} grazers</span><span>·</span><span>{stats.nestPigment.toFixed(1)} color nested</span></div>
+      <div className={`weather-readout ${weather.raining ? 'is-raining' : ''}`} aria-label="Pool weather">
+        <span aria-hidden="true">◌</span><span>{weather.raining ? 'Rain · light spreads' : 'Rain in'} <time>{timeLabel(Math.ceil(weather.secondsUntilChange))}</time></span>
+      </div>
     </aside>
 
     <div className="toolbar-area">
@@ -319,6 +324,7 @@ export function App() {
           <div className="guide-entry"><span className="entry-number">02</span><div><h3>A gift of light</h3><p>Touch or hold inside the shoreline. Your light slowly fades, and nearby lucents come to feed. A full pool needs a moment to catch up.</p></div></div>
           <div className="guide-entry"><span className="entry-number">03</span><div><h3>What remains</h3><p>Pigment settles on the pool floor. A meal becomes a trace, and a trace becomes something another creature can use.</p></div></div>
           <div className="guide-entry"><span className="entry-number">04</span><div><h3>The pigment grazer</h3><p>Look for the small amber shells. They gather colored sediment, then carry it home. Their empty woven nests slowly fill with borrowed colors. Leave light near a nest to keep the story going.</p></div></div>
+          <div className="guide-entry"><span className="entry-number">05</span><div><h3>A passing rain</h3><p>Watch for ringlets on the water. Rain spreads each patch of light, so lucents can feed farther from its center and leave color across a wider floor. Grazers follow those traces home. The shower passes after 38 seconds and returns every three minutes. Pause holds the weather, too.</p></div></div>
           {worldRef.current.grazers.length > 0 && <button className="secondary-button" onClick={() => { setSelectedId(worldRef.current.grazers[0].id); setPanel('specimen'); setTool('observe'); setHintVisible(false); setNotice('A keeper of borrowed colors.'); }}>Follow a grazer <Icon name="eye"/></button>}
           <div className="guide-controls"><p className="eyebrow">WAYS TO VISIT</p><p><kbd>L</kbd> Leave light <kbd>O</kbd> Observe <kbd>Space</kbd> Pause</p><p>Tab to the pool, move with arrow keys, then press Enter. <kbd>Esc</kbd> closes these notes.</p></div>
         </>}

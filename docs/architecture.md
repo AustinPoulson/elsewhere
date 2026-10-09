@@ -24,6 +24,8 @@ Lucents sense light, move toward it, consume its energy, and leave sediment. Lig
 
 Pigment grazers extend this relationship. Four slow shelled creatures seek sediment, collect its strength into bounded cargo, and return to their own fixed nests to deposit color. Shell cargo and woven nest rings show the transfer. Nest pigment fades gently and caps at 12 per nest. Observe and the field guide's Follow a grazer control expose cargo, nest pigment, and returning/gathering state.
 
+Passing rain diffuses existing light. `src/world/weather.ts` derives a three-minute cycle from saved ecological time: calm until second 30, rain until second 68, and six-second eased transitions. The feeding reach expands from 64 to 112 world units; orbit radius expands in the same proportion. Light keeps its existing energy and consumption rules. Rendering uses that shared reach for widened halos and a single reusable graphics object with 48 ringlet slots. The weather readout and field guide explain the relationship. Reduced motion keeps ringlet positions and radii static; pause freezes the entire cycle. Weather uses the existing elapsed field, so snapshots remain version 2 and older version 1 worlds still use the tested grazer migration.
+
 The opening world contains 24 lucents, four light sources, and sparse pigment around those sources. Lucent energy has a small floor, so a dark pool remains inhabited. The pigment readout sums sediment strength. Reset reconstructs the beginning from the active world's seed after confirmation.
 
 One type definition describes the world and its entities. A seeded random state is part of the world. Deterministic simulation means the same starting snapshot, commands applied at the same ticks, and number of simulation steps produce the same ecological state. Pointer timing and the display frame rate are not themselves a replay format.
@@ -40,6 +42,7 @@ The current explicit budgets are:
 | Trail points per organism | 14 |
 | Pigment grazers | 8 |
 | Woven nests | 16 |
+| Rain ringlet slots (renderer only) | 48 |
 
 New behavior must respect a budget. Accumulated visual history must age, compact, or remain capped. A beautiful trail should not become an unbounded list of draw calls after a long visit. Existing simple rules and loops are easier to inspect than a general plugin or entity framework at this stage.
 

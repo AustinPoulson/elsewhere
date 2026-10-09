@@ -6,11 +6,11 @@ These are proposed creative directions, not work already implemented. Choose one
 
 A small organism consumes lucent sediment and gathers it into nests. Its arrival makes the history of feeding an active resource. Watching it should explain what it does without a tutorial.
 
-Four grazers now gather pigment into their own bounded woven nests. [Expedition 001](expedition-001-pigment-grazers.md) records the behavior, migration, and acceptance evidence. Observe the first relationship before adding more species; weather is the next ecological proposal.
+Four grazers gather pigment into their own bounded woven nests. [Expedition 001](expedition-001-pigment-grazers.md) records the behavior, migration, and acceptance evidence. Passing rain now changes where lucents feed before those traces reach the grazers.
 
-## 2. Weather that changes a relationship
+## 2. Weather that changes a relationship — implemented in Expedition 002
 
-Rain briefly spreads light across the water; drought concentrates pigment in shallow places. Weather should change an existing rule, giving familiar organisms a different situation to respond to. Give each weather cycle a clear visual sign and a bounded duration.
+Rain briefly spreads light across the water, widening the area where lucents can feed. Ringlets and a countdown mark each 38-second shower. [Expedition 002](expedition-002-passing-rain.md) records the relationship and acceptance evidence. Observe the wider pigment field and nest response before adding drought or a second weather rule.
 
 ## 3. Beyond the opening frame
 

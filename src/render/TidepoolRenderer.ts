@@ -5,6 +5,7 @@ import {
 } from '../world/types';
 import { createBloom, createBody, createTerrain, poolPoint } from './terrain';
 import { fitHabitatCamera, viewportToWorld, type HabitatCamera } from './camera';
+import { CALM_LIGHT_REACH, getLightReach, getWeather } from '../world/weather';
 
 interface SpriteVisual {
   sprite: Sprite;
@@ -39,6 +40,7 @@ interface NestVisual {
 }
 
 const TAU = Math.PI * 2;
+const RAIN_RING_COUNT = 48;
 
 function hueColor(hue: number, saturation = 0.38, lightness = 0.68): number {
   const h = ((hue % 360) + 360) % 360 / 360;
@@ -62,6 +64,7 @@ export class TidepoolRenderer {
   private readonly tendrils = new Graphics();
   private readonly trails = new Graphics();
   private readonly caustics = new Graphics();
+  private readonly rain = new Graphics();
   private readonly indicator = new Graphics();
   private readonly mask = new Graphics();
   private readonly sediments = new Map<number, SpriteVisual>();
@@ -100,10 +103,11 @@ export class TidepoolRenderer {
     this.root.addChild(this.water, this.mask);
     this.water.mask = this.mask;
     this.water.addChild(this.sedimentLayer, this.nestLayer, this.caustics, this.trails, this.lightLayer,
-      this.tendrils, this.organismLayer, this.grazerLayer, this.indicator);
+      this.tendrils, this.organismLayer, this.grazerLayer, this.rain, this.indicator);
     this.caustics.blendMode = 'add';
     this.trails.blendMode = 'add';
     this.tendrils.blendMode = 'add';
+    this.rain.blendMode = 'add';
     this.host.appendChild(this.app.canvas);
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(this.host);
@@ -177,7 +181,10 @@ export class TidepoolRenderer {
     if (this.destroyed) return;
     this.frame++;
     const time = this.reducedMotion ? 0 : world.elapsed;
+    const weather = getWeather(world.elapsed);
+    const lightReachScale = getLightReach(world.elapsed) / CALM_LIGHT_REACH;
     this.drawWater(time);
+    this.drawRain(world.elapsed, weather.intensity);
     this.trails.clear();
     this.tendrils.clear();
     this.indicator.clear();
@@ -210,7 +217,7 @@ export class TidepoolRenderer {
       const remaining = Math.max(0, Math.min(1, light.energy / light.initialEnergy));
       const breath = 1 + Math.sin(time * 1.2 + light.id) * 0.04;
       visual.sprite.position.set(light.x, light.y);
-      visual.sprite.width = (46 + remaining * 51) * breath;
+      visual.sprite.width = (46 + remaining * 51) * breath * lightReachScale;
       visual.sprite.height = visual.sprite.width;
       visual.sprite.tint = 0xefdb9d;
       visual.sprite.alpha = 0.12 + remaining * 0.53;
@@ -504,6 +511,28 @@ export class TidepoolRenderer {
       }
       this.caustics.stroke({ color: 0x7bb79c, width: 0.6, alpha: 0.045 + Math.sin(time * 0.3 + ribbon) * 0.015 });
     }
+  }
+
+  private drawRain(elapsed: number, intensity: number): void {
+    this.rain.clear();
+    this.rain.visible = intensity > 0;
+    if (intensity <= 0) return;
+    const time = this.reducedMotion ? 0 : elapsed;
+    // A fixed set of slots replaces each ring after it fades; there is no particle history.
+    for (let ring = 0; ring < RAIN_RING_COUNT; ring++) {
+      const duration = 2.6 + (ring % 7) * 0.17;
+      const phase = time / duration + ring * 0.61803398875;
+      const cycle = Math.floor(phase);
+      const progress = phase - cycle;
+      const angle = ring * 2.3999632297 + cycle * 0.73;
+      const distribution = (ring * 0.41421356237 + cycle * 0.61803398875) % 1;
+      const position = poolPoint(angle, Math.sqrt(distribution) * 0.94);
+      const radius = 3 + progress * (18 + (ring % 6) * 3);
+      const alpha = intensity * Math.sin(progress * Math.PI) * 0.26;
+      this.rain.circle(position.x, position.y, radius)
+        .stroke({ color: 0xb2cbc0, width: 1.05, alpha });
+    }
+    // Reduced motion keeps these positions and radii fixed while weather still changes reach.
   }
 
   private pruneSprites(map: Map<number, SpriteVisual>): void {
