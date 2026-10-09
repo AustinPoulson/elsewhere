@@ -1,6 +1,6 @@
 import { Application, Container, Graphics, Sprite, Texture } from 'pixi.js';
 import {
-  GRAZER_CAPACITY, NEST_CAPACITY, WORLD_HEIGHT, WORLD_WIDTH, isInPool,
+  GRAZER_CAPACITY, LIMITS, NEST_CAPACITY, WORLD_HEIGHT, WORLD_WIDTH, isInPool,
   type Point, type Tool, type World,
 } from '../world/types';
 import { createBloom, createBody, createTerrain, poolPoint } from './terrain';
@@ -42,6 +42,24 @@ interface NestVisual {
 const TAU = Math.PI * 2;
 const RAIN_RING_COUNT = 48;
 
+function createLightPatchTexture(): Texture {
+  const source = document.createElement('canvas');
+  source.width = 512;
+  source.height = 512;
+  const context = source.getContext('2d');
+  if (!context) throw new Error('Your browser could not create the tidepool light artwork.');
+  const gradient = context.createRadialGradient(256, 256, 0, 256, 256, 256);
+  gradient.addColorStop(0, 'rgba(255,255,255,1)');
+  gradient.addColorStop(0.24, 'rgba(255,255,255,.96)');
+  gradient.addColorStop(0.50, 'rgba(255,255,255,.78)');
+  gradient.addColorStop(0.72, 'rgba(255,255,255,.58)');
+  gradient.addColorStop(0.88, 'rgba(255,255,255,.30)');
+  gradient.addColorStop(1, 'rgba(255,255,255,0)');
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, 512, 512);
+  return Texture.from(source);
+}
+
 function hueColor(hue: number, saturation = 0.38, lightness = 0.68): number {
   const h = ((hue % 360) + 360) % 360 / 360;
   const channel = (n: number) => {
@@ -61,6 +79,7 @@ export class TidepoolRenderer {
   private readonly lightLayer = new Container();
   private readonly organismLayer = new Container();
   private readonly grazerLayer = new Container();
+  private readonly lightPatchLayer = new Container();
   private readonly tendrils = new Graphics();
   private readonly trails = new Graphics();
   private readonly caustics = new Graphics();
@@ -69,12 +88,14 @@ export class TidepoolRenderer {
   private readonly mask = new Graphics();
   private readonly sediments = new Map<number, SpriteVisual>();
   private readonly lights = new Map<number, SpriteVisual>();
+  private readonly lightPatches = new Map<number, SpriteVisual>();
   private readonly organisms = new Map<number, OrganismVisual>();
   private readonly grazers = new Map<number, GrazerVisual>();
   private readonly nests = new Map<number, NestVisual>();
   private readonly textures: Texture[] = [];
   private readonly glowTexture: Texture;
   private readonly bodyTexture: Texture;
+  private readonly lightPatchTexture: Texture;
   private readonly resizeObserver: ResizeObserver;
   private readonly colors = new Map<number, number>();
   private reducedMotion = false;
@@ -86,7 +107,8 @@ export class TidepoolRenderer {
     const terrainTexture = Texture.from(createTerrain());
     this.glowTexture = Texture.from(createBloom());
     this.bodyTexture = Texture.from(createBody());
-    this.textures.push(terrainTexture, this.glowTexture, this.bodyTexture);
+    this.lightPatchTexture = createLightPatchTexture();
+    this.textures.push(terrainTexture, this.glowTexture, this.bodyTexture, this.lightPatchTexture);
     this.app.canvas.style.display = 'block';
     this.app.canvas.style.pointerEvents = 'none';
     this.app.canvas.setAttribute('aria-hidden', 'true');
@@ -102,7 +124,7 @@ export class TidepoolRenderer {
     this.mask.closePath().fill(0xffffff);
     this.root.addChild(this.water, this.mask);
     this.water.mask = this.mask;
-    this.water.addChild(this.sedimentLayer, this.nestLayer, this.caustics, this.trails, this.lightLayer,
+    this.water.addChild(this.lightPatchLayer, this.sedimentLayer, this.nestLayer, this.caustics, this.trails, this.lightLayer,
       this.tendrils, this.organismLayer, this.grazerLayer, this.rain, this.indicator);
     this.caustics.blendMode = 'add';
     this.trails.blendMode = 'add';
@@ -169,8 +191,8 @@ export class TidepoolRenderer {
     return color;
   }
 
-  private glow(layer: Container): Sprite {
-    const sprite = new Sprite(this.glowTexture);
+  private glow(layer: Container, texture: Texture = this.glowTexture): Sprite {
+    const sprite = new Sprite(texture);
     sprite.anchor.set(0.5);
     sprite.blendMode = 'add';
     layer.addChild(sprite);
@@ -182,7 +204,8 @@ export class TidepoolRenderer {
     this.frame++;
     const time = this.reducedMotion ? 0 : world.elapsed;
     const weather = getWeather(world.elapsed);
-    const lightReachScale = getLightReach(world.elapsed) / CALM_LIGHT_REACH;
+    const lightReach = getLightReach(world.elapsed);
+    const lightReachScale = lightReach / CALM_LIGHT_REACH;
     this.drawWater(time);
     this.drawRain(world.elapsed, weather.intensity);
     this.trails.clear();
@@ -207,6 +230,7 @@ export class TidepoolRenderer {
     this.pruneSprites(this.sediments);
     this.drawNests(world);
 
+    let patchCount = 0;
     for (const light of world.lights) {
       let visual = this.lights.get(light.id);
       if (!visual) {
@@ -215,6 +239,10 @@ export class TidepoolRenderer {
       }
       visual.frame = this.frame;
       const remaining = Math.max(0, Math.min(1, light.energy / light.initialEnergy));
+      if (light.energy > 0 && patchCount < LIMITS.lights) {
+        this.drawLightPatch(light.id, light, lightReach, weather.intensity, remaining);
+        patchCount++;
+      }
       const breath = 1 + Math.sin(time * 1.2 + light.id) * 0.04;
       visual.sprite.position.set(light.x, light.y);
       visual.sprite.width = (46 + remaining * 51) * breath * lightReachScale;
@@ -230,6 +258,7 @@ export class TidepoolRenderer {
       }
     }
     this.pruneSprites(this.lights);
+    this.pruneSprites(this.lightPatches);
 
     for (const organism of world.organisms) {
       let visual = this.organisms.get(organism.id);
@@ -309,6 +338,22 @@ export class TidepoolRenderer {
       this.indicator.circle(cursor.x, cursor.y, 1.2).fill({ color: 0xe3dbbe, alpha: 0.6 });
     }
     this.app.render();
+  }
+
+  private drawLightPatch(id: number, point: Point, reach: number, intensity: number, remaining: number): void {
+    let visual = this.lightPatches.get(id);
+    if (!visual) {
+      visual = { sprite: this.glow(this.lightPatchLayer, this.lightPatchTexture), frame: this.frame };
+      this.lightPatches.set(id, visual);
+    }
+    visual.frame = this.frame;
+    // A broad continuous gradient lights the pool floor beneath pigment and inhabitants.
+    // Its diameter follows the feeding reach exactly; its edge feathers to transparent.
+    visual.sprite.position.set(point.x, point.y);
+    visual.sprite.width = reach * 2;
+    visual.sprite.height = visual.sprite.width;
+    visual.sprite.tint = 0xe0c78e;
+    visual.sprite.alpha = (0.014 + intensity * 0.24) * (0.65 + remaining * 0.35);
   }
 
   private drawSelection(point: Point, radius: number): void {
@@ -552,6 +597,7 @@ export class TidepoolRenderer {
     for (const texture of this.textures) texture.destroy(true);
     this.sediments.clear();
     this.lights.clear();
+    this.lightPatches.clear();
     this.organisms.clear();
     this.grazers.clear();
     this.nests.clear();
