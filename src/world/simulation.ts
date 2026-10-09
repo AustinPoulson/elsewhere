@@ -2,6 +2,7 @@ import {
   FIXED_STEP, GRAZER_CAPACITY, LIMITS, NEST_CAPACITY, WORLD_HEIGHT, WORLD_WIDTH, isInPool, poolRadius,
   type Grazer, type LightSource, type Organism, type Point, type Sediment, type World, type WorldStats,
 } from './types';
+import { CALM_LIGHT_REACH, getLightReach } from './weather';
 
 const TAU = Math.PI * 2;
 const ENERGY_FLOOR = 0.12;
@@ -180,7 +181,7 @@ function moveInPool(organism: Organism | Grazer, dt: number): void {
   }
 }
 
-function updateLucent(world: World, organism: Organism, dt: number): void {
+function updateLucent(world: World, organism: Organism, dt: number, lightReach: number): void {
   organism.age += dt;
   organism.phase = (organism.phase + dt * 0.42) % TAU;
   organism.energy = Math.max(ENERGY_FLOOR, organism.energy - dt * 0.008);
@@ -194,12 +195,15 @@ function updateLucent(world: World, organism: Organism, dt: number): void {
     const distance = Math.hypot(dx, dy);
     const ux = distance > 0.001 ? dx / distance : Math.cos(organism.phase);
     const uy = distance > 0.001 ? dy / distance : Math.sin(organism.phase);
-    const orbit = distance < 75 ? 0.8 : 0.12;
-    const approach = distance < 75 ? clamp((distance - 42) / 42, -0.6, 1) : 1;
+    const diffusion = lightReach / CALM_LIGHT_REACH;
+    const orbitThreshold = 75 * diffusion;
+    const orbitRadius = 42 * diffusion;
+    const orbit = distance < orbitThreshold ? 0.8 : 0.12;
+    const approach = distance < orbitThreshold ? clamp((distance - orbitRadius) / orbitRadius, -0.6, 1) : 1;
     desiredX = (ux * approach - uy * orbit) * speed;
     desiredY = (uy * approach + ux * orbit) * speed;
 
-    if (distance < 64) {
+    if (distance < lightReach) {
       const eaten = Math.min(target.energy, dt * (0.7 + Math.max(0, 1.2 - organism.energy) * 0.45));
       target.energy -= eaten;
       world.consumed += eaten;
@@ -308,7 +312,8 @@ export function stepWorld(world: World, dt = FIXED_STEP): void {
   }
   world.elapsed += dt;
   world.tick++;
-  for (const organism of world.organisms) updateLucent(world, organism, dt);
+  const lightReach = getLightReach(world.elapsed);
+  for (const organism of world.organisms) updateLucent(world, organism, dt, lightReach);
   for (const grazer of world.grazers) updateGrazer(world, grazer, dt);
   for (const light of world.lights) {
     light.age += dt;

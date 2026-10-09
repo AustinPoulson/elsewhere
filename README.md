@@ -2,7 +2,7 @@
 
 An imaginary ecosystem that grows through our creative experiments. Every new addition should interact with something already living here.
 
-Phase 1 is **The Luminous Tidepool**: a small overhead world inhabited by lucents. Place light in the water, watch them gather and feed, then discover the pigment they leave behind. Pigment grazers now gather those traces and carry their colors into woven nests. There is no score or win condition. Playing means shaping the conditions and observing what follows.
+Phase 1 is **The Luminous Tidepool**: a small overhead world inhabited by lucents. Place light in the water, watch them gather and feed, then discover the pigment they leave behind. Pigment grazers gather those traces and carry their colors into woven nests. Passing rain widens light patches and the floor where lucents can feed. There is no score or win condition. Playing means shaping the conditions and observing what follows.
 
 Phase 1 is live at [austinpoulson.github.io/elsewhere](https://austinpoulson.github.io/elsewhere/) in the public [AustinPoulson/elsewhere repository](https://github.com/AustinPoulson/elsewhere). Daily development at 9 AM Central uses feature branches and reviewed PRs before deployment. See [the acceptance report](docs/phase-1.md) for local and live checks and their limits, and [scheduled expeditions](docs/automation.md) for the recurring workflow.
 
@@ -30,6 +30,7 @@ npm run preview
 - Use **Light** to place nourishment in the pool with a pointer or touch.
 - Use **Observe** to inspect an organism and open its field notes.
 - Pause to study a moment; resume to let the ecosystem continue.
+- Watch the weather countdown: a 38-second rain spreads light every three minutes, beginning at 00:30. Pause and snapshots preserve its place in the cycle.
 - Reset asks for confirmation, then returns to the opening tidepool with the same seed.
 - **Pocket this world** exports a snapshot to keep an era or transfer it. Opening a snapshot replaces the current pool; save the current one first if you want to keep both.
 
