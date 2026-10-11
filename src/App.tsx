@@ -3,7 +3,7 @@ import type { KeyboardEvent, PointerEvent, ChangeEvent } from 'react';
 import { Icon } from './Icons';
 import { SimulationClock } from './app/clock';
 import { TidepoolRenderer } from './render/TidepoolRenderer';
-import { addLight, createWorld, getStats, stepWorld } from './world/simulation';
+import { addLight, createWorld, getStats, releaseNestPigment, stepWorld } from './world/simulation';
 import { restoreWorld, serializeWorld } from './world/persistence';
 import { getWeather } from './world/weather';
 import { isInPool, WORLD_HEIGHT, WORLD_WIDTH } from './world/types';
@@ -30,6 +30,7 @@ export function App() {
   const rendererRef = useRef<TidepoolRenderer | null>(null);
   const importRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLElement>(null);
+  const panelReturnFocusRef = useRef<HTMLElement | null>(null);
   const resetRef = useRef<HTMLDialogElement>(null);
   const resetTriggerRef = useRef<HTMLElement | null>(null);
   const [reducedMotion, setReducedMotion] = useState(() => matchMedia('(prefers-reduced-motion: reduce)').matches);
@@ -135,7 +136,11 @@ export function App() {
     if (!panel) return;
     const previousFocus = document.activeElement as HTMLElement;
     panelRef.current?.querySelector<HTMLButtonElement>('button')?.focus();
-    return () => { if (previousFocus?.isConnected) previousFocus.focus(); };
+    return () => {
+      const returnFocus = panelReturnFocusRef.current ?? previousFocus;
+      panelReturnFocusRef.current = null;
+      if (returnFocus?.isConnected) returnFocus.focus({ preventScroll: true });
+    };
   }, [panel]);
   useEffect(() => {
     const key = (event: globalThis.KeyboardEvent) => {
@@ -213,6 +218,23 @@ export function App() {
     else if (event.code === 'Space') { event.preventDefault(); setPaused(value => !value); }
     else if (event.key.toLowerCase() === 'l') setTool('light');
     else if (event.key.toLowerCase() === 'o') setTool('observe');
+  }
+  function returnNestColor(nestId: number): void {
+    const result = releaseNestPigment(worldRef.current, nestId);
+    if (result.status === 'released') {
+      heldRef.current = false;
+      setStats(getStats(worldRef.current));
+      saveWorld();
+      panelReturnFocusRef.current = hostRef.current;
+      setPanel(null);
+      setNotice(`${result.amount.toFixed(1)} color returned as six grains. Watch the grazers find them.`);
+    } else if (result.status === 'full') {
+      setNotice('The floor is full of pigment. Let the grazers gather before returning more.');
+    } else if (result.status === 'empty') {
+      setNotice('This nest needs a little more color. Leave light nearby and let its grazer gather.');
+    } else {
+      setNotice('That nest is no longer here. Observe a grazer to find another.');
+    }
   }
   function exportSnapshot() {
     const blob = new Blob([serializeWorld(worldRef.current)], { type: 'application/json' });
@@ -325,6 +347,7 @@ export function App() {
           <div className="guide-entry"><span className="entry-number">03</span><div><h3>What remains</h3><p>Pigment settles on the pool floor. A meal becomes a trace, and a trace becomes something another creature can use.</p></div></div>
           <div className="guide-entry"><span className="entry-number">04</span><div><h3>The pigment grazer</h3><p>Look for the small amber shells. They gather colored sediment, then carry it home. Their empty woven nests slowly fill with borrowed colors. Leave light near a nest to keep the story going.</p></div></div>
           <div className="guide-entry"><span className="entry-number">05</span><div><h3>A passing rain</h3><p>Watch for ringlets on the water. During rain, golden patches of light widen over six seconds. Lucents can feed across that larger patch and leave color across a wider floor. Leave a fresh light during the shower to see it; rain cannot bring back a spent light. Grazers follow the traces home. The shower passes after 38 seconds and returns every three minutes. Pause holds the weather, too.</p></div></div>
+          <div className="guide-entry"><span className="entry-number">06</span><div><h3>Borrowed color</h3><p>A nest can give its color back. Observe a grazer, then choose Return color to the water. Up to three stored color becomes six grains near its home, ready to be gathered again. No color is created; a nearly empty nest or a crowded floor needs time.</p></div></div>
           {worldRef.current.grazers.length > 0 && <button className="secondary-button" onClick={() => { setSelectedId(worldRef.current.grazers[0].id); setPanel('specimen'); setTool('observe'); setHintVisible(false); setNotice('A keeper of borrowed colors.'); }}>Follow a grazer <Icon name="eye"/></button>}
           <div className="guide-controls"><p className="eyebrow">WAYS TO VISIT</p><p><kbd>L</kbd> Leave light <kbd>O</kbd> Observe <kbd>Space</kbd> Pause</p><p>Tab to the pool, move with arrow keys, then press Enter. <kbd>Esc</kbd> closes these notes.</p></div>
         </>}
@@ -332,6 +355,11 @@ export function App() {
           <h2 id="panel-title">{selected?.species === 'grazer' ? <>A keeper<br/><em>of borrowed colors.</em></> : <>A lucent,<br/><em>briefly known.</em></>}</h2>
           <p className="panel-intro">Every wanderer is part of the same small story.</p>
           {selected ? <><div className={`specimen-orb ${selected.species === 'grazer' ? 'grazer-orb' : ''}`} aria-hidden="true"/><p className="eyebrow">{selected.species === 'grazer' ? 'PIGMENT GRAZER' : 'LUCENT'} / {String(selected.id).padStart(3, '0')}</p><dl className="specimen-details"><div><dt>Time in the pool</dt><dd>{timeLabel(selected.age)}</dd></div>{selected.species === 'grazer' ? <><div><dt>Carrying color</dt><dd>{selected.cargo.toFixed(1)}</dd></div><div><dt>Color in its nest</dt><dd>{(selectedNest?.pigment ?? 0).toFixed(1)}</dd></div><div><dt>Disposition</dt><dd>{selected.returning ? 'Returning home' : 'Gathering pigment'}</dd></div></> : <><div><dt>Energy</dt><dd>{Math.round(selected.energy * 50)}%</dd></div><div><dt>Disposition</dt><dd>{selected.energy > 1 ? 'Radiant' : selected.energy > 0.4 ? 'Wandering' : 'Seeking light'}</dd></div></>}</dl><p className="guide-caption">{selected.species === 'grazer' ? 'Its shell carries the color of its last finds. Watch the woven nest fill as it returns.' : "Leave light nearby and watch this one's path change."}</p></> : <p className="panel-intro">Choose Observe and touch a creature in the water.</p>}
+          {selected?.species === 'grazer' && selectedNest && <>
+            <button className="primary-button" onClick={() => returnNestColor(selectedNest.id)}>Return color to the water <Icon name="arrow"/></button>
+            <p className="guide-caption">Release up to 3 color from this nest into six nearby grains. The grazers can gather them again.</p>
+            <p className="snapshot-feedback" role="status">{notice}</p>
+          </>}
         </>}
         {panel === 'pocket' && <>
           <h2 id="panel-title">A world<br/><em>in your pocket.</em></h2>
