@@ -79,6 +79,34 @@ function appendSediment(world: World, point: Point, hue: number, strength: numbe
   world.sediment.push({ id: world.nextId++, ...point, radius, hue, strength, age: 0 });
 }
 
+export type NestReleaseResult =
+  | { status: 'released'; amount: number }
+  | { status: 'missing' | 'empty' | 'full'; amount: 0 };
+
+export function releaseNestPigment(world: World, nestId: number): NestReleaseResult {
+  const nest = world.nests.find((entry) => entry.id === nestId);
+  if (!nest) return { status: 'missing', amount: 0 };
+  if (nest.pigment < 0.18) return { status: 'empty', amount: 0 };
+  if (world.sediment.length > LIMITS.sediment - 6 || world.nextId > Number.MAX_SAFE_INTEGER - 6) {
+    return { status: 'full', amount: 0 };
+  }
+
+  const amount = Math.min(3, nest.pigment);
+  const phase = ((nest.id % 4096) * 0.61803398875 + (world.tick % 360) * Math.PI / 180) % TAU;
+  const grains: Sediment[] = Array.from({ length: 6 }, (_, index) => {
+    const angle = phase + index * TAU / 6;
+    const radius = 44 + ((nest.id % 15 + world.tick % 15 + index * 7) % 15);
+    const point = confinePoint({ x: nest.x + Math.cos(angle) * radius, y: nest.y + Math.sin(angle) * radius }, 12);
+    return { id: world.nextId + index, ...point, radius: 9, hue: nest.hue, strength: amount / 6, age: 0 };
+  });
+
+  // Transfer stored pigment without evicting sediment or advancing simulation time.
+  world.sediment.push(...grains);
+  world.nextId += grains.length;
+  nest.pigment -= amount;
+  return { status: 'released', amount };
+}
+
 export function addLight(world: World, x: number, y: number): boolean {
   if (!Number.isFinite(x) || !Number.isFinite(y) || !isInPool(x, y)) return false;
   if (world.lights.length >= LIMITS.lights) return false;

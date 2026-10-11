@@ -14,6 +14,8 @@ Rain briefly spreads light across the water, widening the area where lucents can
 
 ## 3. Beyond the opening frame
 
+Before expanding the camera, [Expedition 003](expedition-003-borrowed-color.md) closes another relationship inside this pool: the visitor can return a nest's stored color as six visible grains, and the grazers gather it home again. Observe this resource loop before adding another habitat.
+
 Add a second pool and a gentle pan/zoom camera. Organisms or resources cross a connection between the pools. Exploration then discovers a new ecological relationship rather than empty map area. Keep the original tidepool as a composed opening scene.
 
 ## 4. Become an inhabitant

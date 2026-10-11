@@ -75,6 +75,7 @@ export class TidepoolRenderer {
   private readonly root = new Container();
   private readonly water = new Container();
   private readonly sedimentLayer = new Container();
+  private readonly sedimentCores = new Graphics();
   private readonly nestLayer = new Container();
   private readonly lightLayer = new Container();
   private readonly organismLayer = new Container();
@@ -124,7 +125,7 @@ export class TidepoolRenderer {
     this.mask.closePath().fill(0xffffff);
     this.root.addChild(this.water, this.mask);
     this.water.mask = this.mask;
-    this.water.addChild(this.lightPatchLayer, this.sedimentLayer, this.nestLayer, this.caustics, this.trails, this.lightLayer,
+    this.water.addChild(this.lightPatchLayer, this.sedimentLayer, this.sedimentCores, this.nestLayer, this.caustics, this.trails, this.lightLayer,
       this.tendrils, this.organismLayer, this.grazerLayer, this.rain, this.indicator);
     this.caustics.blendMode = 'add';
     this.trails.blendMode = 'add';
@@ -211,7 +212,9 @@ export class TidepoolRenderer {
     this.trails.clear();
     this.tendrils.clear();
     this.indicator.clear();
+    this.sedimentCores.clear();
 
+    let coreCount = 0;
     for (const sediment of world.sediment) {
       let visual = this.sediments.get(sediment.id);
       if (!visual) {
@@ -226,6 +229,14 @@ export class TidepoolRenderer {
       visual.sprite.height = diameter * 0.8;
       visual.sprite.rotation = sediment.id * 2.39996;
       visual.sprite.alpha = Math.min(0.31, sediment.strength * 0.35);
+      // Every deposit gets the same grain cue, without release flags or effect history.
+      const load = Math.min(1, Math.max(0, sediment.strength / 0.5));
+      const coreRadius = Math.min(4.2, Math.max(0.7, sediment.radius * 0.4)) * Math.sqrt(load);
+      if (coreCount < LIMITS.sediment && coreRadius > 0) {
+        this.sedimentCores.circle(sediment.x, sediment.y, coreRadius)
+          .fill({ color: visual.sprite.tint, alpha: Math.min(0.8, sediment.strength * 1.6) });
+        coreCount++;
+      }
     }
     this.pruneSprites(this.sediments);
     this.drawNests(world);
