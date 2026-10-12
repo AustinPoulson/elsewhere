@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent, PointerEvent, ChangeEvent } from 'react';
 import { Icon } from './Icons';
 import { SimulationClock } from './app/clock';
+import { SAVE_KEY, WorldSession } from './app/session';
+import { SHOWER_STUDY } from './app/study';
 import { TidepoolRenderer } from './render/TidepoolRenderer';
 import { addLight, createWorld, getStats, releaseNestPigment, stepWorld } from './world/simulation';
 import { restoreWorld, serializeWorld } from './world/persistence';
@@ -9,7 +11,7 @@ import { getWeather } from './world/weather';
 import { isInPool, WORLD_HEIGHT, WORLD_WIDTH } from './world/types';
 import type { Point, Tool, World } from './world/types';
 
-const SAVE_KEY = 'elsewhere:tidepool:v1';
+type PoolControls = { paused: boolean; tool: Tool; selectedId: number | null; hintVisible: boolean; cursor: Point | null; keyboard: boolean };
 type Panel = 'guide' | 'specimen' | 'pocket' | null;
 function loadInitialWorld(): { world: World; remembered: boolean; storageAvailable: boolean } {
   try {
@@ -26,6 +28,8 @@ function timeLabel(seconds: number): string {
 export function App() {
   const [initial] = useState(loadInitialWorld);
   const worldRef = useRef(initial.world);
+  const sessionRef = useRef(new WorldSession<PoolControls>(initial.world));
+  const [studyMode, setStudyMode] = useState(false);
   const hostRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<TidepoolRenderer | null>(null);
   const importRef = useRef<HTMLInputElement>(null);
@@ -54,10 +58,9 @@ export function App() {
   const [hintVisible, setHintVisible] = useState(!initial.remembered);
 
   function saveWorld(): void {
-    try {
-      localStorage.setItem(SAVE_KEY, serializeWorld(worldRef.current));
-      setStorageAvailable(true);
-    } catch { setStorageAvailable(false); }
+    if (sessionRef.current.preview) return;
+    try { setStorageAvailable(sessionRef.current.save(localStorage) === 'saved'); }
+    catch { setStorageAvailable(false); }
   }
 
   useEffect(() => {
@@ -65,6 +68,7 @@ export function App() {
     let frame = 0;
     let lastTime = 0;
     let lastStats = 0;
+    let revision = sessionRef.current.revision;
     const clock = new SimulationClock();
     const host = hostRef.current!;
     const hidden = () => {
@@ -80,6 +84,7 @@ export function App() {
       if (cancelled || document.hidden) return;
       const renderer = rendererRef.current;
       if (!renderer) return;
+      if (revision !== sessionRef.current.revision) { revision = sessionRef.current.revision; clock.reset(); lastTime = 0; lastStats = 0; }
       const delta = lastTime ? (now - lastTime) / 1000 : 0;
       lastTime = now;
       if (!controlsRef.current.paused) clock.advance(delta, dt => stepWorld(worldRef.current, dt));
@@ -241,19 +246,23 @@ export function App() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `elsewhere-tidepool-${worldRef.current.seed}.json`;
+    link.download = `${sessionRef.current.preview ? 'elsewhere-study-during-a-shower' : 'elsewhere-tidepool'}-${worldRef.current.seed}.json`;
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
-    setNotice('A little world, saved for later.');
+    setNotice(sessionRef.current.preview ? 'A snapshot of the shower study, saved separately from your pool.' : 'A little world, saved for later.');
   }
   async function importSnapshot(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
+    const token = sessionRef.current.importToken();
+    if (token === null) { setNotice('Return to your pool before opening a snapshot.'); return; }
     if (file.size > 2_000_000) { setNotice('That file is too large to be a tidepool snapshot.'); return; }
     try {
-      const restored = restoreWorld(await file.text());
-      if (!restored) { setNotice('That snapshot could not be read. Your tidepool is still here.'); return; }
+      const result = sessionRef.current.importSnapshot(await file.text(), token);
+      if (result === 'stale') { setNotice('The visit changed while that file opened. No world was replaced.'); return; }
+      if (result === 'invalid') { setNotice('That snapshot could not be read. Your tidepool is still here.'); return; }
+      const restored = sessionRef.current.world;
       worldRef.current = restored;
       heldRef.current = false;
       setHintVisible(false);
@@ -264,14 +273,47 @@ export function App() {
     } catch { setNotice('That file could not be opened. Your tidepool is still here.'); }
   }
   function resetWorld() {
-    worldRef.current = createWorld(worldRef.current.seed);
+    sessionRef.current.reset();
+    worldRef.current = sessionRef.current.world;
+    if (sessionRef.current.preview) { setPaused(true); controlsRef.current.paused = true; }
     heldRef.current = false;
     setSelectedId(null);
     setStats(getStats(worldRef.current));
     saveWorld();
-    setNotice('A new beginning, along the same shore.');
+    setNotice(sessionRef.current.preview ? 'The shower study is back at its paused first moment. Your pool is untouched.' : 'A new beginning, along the same shore.');
     resetRef.current?.close();
     resetTriggerRef.current?.focus();
+  }
+  function previewStudy() {
+    try {
+      let storage: { setItem(key: string, value: string): void };
+      try { storage = localStorage; } catch { storage = { setItem() { throw new Error('Storage unavailable'); } }; }
+      const result = sessionRef.current.enterStudy({ paused, tool, selectedId, hintVisible,
+        cursor: cursorRef.current, keyboard: keyboardRef.current }, storage);
+      if (result === 'preview') return;
+      setStorageAvailable(result === 'saved');
+      worldRef.current = sessionRef.current.world;
+      heldRef.current = false; cursorRef.current = null; keyboardRef.current = false;
+      controlsRef.current = { paused: true, tool: 'observe', selectedId: null, reducedMotion };
+      setPaused(true); setTool('observe'); setSelectedId(null); setHintVisible(false);
+      setStudyMode(true); setStats(getStats(worldRef.current));
+      panelReturnFocusRef.current = hostRef.current; setPanel(null);
+      setNotice(result === 'saved'
+        ? 'During a shower: a paused study. Your pool is checkpointed; this visit never autosaves.'
+        : 'During a shower: your pool is held in memory only. Storage failed; return before closing or reloading to keep it.');
+    } catch { setNotice('The study could not open. Your pool is still here.'); }
+  }
+  function returnToPool() {
+    const controls = sessionRef.current.returnToPool();
+    if (!controls) return;
+    worldRef.current = sessionRef.current.world;
+    heldRef.current = false; cursorRef.current = controls.cursor; keyboardRef.current = controls.keyboard;
+    controlsRef.current = { paused: controls.paused, tool: controls.tool, selectedId: controls.selectedId, reducedMotion };
+    setPaused(controls.paused); setTool(controls.tool); setSelectedId(controls.selectedId);
+    setHintVisible(controls.hintVisible); setStudyMode(false); setStats(getStats(worldRef.current));
+    resetRef.current?.close(); panelReturnFocusRef.current = hostRef.current; setPanel(null);
+    hostRef.current?.focus({ preventScroll: true });
+    setNotice('Your pool returns exactly where you left it. No time passed during the study.');
   }
   const selected = [...worldRef.current.organisms, ...worldRef.current.grazers].find(organism => organism.id === selectedId);
   const selectedNest = selected?.species === 'grazer' ? worldRef.current.nests.find(nest => nest.id === selected.nestId) : null;
@@ -289,6 +331,10 @@ export function App() {
       onBlur={() => { heldRef.current = false; if (keyboardRef.current) cursorRef.current = null; }}
       onKeyDown={habitatKey} />
 
+    {studyMode && <section className="study-banner" aria-label="Temporary study visit">
+      <span><strong>During a shower</strong> · Study · Your pool is held aside</span>
+      <button className="secondary-button" onClick={returnToPool}>Return to your pool <Icon name="arrow"/></button>
+    </section>}
     <header className="masthead">
       <a className="wordmark" href="./" aria-label="Elsewhere home"><Icon name="spark" size={25}/><span>elsewhere<span className="wordmark-dot">.</span></span></a>
       <div className="masthead-right"><span className="edition">AN UNFINISHED WORLD</span><button className="guide-toggle" onClick={() => openPanel('guide')} aria-expanded={panel === 'guide'} aria-controls="field-panel"><Icon name="book"/><span>Field guide</span></button></div>
@@ -331,7 +377,7 @@ export function App() {
       <aside ref={panelRef} className="field-panel" id="field-panel" role="dialog" aria-modal="true" aria-labelledby="panel-title"
         onKeyDown={event => {
           if (event.key !== 'Tab') return;
-          const nodes = panelRef.current?.querySelectorAll<HTMLElement>('button,input,a,[tabindex="0"]');
+          const nodes = panelRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled),input:not(:disabled),a,[tabindex="0"]');
           if (!nodes?.length) return;
           const first = nodes[0], last = nodes[nodes.length - 1];
           if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
@@ -363,24 +409,30 @@ export function App() {
         </>}
         {panel === 'pocket' && <>
           <h2 id="panel-title">A world<br/><em>in your pocket.</em></h2>
-          <p className="panel-intro">Your tidepool is {storageAvailable ? 'remembered automatically on this device' : 'running without automatic saves'}. Take a snapshot to carry it somewhere else.</p>
+          <p className="panel-intro">{studyMode ? 'You are visiting During a shower. This study never autosaves over your pool. A saved snapshot contains the study.' : `Your tidepool is ${storageAvailable ? 'remembered automatically on this device' : 'running without automatic saves'}. Take a snapshot to carry it somewhere else.`}</p>
           <div className="snapshot-stamp"><Icon name="spark" size={38}/><span>THE FIRST SHORE</span><strong>{timeLabel(stats.elapsed)}</strong><span>{stats.population} LUCENTS · {stats.grazers} GRAZERS</span><span>SEED {worldRef.current.seed}</span></div>
           <button className="primary-button" onClick={exportSnapshot}><Icon name="download"/>Save a snapshot <Icon name="arrow"/></button>
-          <button className="secondary-button" onClick={() => importRef.current?.click()}><Icon name="upload"/>Open a snapshot</button>
+          <button className="secondary-button" disabled={studyMode} onClick={() => importRef.current?.click()}><Icon name="upload"/>Open a snapshot</button>
           <p className="snapshot-feedback" role="status">{notice}</p>
-          <p className="guide-caption">Opening a snapshot replaces the current pool. Save this one first if you'd like to keep both. A snapshot captures this version of the world.</p>
+          <p className="guide-caption">{studyMode ? 'Return to your pool before opening a snapshot. Reset only restarts this study.' : "Opening a snapshot replaces the current pool. Save this one first if you'd like to keep both. A snapshot captures this version of the world."}</p>
+          {studyMode ? <button className="secondary-button" onClick={returnToPool}>Return to your pool <Icon name="arrow"/></button> : <>
+            <h3>During a shower</h3>
+            <p className="guide-caption">Visit a paused rain study with color ready to return from its nests. Your pool and controls stay held aside. The study never overwrites its autosave.</p>
+            <button className="secondary-button" onClick={previewStudy}>Preview During a shower <Icon name="eye"/></button>
+          </>}
+          <p className="guide-caption">Study provenance: seed {SHOWER_STUDY.seed}, {SHOWER_STUDY.steps} fixed steps, 00:40. Generated from the first shore without visitor actions.</p>
         </>}
         <div className="panel-foot">ELSEWHERE <span>CHAPTER 01</span></div>
       </aside>
     </>}
     <input ref={importRef} type="file" accept=".json,application/json" hidden aria-label="Open tidepool snapshot" onChange={importSnapshot}/>
     <dialog ref={resetRef} className="reset-dialog" aria-labelledby="reset-title" onClose={() => resetTriggerRef.current?.focus()}>
-      <p className="eyebrow">THE TIDE TURNS</p><h2 id="reset-title">Begin again?</h2><p>The pool will return to its first moment. Save a snapshot first to keep what you've made.</p>
+      <p className="eyebrow">THE TIDE TURNS</p><h2 id="reset-title">Begin again?</h2><p>{studyMode ? 'Only the study will return to its paused first moment. Your personal pool stays held aside.' : "The pool will return to its first moment. Save a snapshot first to keep what you've made."}</p>
       <div className="dialog-actions"><button className="secondary-button" autoFocus onClick={() => resetRef.current?.close()}>Stay here</button><button className="primary-button" onClick={resetWorld}>Begin again <Icon name="reset"/></button></div>
     </dialog>
     <p className="sr-only" role="status" aria-live="polite">{notice}</p>
     {feedback && !panel && <div className="action-notice" aria-hidden="true">{feedback}</div>}
-    {!storageAvailable && <div className="storage-notice">Automatic saving is unavailable. Use “Pocket this world” to keep a snapshot.</div>}
+    {!storageAvailable && <div className="storage-notice">{studyMode ? 'Your personal pool is held in memory only. Return before closing or reloading; study snapshots do not contain your pool.' : 'Automatic saving is unavailable. Use “Pocket this world” to keep a snapshot.'}</div>}
     {reducedMotion && paused && <div className="motion-notice">Opened quietly for your motion preference. Press Play to bring it to life.</div>}
   </main>;
 }
