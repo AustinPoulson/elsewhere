@@ -64,7 +64,7 @@ export interface World {
   nests: Nest[];
   consumed: number;
 }
-export type Tool = 'light' | 'observe';
+export type Tool = 'light' | 'observe' | 'carry';
 export interface WorldStats {
   population: number;
   light: number;

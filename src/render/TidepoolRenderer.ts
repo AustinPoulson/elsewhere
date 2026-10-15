@@ -200,7 +200,7 @@ export class TidepoolRenderer {
     return sprite;
   }
 
-  render(world: World, selectedId: number | null, cursor: Point | null, tool: Tool): void {
+  render(world: World, selectedId: number | null, cursor: Point | null, tool: Tool, carriedLightId: number | null = null): void {
     if (this.destroyed) return;
     this.frame++;
     const time = this.reducedMotion ? 0 : world.elapsed;
@@ -342,7 +342,9 @@ export class TidepoolRenderer {
     }
     this.drawGrazers(world, selectedId, time);
 
-    if (cursor && isInPool(cursor.x, cursor.y)) {
+    if (tool === 'carry') {
+      this.drawCarryPreview(world, cursor, carriedLightId, lightReach);
+    } else if (cursor && isInPool(cursor.x, cursor.y)) {
       const radius = tool === 'light' ? 18 : 10;
       this.indicator.circle(cursor.x, cursor.y, radius)
         .stroke({ color: tool === 'light' ? 0xdccfa7 : 0xa6c5b5, alpha: 0.45, width: 0.75 });
@@ -351,6 +353,67 @@ export class TidepoolRenderer {
     this.app.render();
   }
 
+  private drawCarryPreview(world: World, cursor: Point | null, carriedLightId: number | null, reach: number): void {
+    let source: World['lights'][number] | undefined;
+    if (carriedLightId !== null) {
+      for (const light of world.lights) {
+        if (light.id === carriedLightId && light.energy > 0) {
+          source = light;
+          break;
+        }
+      }
+      // An expired source never leaves a misleading ghost behind.
+      if (!source) return;
+    } else if (cursor) {
+      let nearestDistanceSquared = 30 * 30;
+      for (const light of world.lights) {
+        if (light.energy <= 0) continue;
+        const dx = light.x - cursor.x;
+        const dy = light.y - cursor.y;
+        const distanceSquared = dx * dx + dy * dy;
+        if (distanceSquared < nearestDistanceSquared
+          || (distanceSquared === nearestDistanceSquared && (!source || light.id < source.id))) {
+          source = light;
+          nearestDistanceSquared = distanceSquared;
+        }
+      }
+    }
+
+    const carrying = carriedLightId !== null;
+    const valid = !!cursor && isInPool(cursor.x, cursor.y);
+    const color = carrying && !valid ? 0xed9b8c : 0xf4d681;
+    if (source) {
+      this.indicator.circle(source.x, source.y, 13)
+        .stroke({ color, alpha: 0.95, width: 1.8 });
+      this.indicator.circle(source.x, source.y, 17)
+        .stroke({ color, alpha: 0.38, width: 0.8 });
+    }
+    if (!cursor) return;
+    if (!carrying || !source) {
+      if (valid) this.indicator.circle(cursor.x, cursor.y, 30)
+        .stroke({ color: source ? 0xf4d681 : 0xa6c5b5, alpha: source ? 0.38 : 0.22, width: 0.9 });
+      return;
+    }
+
+    // One presentation-only ghost: it neither feeds inhabitants nor changes source energy.
+    // Fixed shapes remain legible when paused or reduced motion is enabled.
+    this.indicator.moveTo(source.x, source.y).lineTo(cursor.x, cursor.y)
+      .stroke({ color, alpha: 0.5, width: 1 });
+    this.indicator.circle(cursor.x, cursor.y, reach)
+      .stroke({ color, alpha: valid ? 0.28 : 0.16, width: 1.2 });
+    this.indicator.circle(cursor.x, cursor.y, 19)
+      .fill({ color, alpha: 0.14 }).stroke({ color, alpha: 0.85, width: 1.6 });
+    this.indicator.circle(cursor.x, cursor.y, 5).fill({ color, alpha: 0.84 });
+    if (valid) {
+      this.indicator.moveTo(cursor.x - 6, cursor.y + 11).lineTo(cursor.x - 1, cursor.y + 16)
+        .lineTo(cursor.x + 9, cursor.y + 6).stroke({ color, alpha: 0.9, width: 1.8 });
+    } else {
+      // Also mark the source, because the pool mask can clip an outside destination.
+      this.indicator.moveTo(source.x - 5, source.y - 5).lineTo(source.x + 5, source.y + 5)
+        .moveTo(source.x + 5, source.y - 5).lineTo(source.x - 5, source.y + 5)
+        .stroke({ color, alpha: 0.95, width: 1.8 });
+    }
+  }
   private drawLightPatch(id: number, point: Point, reach: number, intensity: number, remaining: number): void {
     let visual = this.lightPatches.get(id);
     if (!visual) {
