@@ -197,7 +197,7 @@ describe('nest pigment release', () => {
     run(restored!, 1800);
     expect(restored).toEqual(world);
     expect(restoreWorld(serializeWorld(world))).toEqual(world);
-    expect(world.version).toBe(2);
+    expect(world.version).toBe(3);
   });
 
   it('preserves v1 migration state and supports release using the existing v2 schema', () => {
@@ -206,7 +206,7 @@ describe('nest pigment release', () => {
     legacy.grazers = [];
     legacy.nests = [];
     run(legacy, 1020);
-    const { grazers: _grazers, nests: _nests, ...fields } = legacy;
+    const { grazers: _grazers, nests: _nests, schemaRevision: _revision, weatherCall: _call, ...fields } = legacy;
     const restored = restoreWorld(JSON.stringify({ ...fields, version: 1 }));
     expect(restored).not.toBeNull();
     expect(restored!.elapsed).toBe(legacy.elapsed);

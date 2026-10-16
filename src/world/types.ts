@@ -51,7 +51,9 @@ export interface Nest extends Point {
   age: number;
 }
 export interface World {
-  version: 2;
+  version: 3;
+  schemaRevision: 1;
+  weatherCall: { startedAt: number | null; nextAllowedAt: number };
   seed: number;
   randomState: number;
   elapsed: number;

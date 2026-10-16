@@ -3,6 +3,7 @@ import {
   type Grazer, type LightSource, type Nest, type Organism, type Sediment, type World,
 } from './types';
 import { initializeGrazers } from './simulation';
+import { RAIN_CALL_COOLDOWN } from './weather';
 
 const MAX_SAVE_LENGTH = 1_000_000;
 const MAX_NUMBER = Number.MAX_SAFE_INTEGER;
@@ -66,6 +67,26 @@ function nest(value: unknown): boolean {
     && range(value.pigment, 0, NEST_CAPACITY) && range(value.age, 0, MAX_NUMBER);
 }
 
+function weatherCall(value: unknown, elapsed: number): value is World['weatherCall'] {
+  if (!record(value) || !range(value.nextAllowedAt, 0, MAX_NUMBER)) return false;
+  if (value.startedAt === null) return value.nextAllowedAt === 0;
+  return range(value.startedAt, 0, Math.min(elapsed, MAX_NUMBER - RAIN_CALL_COOLDOWN))
+    && value.nextAllowedAt === value.startedAt + RAIN_CALL_COOLDOWN;
+}
+
+type LegacyWorld = Omit<World, 'version' | 'schemaRevision' | 'weatherCall'> & { version: 1 | 2 };
+
+// Ordered, pure migrations operate on validated data, without touching old ecology.
+function migrateV1ToV2(previous: LegacyWorld): LegacyWorld {
+  const next = { ...previous, version: 2 as const, grazers: [], nests: [] };
+  initializeGrazers(next);
+  return next;
+}
+
+function migrateV2ToV3(previous: LegacyWorld): World {
+  return { ...previous, version: 3, schemaRevision: 1, weatherCall: { startedAt: null, nextAllowedAt: 0 } };
+}
+
 export function serializeWorld(world: World): string {
   return JSON.stringify(world);
 }
@@ -79,10 +100,13 @@ export function restoreWorld(input: string): World | null {
     if (error instanceof SyntaxError) return null;
     throw error;
   }
-  if (!record(parsed) || (parsed.version !== 1 && parsed.version !== 2)
+  if (!record(parsed) || (parsed.version !== 1 && parsed.version !== 2 && parsed.version !== 3)
     || !integer(parsed.seed, 0, 0xffffffff) || !integer(parsed.randomState, 0, 0xffffffff)
     || !range(parsed.elapsed, 0, MAX_NUMBER) || !integer(parsed.tick)
     || !integer(parsed.nextId, 1) || !range(parsed.consumed, 0, MAX_NUMBER)) return null;
+
+  if ((parsed.version === 3 && (parsed.schemaRevision !== 1 || !weatherCall(parsed.weatherCall, parsed.elapsed)))
+    || (parsed.version !== 3 && ('schemaRevision' in parsed || 'weatherCall' in parsed))) return null;
 
   const { organisms, lights, sediment: deposits } = parsed;
   if (!Array.isArray(organisms) || organisms.length < 1 || organisms.length > LIMITS.organisms
@@ -92,7 +116,7 @@ export function restoreWorld(input: string): World | null {
 
   let grazers: Grazer[] = [];
   let nests: Nest[] = [];
-  if (parsed.version === 2) {
+  if (parsed.version >= 2) {
     if (!Array.isArray(parsed.grazers) || parsed.grazers.length > LIMITS.grazers
       || !Array.isArray(parsed.nests) || parsed.nests.length > LIMITS.nests
       || !parsed.grazers.every(grazer) || !parsed.nests.every(nest)) return null;
@@ -113,12 +137,17 @@ export function restoreWorld(input: string): World | null {
   if (parsed.nextId <= largestId) return null;
 
   // Only the versioned contract enters the simulation; storage is a UI concern.
-  const world: World = {
-    version: 2, seed: parsed.seed, randomState: parsed.randomState,
+  const ecology = {
+    seed: parsed.seed, randomState: parsed.randomState,
     elapsed: parsed.elapsed, tick: parsed.tick, nextId: parsed.nextId,
     organisms: organisms as Organism[], lights: lights as LightSource[],
     sediment: deposits as Sediment[], grazers, nests, consumed: parsed.consumed,
   };
-  if (parsed.version === 1) initializeGrazers(world);
-  return world;
+  if (parsed.version === 3) return {
+    ...ecology, version: 3, schemaRevision: 1,
+    weatherCall: { ...(parsed.weatherCall as World['weatherCall']) },
+  };
+  let legacy: LegacyWorld = { ...ecology, version: parsed.version };
+  if (legacy.version === 1) legacy = migrateV1ToV2(legacy);
+  return migrateV2ToV3(legacy);
 }
