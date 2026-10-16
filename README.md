@@ -29,14 +29,15 @@ npm run preview
 
 - Use **Light** to place nourishment in the pool with a pointer or touch.
 - Use **Observe** to inspect an organism and open its field notes.
+- Use **Carry light** (M) to drag existing light to a new feeding ground without adding energy. With the keyboard, Enter picks up and sets down; Escape cancels.
 - Pause to study a moment; resume to let the ecosystem continue.
-- Watch the weather countdown: a 38-second rain spreads light every three minutes, beginning at 00:30. Pause and snapshots preserve its place in the cycle.
+- Watch the weather countdown: a 38-second rain spreads light every three minutes, beginning at 00:30. **Call rain** (R) invites a thirty-second shower now, followed by rest until sixty world seconds after the call. Rain widens existing feeding light; it adds no energy. Pause and snapshots preserve both rain and rest.
 - Reset asks for confirmation, then returns to the opening tidepool with the same seed.
 - **Pocket this world** exports a snapshot to keep an era or transfer it. Opening a snapshot replaces the current pool; save the current one first if you want to keep both.
 
 The interface includes keyboard controls and a visible shortcut reference. Saves belong to this browser and site address. A local development save and a GitHub Pages save are separate. The world advances while the page is running; it does not simulate the time you spend away.
 
-With the habitat focused, arrow keys move an interaction cursor and **Enter** applies the selected tool there. **L** selects Light, **O** selects Observe, **Space** pauses or resumes, and **Escape** clears the inspection. Global shortcuts yield to focused form controls and dialogs. The habitat starts paused when the browser requests reduced motion; resume when you want to explore it.
+With the habitat focused, arrow keys move an interaction cursor and **Enter** applies the selected tool there. **L** selects Light, **O** selects Observe, **M** selects Carry light, **R** calls rain, **Space** pauses or resumes, and **Escape** cancels carrying or clears the inspection. Global shortcuts yield to focused form controls and dialogs. The habitat starts paused when the browser requests reduced motion; resume when you want to explore it.
 
 The pigment readout measures the combined strength of sediment in the water. The second line shows the grazer population and color stored in nests. These are resource amounts rather than counts of individual marks. Lucents become dimmer when light is scarce and persist so there is always a population to feed when you return. Open the Field guide and choose **Follow a grazer** to inspect its cargo and nest, or touch its amber shell with Observe. Earlier snapshots and browser saves migrate into the expanded ecosystem.
 
