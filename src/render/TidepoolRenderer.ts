@@ -5,7 +5,7 @@ import {
 } from '../world/types';
 import { createBloom, createBody, createTerrain, poolPoint } from './terrain';
 import { fitHabitatCamera, viewportToWorld, type HabitatCamera } from './camera';
-import { CALM_LIGHT_REACH, getLightReach, getWeather } from '../world/weather';
+import { CALM_LIGHT_REACH, effectiveLightReach, effectiveWeather } from '../world/weather';
 
 interface SpriteVisual {
   sprite: Sprite;
@@ -204,11 +204,12 @@ export class TidepoolRenderer {
     if (this.destroyed) return;
     this.frame++;
     const time = this.reducedMotion ? 0 : world.elapsed;
-    const weather = getWeather(world.elapsed);
-    const lightReach = getLightReach(world.elapsed);
+    const weather = effectiveWeather(world);
+    const lightReach = effectiveLightReach(world);
     const lightReachScale = lightReach / CALM_LIGHT_REACH;
     this.drawWater(time);
-    this.drawRain(world.elapsed, weather.intensity);
+    // The first held ringlets acknowledge a paused call; feeding reach still uses actual intensity.
+    this.drawRain(world.elapsed, weather.called ? Math.max(0.12, weather.intensity) : weather.intensity);
     this.trails.clear();
     this.tendrils.clear();
     this.indicator.clear();

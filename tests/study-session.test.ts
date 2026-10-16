@@ -5,6 +5,7 @@ import { createWorld, releaseNestPigment, stepWorld } from '../src/world/simulat
 import { restoreWorld, serializeWorld } from '../src/world/persistence';
 import { LIMITS } from '../src/world/types';
 import { getWeather } from '../src/world/weather';
+import fixture from '../src/app/shower-study.json';
 
 function storage() {
   const entries = new Map<string, string>();
@@ -13,12 +14,18 @@ function storage() {
 const controls = { paused: false, tool: 'light', selectedId: 3, cursor: { x: 700, y: 500 } };
 
 describe('safe shower study', () => {
-  it('is exactly its documented deterministic history, valid v2, rainy, and ready for a conserved six-grain return', () => {
-    const expected = createWorld(SHOWER_STUDY.seed);
-    for (let i = 0; i < SHOWER_STUDY.steps; i++) stepWorld(expected);
+  it('normalizes its immutable v2 history to the current schema without changing ecology, rain or conserved six-grain return', () => {
+    const expected = restoreWorld(JSON.stringify(fixture));
+    expect(expected).not.toBeNull();
+    const { version: _oldVersion, ...historicalEcology } = fixture;
+    const { version: _version, schemaRevision: _revision, weatherCall: _call, ...normalizedEcology } = expected!;
+    expect(normalizedEcology).toEqual(historicalEcology);
+    expect(expected!.seed).toBe(SHOWER_STUDY.seed);
+    expect(expected!.tick).toBe(SHOWER_STUDY.steps);
+    expect(expected!.elapsed).toBeCloseTo(SHOWER_STUDY.seconds, 10);
     const study = createShowerStudy();
     expect(study).toEqual(expected);
-    expect(study.version).toBe(2);
+    expect(study.version).toBe(3);
     expect(getWeather(study.elapsed).raining).toBe(true);
     expect(study.sediment.length).toBeLessThanOrEqual(LIMITS.sediment - 6);
     const nest = study.nests.find(n => n.pigment >= 3)!;
@@ -115,9 +122,9 @@ describe('safe shower study', () => {
   it('keeps valid v1 migration and v2 import/export while malformed imports leave the current world intact', () => {
     const session = new WorldSession(createWorld(22));
     const legacy = JSON.parse(serializeWorld(createWorld(44)));
-    legacy.version = 1; delete legacy.grazers; delete legacy.nests;
+    legacy.version = 1; delete legacy.grazers; delete legacy.nests; delete legacy.weatherCall; delete legacy.schemaRevision;
     expect(session.importSnapshot(JSON.stringify(legacy), session.importToken())).toBe('imported');
-    expect(session.world.version).toBe(2);
+    expect(session.world.version).toBe(3);
     expect(session.world.grazers).toHaveLength(4);
     const before = session.world;
     expect(session.importSnapshot('{', session.importToken())).toBe('invalid');

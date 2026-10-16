@@ -33,7 +33,7 @@ function pigmentMass(world: World): number {
 }
 
 function legacyPayload(world: World): string {
-  const { grazers: _grazers, nests: _nests, ...legacy } = world;
+  const { grazers: _grazers, nests: _nests, schemaRevision: _revision, weatherCall: _call, ...legacy } = world;
   return JSON.stringify({ ...legacy, version: 1 });
 }
 
@@ -200,7 +200,7 @@ describe('v2 grazer snapshots', () => {
       }
       const migrated = restoreWorld(legacyPayload(legacy));
       expect(migrated).not.toBeNull();
-      expect(migrated!.version).toBe(2);
+      expect(migrated!.version).toBe(3);
       expect(migrated!.elapsed).toBe(legacy.elapsed);
       expect(migrated!.tick).toBe(legacy.tick);
       expect(migrated!.randomState).toBe(legacy.randomState);

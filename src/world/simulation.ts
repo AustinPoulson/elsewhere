@@ -2,7 +2,7 @@ import {
   FIXED_STEP, GRAZER_CAPACITY, LIMITS, NEST_CAPACITY, WORLD_HEIGHT, WORLD_WIDTH, isInPool, poolRadius,
   type Grazer, type LightSource, type Organism, type Point, type Sediment, type World, type WorldStats,
 } from './types';
-import { CALM_LIGHT_REACH, getLightReach } from './weather';
+import { CALM_LIGHT_REACH, effectiveLightReach } from './weather';
 
 const TAU = Math.PI * 2;
 const ENERGY_FLOOR = 0.12;
@@ -46,7 +46,7 @@ function confinePoint(point: Point, margin: number): Point {
 }
 
 // Independent of the shared PRNG: migration leaves the existing ecology intact.
-export function initializeGrazers(world: World): void {
+export function initializeGrazers(world: Pick<World, 'grazers' | 'nests' | 'seed' | 'nextId'>): void {
   if (world.grazers.length > 0 || world.nests.length > 0) return;
   const seedOffset = (world.seed % 997) / 997 * 0.38;
   const nestAngles = [2.8, 4.5, -0.4, 1.2];
@@ -118,7 +118,8 @@ export function createWorld(seed = 20261006): World {
   if (!Number.isFinite(seed)) throw new RangeError('World seed must be finite.');
   const normalizedSeed = Math.trunc(seed) >>> 0;
   const world: World = {
-    version: 2, seed: normalizedSeed, randomState: normalizedSeed, elapsed: 0, tick: 0,
+    version: 3, schemaRevision: 1, weatherCall: { startedAt: null, nextAllowedAt: 0 },
+    seed: normalizedSeed, randomState: normalizedSeed, elapsed: 0, tick: 0,
     nextId: 1, organisms: [], lights: [], sediment: [], grazers: [], nests: [], consumed: 0,
   };
   const springs = SPRINGS;
@@ -340,7 +341,7 @@ export function stepWorld(world: World, dt = FIXED_STEP): void {
   }
   world.elapsed += dt;
   world.tick++;
-  const lightReach = getLightReach(world.elapsed);
+  const lightReach = effectiveLightReach(world);
   for (const organism of world.organisms) updateLucent(world, organism, dt, lightReach);
   for (const grazer of world.grazers) updateGrazer(world, grazer, dt);
   for (const light of world.lights) {

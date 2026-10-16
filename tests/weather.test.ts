@@ -152,7 +152,7 @@ describe('rain diffuses existing light', () => {
 });
 
 describe('weather and existing snapshots', () => {
-  it('restores mid-rain v2 saves without new schema fields and continues deterministically', () => {
+  it('restores current mid-rain saves and continues deterministically', () => {
     const world = createWorld(333);
     run(world, 30 * 45);
     addLight(world, 750, 500);
@@ -165,7 +165,7 @@ describe('weather and existing snapshots', () => {
     run(world, 30 * 200);
     run(restored!, 30 * 200);
     expect(restored).toEqual(world);
-    expect(restored!.version).toBe(2);
+    expect(restored!.version).toBe(3);
   });
 
   it('preserves mid-rain v1 state and PRNG during the existing grazer migration', () => {
@@ -174,11 +174,11 @@ describe('weather and existing snapshots', () => {
     legacy.grazers = [];
     legacy.nests = [];
     run(legacy, 30 * 45);
-    const { grazers: _grazers, nests: _nests, ...fields } = legacy;
+    const { grazers: _grazers, nests: _nests, schemaRevision: _revision, weatherCall: _call, ...fields } = legacy;
     const snapshot = JSON.stringify({ ...fields, version: 1 });
     const restored = restoreWorld(snapshot);
     expect(restored).not.toBeNull();
-    expect(restored!.version).toBe(2);
+    expect(restored!.version).toBe(3);
     expect(restored!.elapsed).toBe(legacy.elapsed);
     expect(restored!.tick).toBe(legacy.tick);
     expect(restored!.randomState).toBe(legacy.randomState);

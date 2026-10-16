@@ -8,7 +8,7 @@ import { SHOWER_STUDY } from './app/study';
 import { TidepoolRenderer } from './render/TidepoolRenderer';
 import { addLight, createWorld, getStats, releaseNestPigment, stepWorld } from './world/simulation';
 import { restoreWorld, serializeWorld } from './world/persistence';
-import { getWeather } from './world/weather';
+import { callRain, effectiveWeather } from './world/weather';
 import { isInPool, WORLD_HEIGHT, WORLD_WIDTH } from './world/types';
 import type { Point, Tool, World } from './world/types';
 
@@ -84,6 +84,19 @@ export function App() {
       setStats(getStats(worldRef.current)); saveWorld();
       setNotice('The same light, in a new place. Watch the lucents follow.');
     } else setNotice('Light stayed where it was. Choose a living light and set it inside the shore.');
+  }
+
+  function inviteRain(): void {
+    if (!ready) return;
+    heldRef.current = false; cancelCarry();
+    const result = callRain(worldRef.current);
+    setStats(getStats(worldRef.current));
+    if (result.status === 'called') {
+      saveWorld();
+      setNotice(controlsRef.current.paused
+        ? 'A shower is waiting. Resume to let its light spread.'
+        : 'A passing shower answers. Existing light will reach a little farther.');
+    } else setNotice(`Let the water rest for ${Math.ceil(result.secondsRemaining)} world seconds before calling again. Pause holds this rest, too.`);
   }
 
   function saveWorld(): void {
@@ -193,11 +206,12 @@ export function App() {
       if (event.key.toLowerCase() === 'l') chooseTool('light');
       if (event.key.toLowerCase() === 'o') chooseTool('observe');
       if (event.key.toLowerCase() === 'm') chooseTool('carry');
+      if (event.key.toLowerCase() === 'r') inviteRain();
       if (event.code === 'Space') { event.preventDefault(); setPaused(value => !value); }
     };
     window.addEventListener('keydown', key);
     return () => window.removeEventListener('keydown', key);
-  }, []);
+  }, [ready]);
 
   function activateAt(point: Point): void {
     if (!ready) return;
@@ -265,6 +279,7 @@ export function App() {
     else if (event.key.toLowerCase() === 'l') chooseTool('light');
     else if (event.key.toLowerCase() === 'o') chooseTool('observe');
     else if (event.key.toLowerCase() === 'm') chooseTool('carry');
+    else if (event.key.toLowerCase() === 'r') inviteRain();
   }
   function returnNestColor(nestId: number): void {
     const result = releaseNestPigment(worldRef.current, nestId);
@@ -363,7 +378,7 @@ export function App() {
   const selected = [...worldRef.current.organisms, ...worldRef.current.grazers].find(organism => organism.id === selectedId);
   const selectedNest = selected?.species === 'grazer' ? worldRef.current.nests.find(nest => nest.id === selected.nestId) : null;
   const openPanel = (next: Panel) => setPanel(current => current === next ? null : next);
-  const weather = getWeather(stats.elapsed);
+  const weather = effectiveWeather(worldRef.current);
 
   return <main className="elsewhere">
     <div ref={hostRef} className={`habitat tool-${tool}`} role="group" tabIndex={0}
@@ -405,8 +420,15 @@ export function App() {
       <div className="readout-values"><span><strong>{stats.population}</strong> lucents</span><span className="readout-separator">·</span><span><strong>{Math.round(stats.pigment)}</strong> pigment</span><span className="readout-separator">·</span><time>{timeLabel(stats.elapsed)}</time></div>
       <div className="grazer-readout"><span>{stats.grazers} grazers</span><span>·</span><span>{stats.nestPigment.toFixed(1)} color nested</span></div>
       <div className={`weather-readout ${weather.raining ? 'is-raining' : ''}`} aria-label="Pool weather">
-        <span aria-hidden="true">◌</span><span>{weather.raining ? 'Rain · wider light' : 'Rain in'} <time>{timeLabel(Math.ceil(weather.secondsUntilChange))}</time></span>
+        <span aria-hidden="true">◌</span><span>{weather.called ? 'Called shower' : weather.raining ? 'Rain · wider light' : 'Rain in'} <time>{timeLabel(Math.ceil(weather.secondsUntilChange))}</time></span>
       </div>
+      <button className={`rain-button ${weather.called ? 'is-called' : ''}`} onClick={inviteRain}
+        aria-label="Call a passing shower" aria-describedby="rain-help" aria-disabled={weather.callCooldown > 0}
+        aria-pressed={weather.called} title="Call rain (R)">
+        <span aria-hidden="true">☂</span><span>{weather.called ? 'Shower called' : weather.callCooldown > 0 ? 'Water resting' : 'Call rain'}</span>
+        <kbd>R</kbd>
+      </button>
+      <span id="rain-help" className="sr-only">A passing shower widens existing feeding light for thirty world seconds. Rest sixty world seconds between calls. Pause holds rain and rest.</span>
     </aside>
 
     <div className="toolbar-area">
@@ -446,7 +468,8 @@ export function App() {
           <div className="guide-entry"><span className="entry-number">06</span><div><h3>Borrowed color</h3><p>A nest can give its color back. Observe a grazer, then choose Return color to the water. Up to three stored color becomes six grains near its home, ready to be gathered again. No color is created; a nearly empty nest or a crowded floor needs time.</p></div></div>
           {worldRef.current.grazers.length > 0 && <button className="secondary-button" onClick={() => { setSelectedId(worldRef.current.grazers[0].id); setPanel('specimen'); chooseTool('observe'); setHintVisible(false); setNotice('A keeper of borrowed colors.'); }}>Follow a grazer <Icon name="eye"/></button>}
           <div className="guide-entry"><span className="entry-number">07</span><div><h3>Carry a living light</h3><p>Choose Carry light and drag an existing light to a new feeding ground. Its glow waits at the source until you release inside the shore. No energy is added. With the pool focused, press M, move the cursor to a light, Enter to pick it up, arrows to carry it, and Enter to set it down. Escape cancels. You can carry while paused; resume to watch lucents change course.</p></div></div>
-          <div className="guide-controls"><p className="eyebrow">WAYS TO VISIT</p><p><kbd>L</kbd> Leave light <kbd>O</kbd> Observe <kbd>M</kbd> Carry light <kbd>Space</kbd> Pause</p><p>Tab to the pool, move with arrow keys, then press Enter. <kbd>Esc</kbd> closes these notes.</p></div>
+          <div className="guide-entry"><span className="entry-number">08</span><div><h3>A gentle invitation</h3><p>Choose Call rain or press R to invite a thirty-second shower. It widens existing feeding light over six seconds; it cannot revive a spent light or create energy. The water rests for sixty world seconds between calls. Pause holds both the shower and its rest, and a snapshot remembers them. Natural showers still pass on their own.</p></div></div>
+          <div className="guide-controls"><p className="eyebrow">WAYS TO VISIT</p><p><kbd>L</kbd> Leave light <kbd>O</kbd> Observe <kbd>M</kbd> Carry light <kbd>R</kbd> Call rain <kbd>Space</kbd> Pause</p><p>Tab to the pool, move with arrow keys, then press Enter. <kbd>Esc</kbd> closes these notes.</p></div>
         </>}
         {panel === 'specimen' && <>
           <h2 id="panel-title">{selected?.species === 'grazer' ? <>A keeper<br/><em>of borrowed colors.</em></> : <>A lucent,<br/><em>briefly known.</em></>}</h2>

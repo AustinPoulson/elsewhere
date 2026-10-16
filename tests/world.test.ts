@@ -100,7 +100,7 @@ describe('versioned local snapshots', () => {
       expect(restoreWorld(payload)).toBeNull();
     }
     const mutations: ((world: World) => void)[] = [
-      (world) => { (world as { version: number }).version = 3; },
+      (world) => { (world as { version: number }).version = 4; },
       (world) => { world.elapsed = -1; },
       (world) => { world.randomState = -1; },
       (world) => { world.consumed = Infinity; },
