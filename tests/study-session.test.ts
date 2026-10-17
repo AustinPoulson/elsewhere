@@ -18,7 +18,7 @@ describe('safe shower study', () => {
     const expected = restoreWorld(JSON.stringify(fixture));
     expect(expected).not.toBeNull();
     const { version: _oldVersion, ...historicalEcology } = fixture;
-    const { version: _version, schemaRevision: _revision, weatherCall: _call, ...normalizedEcology } = expected!;
+    const { version: _version, schemaRevision: _revision, weatherCall: _call, currents: _currents, ...normalizedEcology } = expected!;
     expect(normalizedEcology).toEqual(historicalEcology);
     expect(expected!.seed).toBe(SHOWER_STUDY.seed);
     expect(expected!.tick).toBe(SHOWER_STUDY.steps);
@@ -122,7 +122,7 @@ describe('safe shower study', () => {
   it('keeps valid v1 migration and v2 import/export while malformed imports leave the current world intact', () => {
     const session = new WorldSession(createWorld(22));
     const legacy = JSON.parse(serializeWorld(createWorld(44)));
-    legacy.version = 1; delete legacy.grazers; delete legacy.nests; delete legacy.weatherCall; delete legacy.schemaRevision;
+    legacy.version = 1; delete legacy.grazers; delete legacy.nests; delete legacy.weatherCall; delete legacy.schemaRevision; delete legacy.currents;
     expect(session.importSnapshot(JSON.stringify(legacy), session.importToken())).toBe('imported');
     expect(session.world.version).toBe(3);
     expect(session.world.grazers).toHaveLength(4);

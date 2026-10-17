@@ -23,3 +23,7 @@
 @media(max-width:600px){.tool-button{flex-direction:column;gap:3px;padding:4px 6px;min-width:0;height:48px}.tool-button span{white-space:nowrap}.tool-dock>.icon-button{flex-shrink:0}.tool-hint{white-space:normal;text-align:center}}
 /* Rain is a weather action, separate from the three spatial tools. */
 .rain-button{pointer-events:auto;display:flex;align-items:center;gap:9px;min-height:44px;margin-top:10px;padding:8px 12px;border:1px solid #a8c8c04d;border-radius:5px;background:#102923e8;color:#c2d9cf;font-size:11px;letter-spacing:0}.rain-button:hover{background:#28453b}.rain-button kbd{font-size:9px;opacity:.65;border:1px solid #bfd5c444;padding:1px 4px;border-radius:3px}.rain-button[aria-disabled=true]{color:#96ada3;border-style:dashed}.rain-button.is-called{color:#d6eddf;border-style:solid;background:#28483e}.rain-button[aria-disabled=true]:hover{background:#1b332c}
+
+/* Four spatial tools share a bounded dock; every portrait action stays touch-sized. */
+.habitat.tool-stir{cursor:crosshair}.current-readout{margin-top:7px;font-size:10px;letter-spacing:0;color:#b8dcd3}
+@media(max-width:600px){.tool-button{padding:4px 2px;font-size:9px}.tool-dock{gap:2px;padding:5px}.dock-divider{margin:0 1px}.tool-dock>.icon-button{width:32px}.tool-button span{letter-spacing:-.15px}}

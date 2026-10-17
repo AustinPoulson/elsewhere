@@ -33,7 +33,7 @@ function pigmentMass(world: World): number {
 }
 
 function legacyPayload(world: World): string {
-  const { grazers: _grazers, nests: _nests, schemaRevision: _revision, weatherCall: _call, ...legacy } = world;
+  const { grazers: _grazers, nests: _nests, schemaRevision: _revision, weatherCall: _call, currents: _currents, ...legacy } = world;
   return JSON.stringify({ ...legacy, version: 1 });
 }
 

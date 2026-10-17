@@ -1,9 +1,10 @@
 import {
   GRAZER_CAPACITY, LIMITS, NEST_CAPACITY, isInPool,
-  type Grazer, type LightSource, type Nest, type Organism, type Sediment, type World,
+  type Current, type Grazer, type LightSource, type Nest, type Organism, type Sediment, type World,
 } from './types';
 import { initializeGrazers } from './simulation';
 import { RAIN_CALL_COOLDOWN } from './weather';
+import { CURRENT_DURATION, CURRENT_RADIUS, MAX_CURRENTS, currentStrength } from './actions/current';
 
 const MAX_SAVE_LENGTH = 1_000_000;
 const MAX_NUMBER = Number.MAX_SAFE_INTEGER;
@@ -74,7 +75,16 @@ function weatherCall(value: unknown, elapsed: number): value is World['weatherCa
     && value.nextAllowedAt === value.startedAt + RAIN_CALL_COOLDOWN;
 }
 
-type LegacyWorld = Omit<World, 'version' | 'schemaRevision' | 'weatherCall'> & { version: 1 | 2 };
+function current(value: unknown, elapsed: number): boolean {
+  return point(value) && integer(value.id, 1)
+    && range(value.dx, -1, 1) && range(value.dy, -1, 1)
+    && Math.abs(Math.hypot(value.dx, value.dy) - 1) < 1e-9
+    && value.radius === CURRENT_RADIUS && value.duration === CURRENT_DURATION
+    && range(value.startedAt, 0, Math.min(elapsed, MAX_NUMBER - CURRENT_DURATION));
+}
+
+type LegacyWorld = Omit<World, 'version' | 'schemaRevision' | 'weatherCall' | 'currents'> & { version: 1 | 2 };
+type Revision1World = Omit<World, 'schemaRevision' | 'currents'> & { schemaRevision: 1 };
 
 // Ordered, pure migrations operate on validated data, without touching old ecology.
 function migrateV1ToV2(previous: LegacyWorld): LegacyWorld {
@@ -83,8 +93,12 @@ function migrateV1ToV2(previous: LegacyWorld): LegacyWorld {
   return next;
 }
 
-function migrateV2ToV3(previous: LegacyWorld): World {
+function migrateV2ToV3(previous: LegacyWorld): Revision1World {
   return { ...previous, version: 3, schemaRevision: 1, weatherCall: { startedAt: null, nextAllowedAt: 0 } };
+}
+
+function migrateRevision1To2(previous: Revision1World): World {
+  return { ...previous, schemaRevision: 2, currents: [] };
 }
 
 export function serializeWorld(world: World): string {
@@ -105,8 +119,14 @@ export function restoreWorld(input: string): World | null {
     || !range(parsed.elapsed, 0, MAX_NUMBER) || !integer(parsed.tick)
     || !integer(parsed.nextId, 1) || !range(parsed.consumed, 0, MAX_NUMBER)) return null;
 
-  if ((parsed.version === 3 && (parsed.schemaRevision !== 1 || !weatherCall(parsed.weatherCall, parsed.elapsed)))
-    || (parsed.version !== 3 && ('schemaRevision' in parsed || 'weatherCall' in parsed))) return null;
+  if ((parsed.version === 3 && ((parsed.schemaRevision !== 1 && parsed.schemaRevision !== 2) || !weatherCall(parsed.weatherCall, parsed.elapsed)))
+    || (parsed.version !== 3 && ('schemaRevision' in parsed || 'weatherCall' in parsed || 'currents' in parsed))) return null;
+  let currents: Current[] = [];
+  if (parsed.version === 3 && parsed.schemaRevision === 2) {
+    if (!Array.isArray(parsed.currents) || parsed.currents.length > MAX_CURRENTS
+      || !parsed.currents.every((entry: unknown) => current(entry, parsed.elapsed as number))) return null;
+    currents = parsed.currents as Current[];
+  } else if ('currents' in parsed) return null;
 
   const { organisms, lights, sediment: deposits } = parsed;
   if (!Array.isArray(organisms) || organisms.length < 1 || organisms.length > LIMITS.organisms
@@ -128,7 +148,7 @@ export function restoreWorld(input: string): World | null {
 
   const ids = new Set<number>();
   let largestId = 0;
-  for (const entry of [...organisms, ...lights, ...deposits, ...grazers, ...nests]) {
+  for (const entry of [...organisms, ...lights, ...deposits, ...grazers, ...nests, ...currents]) {
     const id = (entry as Record<string, unknown>).id as number;
     if (ids.has(id)) return null;
     ids.add(id);
@@ -143,11 +163,13 @@ export function restoreWorld(input: string): World | null {
     organisms: organisms as Organism[], lights: lights as LightSource[],
     sediment: deposits as Sediment[], grazers, nests, consumed: parsed.consumed,
   };
-  if (parsed.version === 3) return {
-    ...ecology, version: 3, schemaRevision: 1,
-    weatherCall: { ...(parsed.weatherCall as World['weatherCall']) },
-  };
+  if (parsed.version === 3) {
+    const revision1: Revision1World = { ...ecology, version: 3, schemaRevision: 1,
+      weatherCall: { ...(parsed.weatherCall as World['weatherCall']) } };
+    return parsed.schemaRevision === 1 ? migrateRevision1To2(revision1)
+      : { ...revision1, schemaRevision: 2, currents: currents.filter(entry => currentStrength(entry, parsed.elapsed as number) > 0) };
+  }
   let legacy: LegacyWorld = { ...ecology, version: parsed.version };
   if (legacy.version === 1) legacy = migrateV1ToV2(legacy);
-  return migrateV2ToV3(legacy);
+  return migrateRevision1To2(migrateV2ToV3(legacy));
 }

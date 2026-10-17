@@ -1,4 +1,4 @@
-export type IconName = 'spark' | 'eye' | 'pause' | 'play' | 'book' | 'reset' | 'close' | 'download' | 'upload' | 'arrow';
+export type IconName = 'spark' | 'eye' | 'pause' | 'play' | 'book' | 'reset' | 'close' | 'download' | 'upload' | 'arrow' | 'current';
 export function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
   const paths: Record<IconName, React.ReactNode> = {
     spark: <><path d="M12 2v4m0 12v4M2 12h4m12 0h4M5 5l2.5 2.5m9 9L19 19M5 19l2.5-2.5m9-9L19 5"/><circle cx="12" cy="12" r="3"/></>,
@@ -10,6 +10,7 @@ export function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
     close: <path d="m6 6 12 12M6 18 18 6"/>,
     download: <><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></>,
     upload: <><path d="M12 15V3m-5 5 5-5 5 5M4 16v5h16v-5"/></>,
+    current: <><path d="M3 7h11c5 0 5-5 1-5M3 12h17m-4-4 4 4-4 4M3 17h7c5 0 5 5 1 5"/></>,
     arrow: <path d="M4 12h16m-6-6 6 6-6 6"/>,
   };
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;

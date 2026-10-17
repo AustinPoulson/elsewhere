@@ -6,7 +6,7 @@ import { callRain, effectiveLightReach, effectiveWeather, getWeather } from '../
 import { FIXED_STEP, type World } from '../src/world/types';
 
 function ecology(world: World) {
-  const { version: _version, schemaRevision: _revision, weatherCall: _call, ...rest } = world;
+  const { version: _version, schemaRevision: _revision, weatherCall: _call, currents: _currents, ...rest } = world;
   return rest;
 }
 
@@ -96,7 +96,7 @@ describe('versioned weather calls', () => {
     const migrated = restoreWorld(old)!;
     const { version: _version, ...original } = fixture;
     expect(ecology(migrated)).toEqual(original);
-    expect(migrated).toMatchObject({ version: 3, schemaRevision: 1, weatherCall: { startedAt: null, nextAllowedAt: 0 } });
+    expect(migrated).toMatchObject({ version: 3, schemaRevision: 2, weatherCall: { startedAt: null, nextAllowedAt: 0 } });
     expect(JSON.stringify(fixture)).toBe(old);
     expect(restoreWorld(serializeWorld(migrated))).toEqual(migrated);
   });
@@ -105,7 +105,7 @@ describe('versioned weather calls', () => {
     const mutations: ((world: Record<string, unknown>) => void)[] = [
       world => { delete world.weatherCall; },
       world => { delete world.schemaRevision; },
-      world => { world.schemaRevision = 2; },
+      world => { world.schemaRevision = 3; },
       world => { world.weatherCall = null; },
       world => { world.weatherCall = { startedAt: null, nextAllowedAt: 60 }; },
       world => { world.weatherCall = { startedAt: 91, nextAllowedAt: 151 }; },
@@ -123,7 +123,7 @@ describe('versioned weather calls', () => {
     for (const version of [1, 2]) {
       const old = { ...createWorld(), version, weatherCall: { startedAt: null, nextAllowedAt: -1 } };
       expect(restoreWorld(JSON.stringify(old))).toBeNull();
-      expect(restoreWorld(JSON.stringify({ ...old, weatherCall: undefined, schemaRevision: undefined }))).not.toBeNull();
+      expect(restoreWorld(JSON.stringify({ ...old, weatherCall: undefined, schemaRevision: undefined, currents: undefined }))).not.toBeNull();
       const active = createWorld();
       callRain(active);
       expect(restoreWorld(JSON.stringify({ ...active, version }))).toBeNull();

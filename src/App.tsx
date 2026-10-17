@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent, PointerEvent, ChangeEvent } from 'react';
 import { Icon } from './Icons';
 import { CarryController } from './app/carry';
+import { StirController } from './app/stir';
 import { SimulationClock } from './app/clock';
 import { SAVE_KEY, WorldSession } from './app/session';
 import { SHOWER_STUDY } from './app/study';
@@ -55,6 +56,8 @@ export function App() {
   const cursorRef = useRef<Point | null>(null);
   const heldRef = useRef(false);
   const carryRef = useRef(new CarryController());
+  const stirRef = useRef(new StirController());
+  const [stirring, setStirring] = useState(false);
   const pointerOwnerRef = useRef<number | null>(null);
   const [carrying, setCarrying] = useState(false);
   const keyboardRef = useRef(false);
@@ -63,8 +66,10 @@ export function App() {
 
   function cancelCarry(announce = false): void {
     const hadSource = carryRef.current.state !== null;
+    const hadStroke = stirRef.current.state !== null;
+    stirRef.current.cancel(); setStirring(false);
     carryRef.current.cancel(); pointerOwnerRef.current = null; setCarrying(false);
-    if (announce && hadSource) setNotice('Light left where it was.');
+    if (announce && (hadSource || hadStroke)) setNotice(hadStroke ? 'The stroke is gone. The water is unchanged.' : 'Light left where it was.');
   }
   function chooseTool(next: Tool): void {
     cancelCarry(); heldRef.current = false; setTool(next);
@@ -84,6 +89,25 @@ export function App() {
       setStats(getStats(worldRef.current)); saveWorld();
       setNotice('The same light, in a new place. Watch the lucents follow.');
     } else setNotice('Light stayed where it was. Choose a living light and set it inside the shore.');
+  }
+
+  function beginStir(point: Point, input: 'pointer' | 'keyboard'): void {
+    cancelCarry();
+    if (stirRef.current.begin(worldRef.current, point, input)) {
+      setStirring(true); setHintVisible(false);
+      setNotice(input === 'pointer' ? 'Draw a short path through the water, then release.' : 'Stroke started. Move with arrows, Enter to stir, Escape to cancel.');
+    } else setNotice('Begin your stroke inside the shoreline.');
+  }
+  function finishStir(point: Point): void {
+    stirRef.current.update(point);
+    const result = stirRef.current.commit(worldRef.current);
+    pointerOwnerRef.current = null; setStirring(false);
+    if (result.status === 'applied') {
+      setStats(getStats(worldRef.current)); saveWorld();
+      setNotice(controlsRef.current.paused ? 'A current is waiting. Resume to carry life and color.' : 'Water follows your touch. Watch creatures and loose color drift.');
+    } else if (result.status === 'full') setNotice('Three currents are already moving. Let the water settle before stirring again.');
+    else if (result.status === 'exhausted') setNotice('This world has no room for another current.');
+    else setNotice('Draw a short stroke inside the shore: one to ten arrow steps. A tap leaves the water still.');
   }
 
   function inviteRain(): void {
@@ -140,7 +164,7 @@ export function App() {
       if (carried && !worldRef.current.lights.some(light => light.id === carried.sourceId && light.energy > 0.01)) {
         cancelCarry(); setNotice('That light has faded. Choose another to carry.');
       }
-      renderer.render(worldRef.current, controlsRef.current.selectedId, cursorRef.current, controlsRef.current.tool, carryRef.current.state?.sourceId ?? null);
+      renderer.render(worldRef.current, controlsRef.current.selectedId, cursorRef.current, controlsRef.current.tool, carryRef.current.state?.sourceId ?? null, stirRef.current.state);
       if (now - lastStats > 450) {
         setStats(getStats(worldRef.current));
         lastStats = now;
@@ -206,6 +230,7 @@ export function App() {
       if (event.key.toLowerCase() === 'l') chooseTool('light');
       if (event.key.toLowerCase() === 'o') chooseTool('observe');
       if (event.key.toLowerCase() === 'm') chooseTool('carry');
+      if (event.key.toLowerCase() === 's') chooseTool('stir');
       if (event.key.toLowerCase() === 'r') inviteRain();
       if (event.code === 'Space') { event.preventDefault(); setPaused(value => !value); }
     };
@@ -215,7 +240,10 @@ export function App() {
 
   function activateAt(point: Point): void {
     if (!ready) return;
-    if (tool === 'carry') {
+    if (tool === 'stir') {
+      if (stirRef.current.state) finishStir(point);
+      else beginStir(point, 'keyboard');
+    } else if (tool === 'carry') {
       if (carryRef.current.state) finishCarry(point);
       else beginCarry(point, 'keyboard');
     } else if (tool === 'light') {
@@ -245,7 +273,8 @@ export function App() {
     cursorRef.current = point;
     keyboardRef.current = false;
     hostRef.current?.focus({ preventScroll: true });
-    if (tool === 'carry') { cancelCarry(); beginCarry(point, 'pointer'); if (carryRef.current.state) pointerOwnerRef.current = event.pointerId; }
+    if (tool === 'stir') { beginStir(point, 'pointer'); if (stirRef.current.state) pointerOwnerRef.current = event.pointerId; }
+    else if (tool === 'carry') { cancelCarry(); beginCarry(point, 'pointer'); if (carryRef.current.state) pointerOwnerRef.current = event.pointerId; }
     else activateAt(point);
     heldRef.current = tool === 'light';
     lastPlaceRef.current = performance.now();
@@ -256,6 +285,7 @@ export function App() {
     keyboardRef.current = false;
     cursorRef.current = rendererRef.current!.screenToWorld(event.clientX, event.clientY);
     if (carryRef.current.state) carryRef.current.update(cursorRef.current.x, cursorRef.current.y);
+    stirRef.current.update(cursorRef.current);
   }
   function habitatKey(event: KeyboardEvent<HTMLDivElement>) {
     const point = cursorRef.current ?? { x: WORLD_WIDTH / 2, y: WORLD_HEIGHT / 2 };
@@ -274,11 +304,13 @@ export function App() {
         y: Math.max(0, Math.min(WORLD_HEIGHT, point.y + (destination.y - origin.y) / length * 24)),
       };
       if (carryRef.current.state) carryRef.current.update(cursorRef.current.x, cursorRef.current.y);
+      stirRef.current.update(cursorRef.current);
     } else if (event.key === 'Enter') { event.preventDefault(); activateAt(point); }
     else if (event.code === 'Space') { event.preventDefault(); setPaused(value => !value); }
     else if (event.key.toLowerCase() === 'l') chooseTool('light');
     else if (event.key.toLowerCase() === 'o') chooseTool('observe');
     else if (event.key.toLowerCase() === 'm') chooseTool('carry');
+    else if (event.key.toLowerCase() === 's') chooseTool('stir');
     else if (event.key.toLowerCase() === 'r') inviteRain();
   }
   function returnNestColor(nestId: number): void {
@@ -387,10 +419,11 @@ export function App() {
       onPointerUp={event => {
         if (!event.isPrimary || (pointerOwnerRef.current !== null && pointerOwnerRef.current !== event.pointerId)) return;
         heldRef.current = false;
+        if (stirRef.current.state?.input === 'pointer') finishStir(rendererRef.current!.screenToWorld(event.clientX, event.clientY));
         if (carryRef.current.state?.input === 'pointer') finishCarry(rendererRef.current!.screenToWorld(event.clientX, event.clientY));
-      }} onPointerCancel={event => { if (tool !== 'carry') heldRef.current = false; else if (pointerOwnerRef.current === event.pointerId) { heldRef.current = false; cancelCarry(true); } }}
-      onLostPointerCapture={event => { if (tool !== 'carry') heldRef.current = false; else if (pointerOwnerRef.current === event.pointerId) { heldRef.current = false; cancelCarry(true); } }}
-      onPointerLeave={() => { if (!heldRef.current && !keyboardRef.current && !carryRef.current.state) cursorRef.current = null; }}
+      }} onPointerCancel={event => { if (tool !== 'carry' && tool !== 'stir') heldRef.current = false; else if (pointerOwnerRef.current === event.pointerId) { heldRef.current = false; cancelCarry(true); } }}
+      onLostPointerCapture={event => { if (tool !== 'carry' && tool !== 'stir') heldRef.current = false; else if (pointerOwnerRef.current === event.pointerId) { heldRef.current = false; cancelCarry(true); } }}
+      onPointerLeave={() => { if (!heldRef.current && !keyboardRef.current && !carryRef.current.state && !stirRef.current.state) cursorRef.current = null; }}
       onFocus={() => { if (!cursorRef.current) cursorRef.current = { x: WORLD_WIDTH / 2, y: WORLD_HEIGHT / 2 }; }}
       onBlur={() => { heldRef.current = false; cancelCarry(); if (keyboardRef.current) cursorRef.current = null; }}
       onKeyDown={habitatKey} />
@@ -422,6 +455,7 @@ export function App() {
       <div className={`weather-readout ${weather.raining ? 'is-raining' : ''}`} aria-label="Pool weather">
         <span aria-hidden="true">◌</span><span>{weather.called ? 'Called shower' : weather.raining ? 'Rain · wider light' : 'Rain in'} <time>{timeLabel(Math.ceil(weather.secondsUntilChange))}</time></span>
       </div>
+      {worldRef.current.currents.length > 0 && <div className="current-readout">↝ {worldRef.current.currents.length} current{worldRef.current.currents.length === 1 ? '' : 's'} · {paused ? 'waiting' : 'carrying life & color'}</div>}
       <button className={`rain-button ${weather.called ? 'is-called' : ''}`} onClick={inviteRain}
         aria-label="Call a passing shower" aria-describedby="rain-help" aria-disabled={weather.callCooldown > 0}
         aria-pressed={weather.called} title="Call rain (R)">
@@ -432,11 +466,12 @@ export function App() {
     </aside>
 
     <div className="toolbar-area">
-      <div className="tool-hint" id="habitat-instructions">{tool === 'light' ? 'Touch or hold to leave light' : tool === 'carry' ? (carrying ? 'Set down inside the shore · Escape cancels' : 'Drag an existing light to a new place') : 'Touch a lucent or grazer to observe'}<span className="keyboard-hint"> · Arrows + Enter when the pool is focused</span></div>
+      <div className="tool-hint" id="habitat-instructions">{tool === 'light' ? 'Touch or hold to leave light' : tool === 'carry' ? (carrying ? 'Set down inside the shore · Escape cancels' : 'Drag an existing light to a new place') : tool === 'stir' ? (stirring ? 'Draw a short path · Release or Enter to stir · Escape cancels' : 'Draw a short stroke to carry life and color') : 'Touch a lucent or grazer to observe'}<span className="keyboard-hint"> · Arrows + Enter when the pool is focused</span></div>
       <nav className="tool-dock" aria-label="Tidepool tools">
         <button className={`tool-button ${tool === 'light' ? 'active' : ''}`} onClick={() => chooseTool('light')} aria-pressed={tool === 'light'} title="Leave light (L)"><Icon name="spark"/><span>Leave light</span><kbd>L</kbd></button>
         <button className={`tool-button ${tool === 'observe' ? 'active' : ''}`} onClick={() => { chooseTool('observe'); setHintVisible(false); }} aria-pressed={tool === 'observe'} title="Observe (O)"><Icon name="eye"/><span>Observe</span><kbd>O</kbd></button>
         <button className={`tool-button ${tool === 'carry' ? 'active' : ''}`} onClick={() => chooseTool('carry')} aria-pressed={tool === 'carry'} title="Carry light (M)"><Icon name="arrow"/><span>Carry light</span><kbd>M</kbd></button>
+        <button className={`tool-button ${tool === 'stir' ? 'active' : ''}`} onClick={() => chooseTool('stir')} aria-pressed={tool === 'stir'} title="Stir water (S)"><Icon name="current"/><span>Stir water</span><kbd>S</kbd></button>
         <span className="dock-divider"/>
         <button className="icon-button" onClick={() => setPaused(value => !value)} aria-label={paused ? 'Resume the tidepool' : 'Pause the tidepool'} aria-pressed={paused} title={paused ? 'Resume (Space)' : 'Pause (Space)'}><Icon name={paused ? 'play' : 'pause'}/></button>
         <button className="icon-button" onClick={event => { resetTriggerRef.current = event.currentTarget; resetRef.current?.showModal(); }} aria-label="Reset tidepool" title="Begin again"><Icon name="reset"/></button>
@@ -469,7 +504,8 @@ export function App() {
           {worldRef.current.grazers.length > 0 && <button className="secondary-button" onClick={() => { setSelectedId(worldRef.current.grazers[0].id); setPanel('specimen'); chooseTool('observe'); setHintVisible(false); setNotice('A keeper of borrowed colors.'); }}>Follow a grazer <Icon name="eye"/></button>}
           <div className="guide-entry"><span className="entry-number">07</span><div><h3>Carry a living light</h3><p>Choose Carry light and drag an existing light to a new feeding ground. Its glow waits at the source until you release inside the shore. No energy is added. With the pool focused, press M, move the cursor to a light, Enter to pick it up, arrows to carry it, and Enter to set it down. Escape cancels. You can carry while paused; resume to watch lucents change course.</p></div></div>
           <div className="guide-entry"><span className="entry-number">08</span><div><h3>A gentle invitation</h3><p>Choose Call rain or press R to invite a thirty-second shower. It widens existing feeding light over six seconds; it cannot revive a spent light or create energy. The water rests for sixty world seconds between calls. Pause holds both the shower and its rest, and a snapshot remembers them. Natural showers still pass on their own.</p></div></div>
-          <div className="guide-controls"><p className="eyebrow">WAYS TO VISIT</p><p><kbd>L</kbd> Leave light <kbd>O</kbd> Observe <kbd>M</kbd> Carry light <kbd>R</kbd> Call rain <kbd>Space</kbd> Pause</p><p>Tab to the pool, move with arrow keys, then press Enter. <kbd>Esc</kbd> closes these notes.</p></div>
+          <div className="guide-entry"><span className="entry-number">09</span><div><h3>A passing current</h3><p>Choose Stir water, then draw a short stroke. Lucents, grazers and loose color drift along it for eight world seconds. Light and nests stay anchored. Up to three currents can overlap. With the keyboard: S, Enter, arrows, Enter. Escape cancels. Pause holds the flow.</p></div></div>
+          <div className="guide-controls"><p className="eyebrow">WAYS TO VISIT</p><p><kbd>L</kbd> Leave light <kbd>O</kbd> Observe <kbd>M</kbd> Carry light <kbd>S</kbd> Stir water <kbd>R</kbd> Call rain <kbd>Space</kbd> Pause</p><p>Tab to the pool, move with arrow keys, then press Enter. <kbd>Esc</kbd> closes these notes.</p></div>
         </>}
         {panel === 'specimen' && <>
           <h2 id="panel-title">{selected?.species === 'grazer' ? <>A keeper<br/><em>of borrowed colors.</em></> : <>A lucent,<br/><em>briefly known.</em></>}</h2>
