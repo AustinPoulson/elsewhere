@@ -26,6 +26,10 @@ Resolve all seven lists before execution; list creation/configuration is separat
 
 The Operator's direction (2026-10-11 through 2026-10-13) is a playable ecosystem: interactions should feel like a gentle touch of a god, with clear immediate feedback and ecological consequences that unfold over time. Develop creatures toward birth, growth, reproduction, aging, and death, with resources returned to the world and populations limited by food, habitat, and other relationships. Aim for a dynamic natural balance with recoverable fluctuations, rather than a permanently fixed population. Treat this as a long-term destination; planning must define and validate each resource cycle and lifecycle slice before it enters Ready. Preserve the quiet artistic character while making actions and their consequences easier to feel and understand.
 
+The Operator's latest direction (2026-10-17) is ecosystem first: each addition has a purposeful role and real relationships with existing creatures, resources, terrain, water, light or weather. Prefer autonomous growth and adaptation that remain interesting while the visitor watches without acting. Visitor intervention is optional and incidental to that living world, rather than the reason every new system exists. The ecosystem is imaginary; readable cause and effect and explicit resource rules do not imply scientific realism.
+
+Keep controls minimal. Where interaction serves the ecological outcome, prefer direct contextual touch or pointer input on the relevant creature, resource, terrain or water, rather than requiring a new selected tool or button for every capability. Provide quiet discoverability, clear hit testing and feedback about the target and result, safe cancellation, keyboard focus and an accessible equivalent. Do not replace visible controls with hidden ambiguous gestures or optimize only for a smaller button count. Essential pause, save and accessibility controls remain appropriate. Existing tool/button prescriptions are suggestions under this direction, not a mandate to add controls; preserve existing capabilities and do not silently bundle a broad interface rewrite into an ecosystem feature.
+
 Inspect the actual code and live desktop/portrait experience, recent expedition notes, screenshots, user feedback, open PRs, board, and unfinished verification. Distinguish implemented behavior, observed gaps, and speculative ideas. Use [next expeditions](next-expeditions.md) as inputs, not an automatic feature list. Research as needed and link evidence supporting a decision.
 
 Maintain a dated Direction card covering:
@@ -35,7 +39,7 @@ Maintain a dated Direction card covering:
 - Next week's focus, ordered tickets and dependencies, and why that sequence is coherent.
 - Evidence to revisit, risks or unresolved decisions, and what would justify changing direction.
 
-Prefer a few relationships that reinforce each other over accumulating unrelated species or controls. Each daily run targets a noticeable new feature: creatures, actions, behaviors, weather, or controls with ecological consequences. Track maintenance as explicit linked side work with priority and evidence; routine fixes do not replace that feature. A small readout, visual cue, cleanup, or isolated bug repair cannot alone qualify as a meaningful platform upgrade. Preserve decisions and reasons when changing the direction.
+Prefer a few relationships that reinforce each other over accumulating unrelated species or controls. Each daily run targets a noticeable new ecological capability: creatures, autonomous behaviors, resource relationships, weather, or a purposeful contextual action. A new control alone is not the preferred upgrade. Track maintenance as explicit linked side work with priority and evidence; routine fixes do not replace that feature. A small readout, visual cue, cleanup, or isolated bug repair cannot alone qualify as a meaningful platform upgrade. Preserve decisions and reasons when changing the direction.
 
 Compare every proposed ticket with the code, Completed cards, active work, and existing proposals. Split oversized ideas into independently satisfying slices; merge duplicates into a single surviving proposal; retire obsolete unclaimed cards with a dated reason. Prepare nine to ten outcome-oriented feature Ready cards for the next week: seven daily upgrades plus two or three independently eligible alternatives. Maintain fifteen to twenty-five structured future Ideas when justified, with a proposed new capability, ecological relationship, dependencies, design questions, and next evidence needed. These are planning targets, not permission to create filler or promote unresolved work. Prefer independently satisfying vertical slices; do not turn one complete feature into weeks of micro-polish. Planning should settle concrete lifecycle/resource/design decisions rather than indefinitely leaving the core creature direction unspecified. Keep uncertain or unspecified dependencies in Ideas. Fully specified Ready cards may link known preceding tickets; execution waits until those dependencies are completed. The executor preserves started work and records its Blocked handoff; the planner cannot rewrite an active claim. Keep Ready ordered, with the highest-priority executable card first; do not churn cards merely to create activity.
 
@@ -47,10 +51,18 @@ Every Ready card delivers a significant new visitor-facing capability and has on
 Motivation: Why this ticket advances the current direction or resolves a gap.
 Current evidence: Code/live observations, feedback, fixtures, or research links;
   distinguish verified facts from proposals and unresolved feasibility.
-New capability: The meaningful new creature, action, behavior, weather, or control.
+New capability: The meaningful new ecological behavior, creature, relationship,
+  weather or purposeful action; explain why it belongs in this ecosystem.
 Visible effect: What a visitor can see or do; a playable before/after demonstration
   that makes this new capability noticeable, not just a readout or polish change.
-Existing relationship: What already in the world this changes or interacts with.
+Ecological role: Its reason for existing and concrete dependencies on existing
+  creatures/resources/environment; inputs consumed, transfers, outputs/returns,
+  replenishment or loss, feedback and limits. State any deliberate source/sink.
+Hands-off behavior: What happens without visitor input and how the relationship
+  remains visibly meaningful; show cause and effect before and after the addition.
+Visitor interaction (optional): Incidental influence, target/context hit testing,
+  feedback/discoverability, cancellation, keyboard/focus/accessibility equivalent;
+  justify any essential control rather than requiring a new tool selection.
 Scope: Intended behavior, required invariants versus creative starting points,
   affected modules/typed contracts and one feature slice. Link necessary side work.
 Non-goals: Features/refactors explicitly outside this ticket.
@@ -58,7 +70,8 @@ Dependencies: Linked cards/decisions and objective conditions for starting.
 Constraints: Entity/render/storage budgets, determinism, resource accounting,
   keyboard/focus/touch and reduced motion, autosave/snapshot compatibility.
 Acceptance: Observable behavior and edge cases, with meaningful tests,
-  desktop/portrait rendered evidence, and affected pause/reset/save checks.
+  desktop/portrait rendered evidence of autonomous ecological cause and effect,
+  optional contextual input and safe cancellation, and affected pause/reset/save checks.
 Release: Passing npm ci + npm run validate; final PR diff/head/integration CI;
   reviewed-SHA merge; successful Pages run; live release.json equals merged SHA;
   live behavior/assets pass; evidence links recorded before Completed.

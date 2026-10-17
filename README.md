@@ -1,6 +1,6 @@
 # Elsewhere
 
-An imaginary ecosystem that grows through our creative experiments. Every new addition should interact with something already living here.
+An imaginary ecosystem that grows through our creative experiments. Every new addition should have a purposeful relationship with something already living here. The world should grow and adapt while you watch; your touch offers an optional, gentle influence. We favor quiet contextual interaction and minimal controls as the ecosystem develops.
 
 Phase 1 is **The Luminous Tidepool**: a small overhead world inhabited by lucents. Place light in the water, watch them gather and feed, then discover the pigment they leave behind. Pigment grazers gather those traces and carry their colors into woven nests. Passing rain widens light patches and the floor where lucents can feed. There is no score or win condition. Playing means shaping the conditions and observing what follows.
 
