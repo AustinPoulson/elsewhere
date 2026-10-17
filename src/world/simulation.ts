@@ -3,6 +3,8 @@ import {
   type Grazer, type LightSource, type Organism, type Point, type Sediment, type World, type WorldStats,
 } from './types';
 import { CALM_LIGHT_REACH, effectiveLightReach } from './weather';
+import { applyCurrentDrift } from './currents';
+import { confinePosition } from './geometry';
 
 const TAU = Math.PI * 2;
 const ENERGY_FLOOR = 0.12;
@@ -35,14 +37,9 @@ function inPoolPoint(world: World, margin = 18): Point {
 
 function confinePoint(point: Point, margin: number): Point {
   if (isInPool(point.x, point.y, margin)) return point;
-  const nx = (point.x - WORLD_WIDTH / 2) / (610 - margin);
-  const ny = (point.y - WORLD_HEIGHT / 2) / (400 - margin);
-  const angle = Math.atan2(ny, nx);
-  const scale = poolRadius(angle) * 0.998 / Math.hypot(nx, ny);
-  return {
-    x: WORLD_WIDTH / 2 + nx * scale * (610 - margin),
-    y: WORLD_HEIGHT / 2 + ny * scale * (400 - margin),
-  };
+  const projected = { ...point };
+  confinePosition(projected, margin);
+  return projected;
 }
 
 // Independent of the shared PRNG: migration leaves the existing ecology intact.
@@ -118,7 +115,7 @@ export function createWorld(seed = 20261006): World {
   if (!Number.isFinite(seed)) throw new RangeError('World seed must be finite.');
   const normalizedSeed = Math.trunc(seed) >>> 0;
   const world: World = {
-    version: 3, schemaRevision: 1, weatherCall: { startedAt: null, nextAllowedAt: 0 },
+    version: 3, schemaRevision: 2, currents: [], weatherCall: { startedAt: null, nextAllowedAt: 0 },
     seed: normalizedSeed, randomState: normalizedSeed, elapsed: 0, tick: 0,
     nextId: 1, organisms: [], lights: [], sediment: [], grazers: [], nests: [], consumed: 0,
   };
@@ -344,6 +341,7 @@ export function stepWorld(world: World, dt = FIXED_STEP): void {
   const lightReach = effectiveLightReach(world);
   for (const organism of world.organisms) updateLucent(world, organism, dt, lightReach);
   for (const grazer of world.grazers) updateGrazer(world, grazer, dt);
+  applyCurrentDrift(world, dt);
   for (const light of world.lights) {
     light.age += dt;
     light.energy = Math.max(0, light.energy - dt * 0.045);

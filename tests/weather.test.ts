@@ -174,7 +174,7 @@ describe('weather and existing snapshots', () => {
     legacy.grazers = [];
     legacy.nests = [];
     run(legacy, 30 * 45);
-    const { grazers: _grazers, nests: _nests, schemaRevision: _revision, weatherCall: _call, ...fields } = legacy;
+    const { grazers: _grazers, nests: _nests, schemaRevision: _revision, weatherCall: _call, currents: _currents, ...fields } = legacy;
     const snapshot = JSON.stringify({ ...fields, version: 1 });
     const restored = restoreWorld(snapshot);
     expect(restored).not.toBeNull();

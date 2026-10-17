@@ -6,6 +6,14 @@ export const GRAZER_CAPACITY = 1.2;
 export const NEST_CAPACITY = 12;
 
 export interface Point { x: number; y: number }
+export interface Current extends Point {
+  id: number;
+  dx: number;
+  dy: number;
+  startedAt: number;
+  duration: 8;
+  radius: 110;
+}
 export interface Organism extends Point {
   id: number;
   species: 'lucent';
@@ -52,7 +60,8 @@ export interface Nest extends Point {
 }
 export interface World {
   version: 3;
-  schemaRevision: 1;
+  schemaRevision: 2;
+  currents: Current[];
   weatherCall: { startedAt: number | null; nextAllowedAt: number };
   seed: number;
   randomState: number;
@@ -66,7 +75,7 @@ export interface World {
   nests: Nest[];
   consumed: number;
 }
-export type Tool = 'light' | 'observe' | 'carry';
+export type Tool = 'light' | 'observe' | 'carry' | 'stir';
 export interface WorldStats {
   population: number;
   light: number;

@@ -6,6 +6,7 @@ import {
 import { createBloom, createBody, createTerrain, poolPoint } from './terrain';
 import { fitHabitatCamera, viewportToWorld, type HabitatCamera } from './camera';
 import { CALM_LIGHT_REACH, effectiveLightReach, effectiveWeather } from '../world/weather';
+import { currentStrength, MAX_CURRENTS } from '../world/actions/current';
 
 interface SpriteVisual {
   sprite: Sprite;
@@ -86,6 +87,9 @@ export class TidepoolRenderer {
   private readonly caustics = new Graphics();
   private readonly rain = new Graphics();
   private readonly indicator = new Graphics();
+  private readonly currentRibbonStyle = { color: 0x9bcfc7, width: 2.2, alpha: 0.2 };
+  private readonly currentArrowStyle = { color: 0xc1e6db, width: 1.6, alpha: 0.5 };
+  private readonly stirPreviewStyle = { color: 0xbfead6, width: 1.8, alpha: 0.8 };
   private readonly mask = new Graphics();
   private readonly sediments = new Map<number, SpriteVisual>();
   private readonly lights = new Map<number, SpriteVisual>();
@@ -200,7 +204,8 @@ export class TidepoolRenderer {
     return sprite;
   }
 
-  render(world: World, selectedId: number | null, cursor: Point | null, tool: Tool, carriedLightId: number | null = null): void {
+  render(world: World, selectedId: number | null, cursor: Point | null, tool: Tool,
+    carriedLightId: number | null = null, stirPreview: { start: Point; end: Point } | null = null): void {
     if (this.destroyed) return;
     this.frame++;
     const time = this.reducedMotion ? 0 : world.elapsed;
@@ -214,6 +219,7 @@ export class TidepoolRenderer {
     this.tendrils.clear();
     this.indicator.clear();
     this.sedimentCores.clear();
+    this.drawCurrents(world, tool === 'stir' && stirPreview !== null);
 
     let coreCount = 0;
     for (const sediment of world.sediment) {
@@ -343,7 +349,9 @@ export class TidepoolRenderer {
     }
     this.drawGrazers(world, selectedId, time);
 
-    if (tool === 'carry') {
+    if (tool === 'stir') {
+      this.drawStirPreview(cursor, stirPreview);
+    } else if (tool === 'carry') {
       this.drawCarryPreview(world, cursor, carriedLightId, lightReach);
     } else if (cursor && isInPool(cursor.x, cursor.y)) {
       const radius = tool === 'light' ? 18 : 10;
@@ -354,6 +362,78 @@ export class TidepoolRenderer {
     this.app.render();
   }
 
+  private drawFlowArrow(x: number, y: number, dx: number, dy: number, style: typeof this.currentArrowStyle): void {
+    const tailX = x - dx * 10;
+    const tailY = y - dy * 10;
+    this.indicator.moveTo(tailX, tailY).lineTo(x + dx * 8, y + dy * 8)
+      .moveTo(x + dx * 8, y + dy * 8).lineTo(x - dx * 2 - dy * 5, y - dy * 2 + dx * 5)
+      .moveTo(x + dx * 8, y + dy * 8).lineTo(x - dx * 2 + dy * 5, y - dy * 2 - dx * 5)
+      .stroke(style);
+  }
+
+  private drawCurrents(world: World, reservePreviewArrow: boolean): void {
+    // Twelve arrows total, including a gesture preview; there is no particle history.
+    const arrowBudget = reservePreviewArrow ? 11 : 12;
+    let arrowCount = 0;
+    const count = Math.min(MAX_CURRENTS, world.currents.length);
+    for (let index = 0; index < count; index++) {
+      const current = world.currents[index];
+      const age = world.elapsed - current.startedAt;
+      const strength = currentStrength(current, world.elapsed);
+      if (strength <= 0) continue;
+      this.currentRibbonStyle.alpha = strength * 0.28;
+      this.currentRibbonStyle.width = 1.5;
+      this.currentArrowStyle.alpha = strength * 0.52;
+      const span = current.radius * 0.62;
+      for (let ribbon = 0; ribbon < 3; ribbon++) {
+        const offset = (ribbon - 1) * current.radius * 0.32;
+        const x = current.x - current.dy * offset;
+        const y = current.y + current.dx * offset;
+        this.indicator.moveTo(x - current.dx * span, y - current.dy * span)
+          .lineTo(x + current.dx * span, y + current.dy * span).stroke(this.currentRibbonStyle);
+      }
+      for (let arrow = 0; arrow < 4 && arrowCount < arrowBudget; arrow++, arrowCount++) {
+        const offset = (arrow - 1.5) * current.radius * 0.24;
+        const phase = this.reducedMotion ? 0.5 : ((age * 0.25 + arrow * 0.27) % 1);
+        const travel = (phase - 0.5) * current.radius * 1.1;
+        this.drawFlowArrow(current.x + current.dx * travel - current.dy * offset,
+          current.y + current.dy * travel + current.dx * offset,
+          current.dx, current.dy, this.currentArrowStyle);
+      }
+    }
+  }
+
+  private drawStirPreview(cursor: Point | null, preview: { start: Point; end: Point } | null): void {
+    if (!preview) {
+      if (cursor && isInPool(cursor.x, cursor.y)) {
+        this.stirPreviewStyle.color = 0xbfead6;
+        this.stirPreviewStyle.alpha = 0.55;
+        this.indicator.circle(cursor.x, cursor.y, 13).stroke(this.stirPreviewStyle);
+      }
+      return;
+    }
+    const start = preview.start;
+    const end = preview.end;
+    const deltaX = end.x - start.x;
+    const deltaY = end.y - start.y;
+    const length = Math.hypot(deltaX, deltaY);
+    let valid = Number.isFinite(length) && length >= 24 && length <= 240;
+    for (let sample = 0; valid && sample <= 32; sample++) {
+      valid = isInPool(start.x + deltaX * sample / 32, start.y + deltaY * sample / 32);
+    }
+    // Invalid coast/length remains visible at the in-pool start even if the end is clipped.
+    this.stirPreviewStyle.color = valid ? 0xbfead6 : 0xf0a493;
+    this.stirPreviewStyle.alpha = 0.82;
+    this.indicator.circle(start.x, start.y, 11).stroke(this.stirPreviewStyle);
+    if (!Number.isFinite(length)) return;
+    this.indicator.moveTo(start.x, start.y).lineTo(end.x, end.y).stroke(this.stirPreviewStyle);
+    this.indicator.circle(end.x, end.y, 8).stroke(this.stirPreviewStyle);
+    if (length > 0) this.drawFlowArrow(end.x, end.y, deltaX / length, deltaY / length, this.stirPreviewStyle);
+    if (!valid) {
+      this.indicator.moveTo(start.x - 4, start.y - 4).lineTo(start.x + 4, start.y + 4)
+        .moveTo(start.x + 4, start.y - 4).lineTo(start.x - 4, start.y + 4).stroke(this.stirPreviewStyle);
+    }
+  }
   private drawCarryPreview(world: World, cursor: Point | null, carriedLightId: number | null, reach: number): void {
     let source: World['lights'][number] | undefined;
     if (carriedLightId !== null) {
