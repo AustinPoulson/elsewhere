@@ -1,6 +1,6 @@
 # Elsewhere
 
-An imaginary ecosystem that grows through our creative experiments. Every new addition should have a purposeful relationship with something already living here. The world should grow and adapt while you watch; your touch offers an optional, gentle influence. We favor quiet contextual interaction and minimal controls as the ecosystem develops.
+An imaginary ecosystem that grows through new forms of life. Our current direction (2026-10-20) is one genuinely new organism type per daily addition, with a distinct ecological role, funded resource relationships and meaningful autonomous behavior. Habitat and resources shape which types establish and survive; not every type in the catalog needs to coexist. Visitor interactions are very secondary to watching the world grow and adapt. Existing pause, save and accessible controls remain available.
 
 Phase 1 is **The Luminous Tidepool**: a small overhead world inhabited by lucents. Place light in the water, watch them gather and feed, then discover the pigment they leave behind. Pigment grazers gather those traces and carry their colors into woven nests. Passing rain widens light patches and the floor where lucents can feed. There is no score or win condition. Playing means shaping the conditions and observing what follows.
 
