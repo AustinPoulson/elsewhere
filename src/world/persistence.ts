@@ -1,6 +1,6 @@
 import {
   GRAZER_CAPACITY, LIMITS, NEST_CAPACITY, isInPool,
-  type Current, type Grazer, type LightSource, type Nest, type Organism, type Sediment, type World,
+  type Current, type Grazer, type LightSource, type Nest, type Organism, type Sediment, type Skimmer, type EcologyLedger, type World,
 } from './types';
 import { initializeGrazers } from './simulation';
 import { RAIN_CALL_COOLDOWN } from './weather';
@@ -83,13 +83,36 @@ function current(value: unknown, elapsed: number): boolean {
     && range(value.startedAt, 0, Math.min(elapsed, MAX_NUMBER - CURRENT_DURATION));
 }
 
-type LegacyWorld = Omit<World, 'version' | 'schemaRevision' | 'weatherCall' | 'currents'> & { version: 1 | 2 };
-type Revision1World = Omit<World, 'schemaRevision' | 'currents'> & { schemaRevision: 1 };
+function skimmer(value: unknown, elapsed: number, nextId: number): boolean {
+  return point(value, 11) && integer(value.id, 1) && value.species === 'skimmer'
+    && value.size === 8 && value.body === 0.2
+    && range(value.vx, -80, 80) && range(value.vy, -80, 80)
+    && range(value.hue, 0, 360) && value.hue < 360
+    && range(value.reserve, 0, 1) && range(value.age, 0, MAX_NUMBER)
+    && range(value.phase, 0, Math.PI * 2) && integer(value.homeNestId, 1)
+    && (value.targetSedimentId === null || integer(value.targetSedimentId, 1, nextId - 1))
+    && range(value.starvedFor, 0, 60)
+    && range(value.emissionNextAllowedAt, 0, Math.min(MAX_NUMBER, elapsed + 15))
+    && (value.lastEmissionAt === null
+      ? (value.emissionNextAllowedAt as number) <= elapsed
+      : range(value.lastEmissionAt, 0, elapsed) && value.emissionNextAllowedAt === value.lastEmissionAt + 15);
+}
+
+function ledger(value: unknown): value is EcologyLedger {
+  return record(value) && ['mineralizedPigment', 'maintenancePigment', 'emittedLight', 'pigmentConverted', 'feedingCreditLost']
+    .every(key => range(value[key], 0, MAX_NUMBER));
+}
+
+type PrePrismOrganism = Omit<Organism, 'pigmentCredit'>;
+type Revision2World = Omit<World, 'schemaRevision' | 'skimmers' | 'skimmerAdmissionAt' | 'ecologyLedger' | 'organisms'>
+  & { schemaRevision: 2; organisms: PrePrismOrganism[] };
+type LegacyWorld = Omit<Revision2World, 'version' | 'schemaRevision' | 'weatherCall' | 'currents'> & { version: 1 | 2 };
+type Revision1World = Omit<Revision2World, 'schemaRevision' | 'currents'> & { schemaRevision: 1 };
 
 // Ordered, pure migrations operate on validated data, without touching old ecology.
 function migrateV1ToV2(previous: LegacyWorld): LegacyWorld {
   const next = { ...previous, version: 2 as const, grazers: [], nests: [] };
-  initializeGrazers(next);
+  initializeGrazers(next as unknown as World);
   return next;
 }
 
@@ -97,8 +120,14 @@ function migrateV2ToV3(previous: LegacyWorld): Revision1World {
   return { ...previous, version: 3, schemaRevision: 1, weatherCall: { startedAt: null, nextAllowedAt: 0 } };
 }
 
-function migrateRevision1To2(previous: Revision1World): World {
+function migrateRevision1To2(previous: Revision1World): Revision2World {
   return { ...previous, schemaRevision: 2, currents: [] };
+}
+
+function migrateRevision2To3(previous: Revision2World): World {
+  return { ...previous, schemaRevision: 3, skimmers: [], skimmerAdmissionAt: previous.elapsed,
+    organisms: previous.organisms.map(entry => ({ ...entry, pigmentCredit: 0 })),
+    ecologyLedger: { mineralizedPigment: 0, maintenancePigment: 0, emittedLight: 0, pigmentConverted: 0, feedingCreditLost: 0 } };
 }
 
 export function serializeWorld(world: World): string {
@@ -119,10 +148,10 @@ export function restoreWorld(input: string): World | null {
     || !range(parsed.elapsed, 0, MAX_NUMBER) || !integer(parsed.tick)
     || !integer(parsed.nextId, 1) || !range(parsed.consumed, 0, MAX_NUMBER)) return null;
 
-  if ((parsed.version === 3 && ((parsed.schemaRevision !== 1 && parsed.schemaRevision !== 2) || !weatherCall(parsed.weatherCall, parsed.elapsed)))
+  if ((parsed.version === 3 && ((parsed.schemaRevision !== 1 && parsed.schemaRevision !== 2 && parsed.schemaRevision !== 3) || !weatherCall(parsed.weatherCall, parsed.elapsed)))
     || (parsed.version !== 3 && ('schemaRevision' in parsed || 'weatherCall' in parsed || 'currents' in parsed))) return null;
   let currents: Current[] = [];
-  if (parsed.version === 3 && parsed.schemaRevision === 2) {
+  if (parsed.version === 3 && (parsed.schemaRevision === 2 || parsed.schemaRevision === 3)) {
     if (!Array.isArray(parsed.currents) || parsed.currents.length > MAX_CURRENTS
       || !parsed.currents.every((entry: unknown) => current(entry, parsed.elapsed as number))) return null;
     currents = parsed.currents as Current[];
@@ -133,6 +162,17 @@ export function restoreWorld(input: string): World | null {
     || !Array.isArray(lights) || lights.length > LIMITS.lights
     || !Array.isArray(deposits) || deposits.length > LIMITS.sediment) return null;
   if (!organisms.every(organism) || !lights.every(light) || !deposits.every(sediment)) return null;
+  const prism = parsed.version === 3 && parsed.schemaRevision === 3;
+  let skimmers: Skimmer[] = [];
+  if (prism) {
+    if (!organisms.every(entry => record(entry) && range(entry.pigmentCredit, 0, 1))
+      || !Array.isArray(parsed.skimmers) || parsed.skimmers.length > 6 || parsed.skimmers.length > 24
+      || !parsed.skimmers.every(entry => skimmer(entry, parsed.elapsed as number, parsed.nextId as number))
+      || !range(parsed.skimmerAdmissionAt, 0, Math.min(MAX_NUMBER, parsed.elapsed + 60))
+      || !ledger(parsed.ecologyLedger)) return null;
+    skimmers = parsed.skimmers as Skimmer[];
+  } else if ('skimmers' in parsed || 'skimmerAdmissionAt' in parsed || 'ecologyLedger' in parsed
+    || organisms.some(entry => record(entry) && 'pigmentCredit' in entry)) return null;
 
   let grazers: Grazer[] = [];
   let nests: Nest[] = [];
@@ -146,15 +186,20 @@ export function restoreWorld(input: string): World | null {
     if (grazers.some((entry) => !nestIds.has(entry.nestId))) return null;
   } else if (parsed.nextId > MAX_NUMBER - 8) return null;
 
+  const nestIds = new Set(nests.map(entry => entry.id));
+  if (skimmers.some(entry => !nestIds.has(entry.homeNestId))) return null;
   const ids = new Set<number>();
   let largestId = 0;
-  for (const entry of [...organisms, ...lights, ...deposits, ...grazers, ...nests, ...currents]) {
+  for (const entry of [...organisms, ...lights, ...deposits, ...grazers, ...nests, ...currents, ...skimmers]) {
     const id = (entry as Record<string, unknown>).id as number;
     if (ids.has(id)) return null;
     ids.add(id);
     largestId = Math.max(largestId, id);
   }
   if (parsed.nextId <= largestId) return null;
+  const sedimentIds = new Set(deposits.map(entry => (entry as Sediment).id));
+  if (skimmers.some(entry => entry.targetSedimentId !== null
+    && ids.has(entry.targetSedimentId) && !sedimentIds.has(entry.targetSedimentId))) return null;
 
   // Only the versioned contract enters the simulation; storage is a UI concern.
   const ecology = {
@@ -166,10 +211,13 @@ export function restoreWorld(input: string): World | null {
   if (parsed.version === 3) {
     const revision1: Revision1World = { ...ecology, version: 3, schemaRevision: 1,
       weatherCall: { ...(parsed.weatherCall as World['weatherCall']) } };
-    return parsed.schemaRevision === 1 ? migrateRevision1To2(revision1)
+    const revision2: Revision2World = parsed.schemaRevision === 1 ? migrateRevision1To2(revision1)
       : { ...revision1, schemaRevision: 2, currents: currents.filter(entry => currentStrength(entry, parsed.elapsed as number) > 0) };
+    return prism ? { ...revision2, schemaRevision: 3, organisms: organisms as Organism[], skimmers,
+      skimmerAdmissionAt: parsed.skimmerAdmissionAt as number, ecologyLedger: { ...(parsed.ecologyLedger as EcologyLedger) } }
+      : migrateRevision2To3(revision2);
   }
   let legacy: LegacyWorld = { ...ecology, version: parsed.version };
   if (legacy.version === 1) legacy = migrateV1ToV2(legacy);
-  return migrateRevision1To2(migrateV2ToV3(legacy));
+  return migrateRevision2To3(migrateRevision1To2(migrateV2ToV3(legacy)));
 }

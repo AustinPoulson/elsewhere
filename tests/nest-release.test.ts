@@ -163,6 +163,9 @@ describe('nest pigment release', () => {
     let sawLoaded = false;
     let sawDelivered = false;
     for (let i = 0; i < 30 * 90; i++) {
+      // Isolate the existing grazer/release contract; mixed-species transfer is
+      // exercised separately in skimmer integration checks.
+      world.skimmerAdmissionAt = world.elapsed + 60;
       stepWorld(world);
       const mass = pigmentMass(world);
       expect(mass).toBeLessThanOrEqual(previousMass + 1e-10);
@@ -206,13 +209,13 @@ describe('nest pigment release', () => {
     legacy.grazers = [];
     legacy.nests = [];
     run(legacy, 1020);
-    const { grazers: _grazers, nests: _nests, schemaRevision: _revision, weatherCall: _call, currents: _currents, ...fields } = legacy;
-    const restored = restoreWorld(JSON.stringify({ ...fields, version: 1 }));
+    const { grazers: _grazers, nests: _nests, schemaRevision: _revision, weatherCall: _call, currents: _currents, skimmers: _skimmers, skimmerAdmissionAt: _admission, ecologyLedger: _ledger, organisms, ...fields } = legacy;
+    const restored = restoreWorld(JSON.stringify({ ...fields, organisms: organisms.map(({ pigmentCredit: _credit, ...entry }) => entry), version: 1 }));
     expect(restored).not.toBeNull();
     expect(restored!.elapsed).toBe(legacy.elapsed);
     expect(restored!.tick).toBe(legacy.tick);
     expect(restored!.randomState).toBe(legacy.randomState);
-    expect(restored!.organisms).toEqual(legacy.organisms);
+    expect(restored!.organisms).toEqual(legacy.organisms.map(entry => ({ ...entry, pigmentCredit: 0 })));
     expect(restored!.lights).toEqual(legacy.lights);
     expect(restored!.sediment).toEqual(legacy.sediment);
     expect(restored!.consumed).toBe(legacy.consumed);

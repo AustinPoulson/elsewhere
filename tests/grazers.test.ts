@@ -12,6 +12,8 @@ function run(world: World, steps: number): void {
 
 function isolatedGrazer(): World {
   const world = createWorld(71);
+  // Keep this short single-species transfer fixture isolated from nest-funded admissions.
+  world.skimmerAdmissionAt = world.elapsed + 60;
   world.organisms = [world.organisms[0]];
   world.lights = [];
   world.sediment = [];
@@ -33,8 +35,8 @@ function pigmentMass(world: World): number {
 }
 
 function legacyPayload(world: World): string {
-  const { grazers: _grazers, nests: _nests, schemaRevision: _revision, weatherCall: _call, currents: _currents, ...legacy } = world;
-  return JSON.stringify({ ...legacy, version: 1 });
+  const { grazers: _grazers, nests: _nests, schemaRevision: _revision, weatherCall: _call, currents: _currents, skimmers: _skimmers, skimmerAdmissionAt: _admission, ecologyLedger: _ledger, organisms, ...legacy } = world;
+  return JSON.stringify({ ...legacy, organisms: organisms.map(({ pigmentCredit: _credit, ...entry }) => entry), version: 1 });
 }
 
 describe('pigment grazers', () => {
@@ -204,7 +206,7 @@ describe('v2 grazer snapshots', () => {
       expect(migrated!.elapsed).toBe(legacy.elapsed);
       expect(migrated!.tick).toBe(legacy.tick);
       expect(migrated!.randomState).toBe(legacy.randomState);
-      expect(migrated!.organisms).toEqual(legacy.organisms);
+      expect(migrated!.organisms).toEqual(legacy.organisms.map(entry => ({ ...entry, pigmentCredit: 0 })));
       expect(migrated!.lights).toEqual(legacy.lights);
       expect(migrated!.sediment).toEqual(legacy.sediment);
       expect(migrated!.consumed).toBe(legacy.consumed);

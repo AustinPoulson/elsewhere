@@ -42,6 +42,8 @@ With the habitat focused, arrow keys move an interaction cursor and **Enter** ap
 
 The pigment readout measures the combined strength of sediment in the water. The second line shows the grazer population and color stored in nests. These are resource amounts rather than counts of individual marks. Lucents become dimmer when light is scarce and persist so there is always a population to feed when you return. Open the Field guide and choose **Follow a grazer** to inspect its cargo and nest, or touch its amber shell with Observe. Earlier snapshots and browser saves migrate into the expanded ecosystem.
 
+Prism skimmers may emerge naturally from well-fed nests. Look for translucent diamonds gathering pigment, then releasing a small feeding light. They compete with grazers, spend stored color to live, and return their remaining material when they starve or reach eight minutes. Empty nests support none; existing saves receive no free arrivals. Observe a diamond to inspect its reserve. Lucent pigment deposits are now funded by actual light intake, so this recycling loop cannot amplify tiny light remnants into large grains. Reproduction remains a later expedition.
+
 ## Publish on GitHub Pages
 
 The project lives at `C:\repos\MAGI\elsewhere` in its own Git checkout, connected to `https://github.com/AustinPoulson/elsewhere.git`. GitHub Pages uses GitHub Actions. Local Git authentication is unavailable and connector tree writes return HTTP 403; the signed-in GitHub browser is a supported publication fallback without changing account permissions.

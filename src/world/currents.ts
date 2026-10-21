@@ -27,5 +27,6 @@ export function applyCurrentDrift(world: World, dt: number): void {
   if (write === 0) return;
   for (const body of world.organisms) drift(world, body, dt, 1, body.size + 3);
   for (const body of world.grazers) drift(world, body, dt, 1, body.size + 3);
+  for (const body of world.skimmers) drift(world, body, dt, 1, body.size + 3);
   for (const body of world.sediment) drift(world, body, dt, SEDIMENT_DRIFT, 0);
 }

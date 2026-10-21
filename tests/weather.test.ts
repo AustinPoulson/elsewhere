@@ -80,12 +80,18 @@ describe('rain diffuses existing light', () => {
     expect(rain.organisms[0].energy).toBeGreaterThan(0.5);
     expect(initialLight - rain.lights[0].energy).toBeCloseTo(rain.consumed + FIXED_STEP * 0.045, 10);
     expect(rain.organisms[0].energy - 0.5).toBeCloseTo(rain.consumed * 0.065 - FIXED_STEP * 0.008, 10);
-    expect(rain.sediment).toHaveLength(1);
-    expect(rain.sediment[0].strength).toBeGreaterThan(0.27);
-    expect(rain.sediment[0].strength).toBeLessThan(0.57);
+    expect(rain.sediment).toHaveLength(0);
+    expect(rain.organisms[0].pigmentCredit).toBeCloseTo(rain.consumed * 0.02, 12);
     expect(rain.organisms[0].vy).toBeGreaterThan(calm.organisms[0].vy * 4);
     expect(rain.organisms[0].vx).toBeLessThan(calm.organisms[0].vx);
     expect(rain.lights[0].initialEnergy).toBe(initialLight);
+    run(rain, 180);
+    const deposited = rain.sediment.reduce((total, grain) => total + grain.strength, 0);
+    expect(deposited).toBeGreaterThan(0);
+    const paid = rain.consumed * 0.02;
+    expect(deposited + rain.organisms[0].pigmentCredit).toBeLessThanOrEqual(paid + 1e-10);
+    // The only subsequent loss is ordinary floor fading; no epsilon-meal gift.
+    expect(deposited + rain.organisms[0].pigmentCredit).toBeGreaterThan(paid * Math.exp(-6.1 * 0.0013));
   });
 
   it('creates no light, energy, pigment, or random draws without a light source', () => {
@@ -174,15 +180,15 @@ describe('weather and existing snapshots', () => {
     legacy.grazers = [];
     legacy.nests = [];
     run(legacy, 30 * 45);
-    const { grazers: _grazers, nests: _nests, schemaRevision: _revision, weatherCall: _call, currents: _currents, ...fields } = legacy;
-    const snapshot = JSON.stringify({ ...fields, version: 1 });
+    const { grazers: _grazers, nests: _nests, schemaRevision: _revision, weatherCall: _call, currents: _currents, skimmers: _skimmers, skimmerAdmissionAt: _admission, ecologyLedger: _ledger, organisms, ...fields } = legacy;
+    const snapshot = JSON.stringify({ ...fields, organisms: organisms.map(({ pigmentCredit: _credit, ...entry }) => entry), version: 1 });
     const restored = restoreWorld(snapshot);
     expect(restored).not.toBeNull();
     expect(restored!.version).toBe(3);
     expect(restored!.elapsed).toBe(legacy.elapsed);
     expect(restored!.tick).toBe(legacy.tick);
     expect(restored!.randomState).toBe(legacy.randomState);
-    expect(restored!.organisms).toEqual(legacy.organisms);
+    expect(restored!.organisms).toEqual(legacy.organisms.map(entry => ({ ...entry, pigmentCredit: 0 })));
     expect(restored!.lights).toEqual(legacy.lights);
     expect(restored!.sediment).toEqual(legacy.sediment);
     expect(restored!.consumed).toBe(legacy.consumed);

@@ -18,8 +18,8 @@ describe('safe shower study', () => {
     const expected = restoreWorld(JSON.stringify(fixture));
     expect(expected).not.toBeNull();
     const { version: _oldVersion, ...historicalEcology } = fixture;
-    const { version: _version, schemaRevision: _revision, weatherCall: _call, currents: _currents, ...normalizedEcology } = expected!;
-    expect(normalizedEcology).toEqual(historicalEcology);
+    const { version: _version, schemaRevision: _revision, weatherCall: _call, currents: _currents, skimmers: _skimmers, skimmerAdmissionAt: _admission, ecologyLedger: _ledger, organisms, ...normalizedEcology } = expected!;
+    expect({ ...normalizedEcology, organisms: organisms.map(({ pigmentCredit: _credit, ...entry }) => entry) }).toEqual(historicalEcology);
     expect(expected!.seed).toBe(SHOWER_STUDY.seed);
     expect(expected!.tick).toBe(SHOWER_STUDY.steps);
     expect(expected!.elapsed).toBeCloseTo(SHOWER_STUDY.seconds, 10);
@@ -123,6 +123,8 @@ describe('safe shower study', () => {
     const session = new WorldSession(createWorld(22));
     const legacy = JSON.parse(serializeWorld(createWorld(44)));
     legacy.version = 1; delete legacy.grazers; delete legacy.nests; delete legacy.weatherCall; delete legacy.schemaRevision; delete legacy.currents;
+    delete legacy.skimmers; delete legacy.skimmerAdmissionAt; delete legacy.ecologyLedger;
+    for (const entry of legacy.organisms) delete entry.pigmentCredit;
     expect(session.importSnapshot(JSON.stringify(legacy), session.importToken())).toBe('imported');
     expect(session.world.version).toBe(3);
     expect(session.world.grazers).toHaveLength(4);
