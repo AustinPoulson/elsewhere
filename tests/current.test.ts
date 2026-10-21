@@ -135,18 +135,18 @@ describe('current save revisions', () => {
 
   it('migrates actual revision1 without dropping an active rain call or changing old ecology', () => {
     const world = createWorld(84);
-    const { currents: _currents, ...rest } = world;
-    const previous = { ...rest, schemaRevision: 1, elapsed: 12, weatherCall: { startedAt: 10, nextAllowedAt: 70 } };
+    const { currents: _currents, skimmers: _skimmers, skimmerAdmissionAt: _admission, ecologyLedger: _ledger, organisms, ...rest } = world;
+    const previous = { ...rest, organisms: organisms.map(({ pigmentCredit: _credit, ...entry }) => entry), schemaRevision: 1, elapsed: 12, weatherCall: { startedAt: 10, nextAllowedAt: 70 } };
     const snapshot = JSON.stringify(previous);
     const migrated = restoreWorld(snapshot)!;
-    expect(migrated).toEqual({ ...previous, schemaRevision: 2, currents: [] });
+    expect(migrated).toEqual({ ...world, elapsed: 12, schemaRevision: 3, skimmerAdmissionAt: 12, weatherCall: previous.weatherCall, currents: [] });
     expect(JSON.stringify(previous)).toBe(snapshot);
     expect(restoreWorld(serializeWorld(migrated))).toEqual(migrated);
   });
 
   it('rejects malformed, future, hybrid and globally duplicate current records before expiration cleanup', () => {
     const mutations: ((world: Record<string, any>) => void)[] = [
-      w => { delete w.currents; }, w => { w.currents = null; }, w => { w.schemaRevision = 3; },
+      w => { delete w.currents; }, w => { w.currents = null; }, w => { w.schemaRevision = 4; },
       w => { w.currents[0].x = 0; }, w => { w.currents[0].dx = .5; }, w => { w.currents[0].dy = NaN; },
       w => { w.currents[0].radius = 111; }, w => { w.currents[0].duration = 9; },
       w => { w.currents[0].startedAt = 1; }, w => { w.currents[0].startedAt = -1; },

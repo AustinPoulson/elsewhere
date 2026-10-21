@@ -5,6 +5,8 @@ import {
 import { CALM_LIGHT_REACH, effectiveLightReach } from './weather';
 import { applyCurrentDrift } from './currents';
 import { confinePosition } from './geometry';
+import { accrueFeedingPigment, depositFeedingPigment } from './feeding';
+import { updateSkimmers } from './species/skimmer';
 
 const TAU = Math.PI * 2;
 const ENERGY_FLOOR = 0.12;
@@ -115,7 +117,10 @@ export function createWorld(seed = 20261006): World {
   if (!Number.isFinite(seed)) throw new RangeError('World seed must be finite.');
   const normalizedSeed = Math.trunc(seed) >>> 0;
   const world: World = {
-    version: 3, schemaRevision: 2, currents: [], weatherCall: { startedAt: null, nextAllowedAt: 0 },
+    version: 3, schemaRevision: 3, currents: [], weatherCall: { startedAt: null, nextAllowedAt: 0 },
+    skimmers: [], skimmerAdmissionAt: 0,
+    ecologyLedger: { mineralizedPigment: 0, maintenancePigment: 0, emittedLight: 0,
+      pigmentConverted: 0, feedingCreditLost: 0 },
     seed: normalizedSeed, randomState: normalizedSeed, elapsed: 0, tick: 0,
     nextId: 1, organisms: [], lights: [], sediment: [], grazers: [], nests: [], consumed: 0,
   };
@@ -135,7 +140,7 @@ export function createWorld(seed = 20261006): World {
       id: world.nextId++, species: 'lucent', ...point,
       vx: Math.cos(heading) * 27, vy: Math.sin(heading) * 27,
       energy: 0.7 + random(world) * 0.7, age: 0, hue: hues[i % hues.length], size,
-      phase: random(world) * TAU, trail: [],
+      phase: random(world) * TAU, trail: [], pigmentCredit: 0,
     };
     // A short initial wake makes the first frame feel inhabited.
     for (let j = 6; j >= 0; j--) {
@@ -234,11 +239,9 @@ function updateLucent(world: World, organism: Organism, dt: number, lightReach: 
       target.energy -= eaten;
       world.consumed += eaten;
       organism.energy = Math.min(2, organism.energy + eaten * 0.065);
+      accrueFeedingPigment(world, organism, eaten);
       if (eaten > 0 && (world.tick + organism.id) % 36 === 0) {
-        appendSediment(world, {
-          x: organism.x + (random(world) - 0.5) * 7,
-          y: organism.y + (random(world) - 0.5) * 7,
-        }, organism.hue, 0.28 + random(world) * 0.28, 3 + random(world) * 5);
+        depositFeedingPigment(world, organism);
       }
     }
   } else {
@@ -341,6 +344,7 @@ export function stepWorld(world: World, dt = FIXED_STEP): void {
   const lightReach = effectiveLightReach(world);
   for (const organism of world.organisms) updateLucent(world, organism, dt, lightReach);
   for (const grazer of world.grazers) updateGrazer(world, grazer, dt);
+  updateSkimmers(world, dt);
   applyCurrentDrift(world, dt);
   for (const light of world.lights) {
     light.age += dt;
@@ -368,6 +372,7 @@ export function getStats(world: World): WorldStats {
     elapsed: world.elapsed,
     consumed: world.consumed,
     grazers: world.grazers.length,
+    skimmers: world.skimmers.length,
     nestPigment: world.nests.reduce((total, nest) => total + nest.pigment, 0),
   };
 }

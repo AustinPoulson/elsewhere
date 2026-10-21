@@ -20,6 +20,14 @@ interface OrganismVisual {
   frame: number;
 }
 
+interface SkimmerVisual {
+  node: Container;
+  glow: Sprite;
+  body: Graphics;
+  emission: Graphics;
+  frame: number;
+}
+
 interface GrazerVisual {
   node: Container;
   glow: Sprite;
@@ -96,6 +104,7 @@ export class TidepoolRenderer {
   private readonly lightPatches = new Map<number, SpriteVisual>();
   private readonly organisms = new Map<number, OrganismVisual>();
   private readonly grazers = new Map<number, GrazerVisual>();
+  private readonly skimmers = new Map<number, SkimmerVisual>();
   private readonly nests = new Map<number, NestVisual>();
   private readonly textures: Texture[] = [];
   private readonly glowTexture: Texture;
@@ -348,6 +357,7 @@ export class TidepoolRenderer {
       }
     }
     this.drawGrazers(world, selectedId, time);
+    this.drawSkimmers(world, selectedId);
 
     if (tool === 'stir') {
       this.drawStirPreview(cursor, stirPreview);
@@ -593,6 +603,56 @@ export class TidepoolRenderer {
     }
   }
 
+  private drawSkimmers(world: World, selectedId: number | null): void {
+    // Four reusable display objects per animal, capped at six; no trails or particle history.
+    for (let index = 0; index < Math.min(6, world.skimmers.length); index++) {
+      const skimmer = world.skimmers[index];
+      let visual = this.skimmers.get(skimmer.id);
+      if (!visual) {
+        const node = new Container();
+        const glow = this.glow(node);
+        const body = new Graphics();
+        body.moveTo(0, -12).lineTo(9, 0).lineTo(0, 12).lineTo(-9, 0).closePath()
+          .fill({ color: 0xd1eee7, alpha: 0.26 }).stroke({ color: 0xe1fff0, alpha: 0.9, width: 1.25 });
+        body.moveTo(0, -12).lineTo(0, 12).moveTo(-9, 0).lineTo(9, 0)
+          .stroke({ color: 0xe1fff0, alpha: 0.55, width: 0.65 });
+        body.circle(0, 0, 2.6).fill({ color: 0xf5ffe0, alpha: 0.95 });
+        const emission = new Graphics();
+        node.addChild(body, emission);
+        this.organismLayer.addChild(node);
+        visual = { node, glow, body, emission, frame: this.frame };
+        this.skimmers.set(skimmer.id, visual);
+      }
+      visual.frame = this.frame;
+      const charge = Math.min(1, Math.max(0, skimmer.reserve));
+      const color = this.color(skimmer.hue);
+      visual.node.position.set(skimmer.x, skimmer.y);
+      visual.node.rotation = Math.atan2(skimmer.vy, skimmer.vx) + Math.PI / 2;
+      visual.body.tint = color;
+      visual.body.alpha = 0.68 + charge * 0.32;
+      visual.glow.tint = color;
+      visual.glow.width = 34 + charge * 24;
+      visual.glow.height = visual.glow.width;
+      visual.glow.alpha = 0.08 + charge * 0.18;
+      const emissionAge = skimmer.lastEmissionAt === null ? -1 : world.elapsed - skimmer.lastEmissionAt;
+      visual.emission.clear();
+      if (emissionAge >= 0 && emissionAge < 3) {
+        const progress = emissionAge / 3;
+        const reach = this.reducedMotion ? 22 : 14 + progress * 24;
+        visual.emission.moveTo(0, -reach).lineTo(reach * 0.75, 0).lineTo(0, reach)
+          .lineTo(-reach * 0.75, 0).closePath()
+          .stroke({ color: 0xf1e1a9, alpha: (1 - progress) * 0.7, width: 1.4 });
+      }
+      if (skimmer.id === selectedId) this.drawSelection(skimmer, 23);
+    }
+    for (const [id, visual] of this.skimmers) {
+      if (visual.frame !== this.frame) {
+        visual.node.destroy({ children: true });
+        this.skimmers.delete(id);
+      }
+    }
+  }
+
   private createGrazer(): GrazerVisual {
     const node = new Container();
     const glow = this.glow(node);
@@ -755,6 +815,7 @@ export class TidepoolRenderer {
     this.lightPatches.clear();
     this.organisms.clear();
     this.grazers.clear();
+    this.skimmers.clear();
     this.nests.clear();
     this.colors.clear();
   }

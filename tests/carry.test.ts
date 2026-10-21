@@ -37,7 +37,9 @@ describe('carry a living light', () => {
 
   it('carries a migrated v1 light without changing its legacy ecological history', () => {
     const original = createWorld(23);
-    const legacy = { ...original, version: 1, grazers: undefined, nests: undefined, weatherCall: undefined, schemaRevision: undefined, currents: undefined };
+    const legacy = { ...original, version: 1, grazers: undefined, nests: undefined, weatherCall: undefined, schemaRevision: undefined, currents: undefined,
+      skimmers: undefined, skimmerAdmissionAt: undefined, ecologyLedger: undefined,
+      organisms: original.organisms.map(({ pigmentCredit: _credit, ...entry }) => entry) };
     const world = restoreWorld(JSON.stringify(legacy))!;
     expect(world).not.toBeNull();
     const before = structuredClone(world);

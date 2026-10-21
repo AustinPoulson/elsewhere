@@ -25,6 +25,31 @@ export interface Organism extends Point {
   size: number;
   phase: number;
   trail: Point[];
+  pigmentCredit: number;
+}
+export interface Skimmer extends Point {
+  id: number;
+  species: 'skimmer';
+  size: 8;
+  body: 0.2;
+  vx: number;
+  vy: number;
+  hue: number;
+  reserve: number;
+  age: number;
+  phase: number;
+  homeNestId: number;
+  targetSedimentId: number | null;
+  starvedFor: number;
+  emissionNextAllowedAt: number;
+  lastEmissionAt: number | null;
+}
+export interface EcologyLedger {
+  mineralizedPigment: number;
+  maintenancePigment: number;
+  emittedLight: number;
+  pigmentConverted: number;
+  feedingCreditLost: number;
 }
 export interface LightSource extends Point {
   id: number;
@@ -60,7 +85,10 @@ export interface Nest extends Point {
 }
 export interface World {
   version: 3;
-  schemaRevision: 2;
+  schemaRevision: 3;
+  skimmers: Skimmer[];
+  skimmerAdmissionAt: number;
+  ecologyLedger: EcologyLedger;
   currents: Current[];
   weatherCall: { startedAt: number | null; nextAllowedAt: number };
   seed: number;
@@ -83,6 +111,7 @@ export interface WorldStats {
   elapsed: number;
   consumed: number;
   grazers: number;
+  skimmers: number;
   nestPigment: number;
 }
 
