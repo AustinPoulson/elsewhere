@@ -54,6 +54,19 @@ export interface Reedwell extends Point {
   emissionNextAllowedAt: number;
   lastEmissionAt: number | null;
 }
+export interface Rainbell extends Point {
+  id: number;
+  species: 'rainbell';
+  body: 0.2;
+  age: number;
+  hue: number;
+  reserve: number;
+  starvedFor: number;
+  feedTargetSedimentId: number | null;
+  pumpTargetSedimentId: number | null;
+  pulseNextAllowedAt: number;
+  lastPulseAt: number | null;
+}
 export interface EcologyLedger {
   mineralizedPigment: number;
   maintenancePigment: number;
@@ -64,6 +77,9 @@ export interface EcologyLedger {
   daylightUnharvested: number;
   reedwellEmittedLight: number;
   reedwellDissipatedLight: number;
+  rainbellIntake: number;
+  rainbellPumpingPigment: number;
+  rainbellMaintenancePigment: number;
 }
 export interface LightSource extends Point {
   id: number;
@@ -99,12 +115,15 @@ export interface Nest extends Point {
 }
 export interface World {
   version: 3;
-  schemaRevision: 4;
+  schemaRevision: 5;
   skimmers: Skimmer[];
   skimmerAdmissionAt: number;
   reedwells: Reedwell[];
   reedwellAdmissionAt: number;
   reedwellCandidateAfterId: number;
+  rainbells: Rainbell[];
+  rainbellAdmissionAt: number;
+  rainbellCandidateAfterId: number;
   ecologyLedger: EcologyLedger;
   currents: Current[];
   weatherCall: { startedAt: number | null; nextAllowedAt: number };
@@ -130,6 +149,7 @@ export interface WorldStats {
   grazers: number;
   skimmers: number;
   reedwells: number;
+  rainbells: number;
   nestPigment: number;
 }
 

@@ -1,0 +1,29 @@
+# Expedition 010: rainbell polyps
+
+Scheduled execution for 2026-10-22 Central. Ticket: https://trello.com/c/W7oEepi2
+
+## New organism and ecological purpose
+
+Rainbells are stationary suspension feeders. Rain intensity at least0.5 opens a legal loose-pigment pocket. One grain-centered root pays exactly0.6 pigment from sources within32 units, by distance then ID: body0.2 and reserve0.4. The organism begins absent even where its catalog definition exists. Dry, underfunded, crowded or unsuitable pools may remain free of rainbells. Grazers, skimmers and reedwells all compete directly or indirectly for the loose pigment that funds it. A saved rotating source-ID cursor keeps a failed pocket from monopolizing future attempts; success starts a60-second admission rest.
+
+The fixed cup searches actual sediment for food within28 units and takes at most0.02 pigment per second into reserve capacity1. During rain, a grain30–60 units away can trigger a contraction when the reserve can pay0.04 and the last successful pulse was at least15 seconds ago. The pulse creates one ordinary current from the grain toward the root using the existing action. That current moves sediment and nearby creatures under the existing capped drift; the polyp itself does not drift. Only a successful current creation debits0.04 pigment and starts rest. Failed pulses preserve the pumping budget and opportunity, while ordinary upkeep continues. The root's visible contraction accompanies the current, and its reserve rises only after a grain actually reaches feeding range. This is a direct, observable food-bearing current rather than food granted by the animation.
+
+Intake is a sediment-to-reserve transfer. Pumping spends pigment to a named sink, and living maintenance spends at most0.001 pigment per second to its own named sink. At age600 world seconds or60 continuous seconds with no reserve, the body and actual remaining reserve return through the shared bounded death rule: at most one grain, or nearest underfilled grain, with unplaced material named mineralization. The slot is freed; an already paid ordinary current persists until its normal eight-second expiry. Another polyp requires fresh wet funded entry. This life slice has no larva, reproduction or dormant body and does not assert closed resource balance or a self-sustaining population.
+
+## Budgets, persistence and presentation
+
+Rainbells are limited to four active bodies. Six skimmers, six reedwells and four rainbells fit under the shared24-living-new-type ceiling, alongside42 lucents and8 grazers. Existing caps of32 lights,600 grains,16 nests and3 currents remain. A reused sediment-ID index resolves targets, and one staggered scan of at most600 grains per polyp every six ticks chooses both feeding and pumping targets. Live strength/distance/ID checks precede transfer. Four reused display objects and one at-most-three-second cue per body give at most16 current new-type cues with no history, trails or particle queue. Existing pointer and keyboard Observe paths identify the polyp; reduced motion removes the contraction cue. No new visitor control was added.
+
+World3/revision5 is a pure migration from revisions1–4. Each prior world gains an empty polyp population, current-time admission eligibility, a zero candidate cursor and three zero ledger counters, without pigment, creatures or random draws. New snapshots strictly validate bodies, global IDs, cached target references, rest timestamps, population and storage limits. Arbitrary-phase save/import resumes the same intake and pulses. Older-schema hybrids reject, and the historical shower-study file is unchanged. Saved absence can persist until funded rain arrives.
+
+## Validation and playable evidence
+
+`npm ci` and `npm run validate` passed. Final validation ran132 tests across18 files, TypeScript and a production build. Focused tests exercise exact funding, failed admission/refused pulses, reach boundaries, payment and maintenance identities, current direction and lifespan, actual intake, finite exits, old schemas and exact saved continuation. A12-second paired normal-rate simulation moved a grain from distance36 to20.758097 from the root, with0.182 actual pigment intake and0.04 pumping cost; the no-pump control had zero intake. An all-type initial-max-budget 20-minute paired trajectory ran72,000 fixed whole-world steps, retained all population/resource caps and compared20 exact restored samples. The final concurrent-suite measurement was10.827 seconds for that paired profile, about0.1504ms per whole-world step; it is not a device frame-rate claim.
+
+Disposable production-preview desktop1280x800 and portrait390x844 worlds used the same paid arrival snapshot. In the desktop world, the ordinary current spent0.04, moved the distant grain fromx756 to742.123, and intake reached0.058. In portrait, it moved tox741.760 and intake reached0.064667. Both no-polyp controls kept the grain atx756 with zero current and zero intake. The fixed root stayed at(720,500). Screenshots and exact exports are retained under ignored `.artifacts/rainbell-20261022`. Pointer and keyboard Observe, pause, export/import, age exit, legacy import, reset, temporary study return and portrait overflow checks passed. Emulated reduced-motion portrait opened paused and preserved the imported pool without advancing.
+
+PR review/CI, merged SHA, Pages deployment, uncached live release marker and positive live behavior remain separate release gates until recorded on the ticket. Physical touch hardware and a physical OS reduced-motion setting remain untested; browser emulation covers the code paths.
+
+## Supporting work
+
+The schema migration, typed catalog count and render/Observe integration support this new organism. No independent bug or new visitor power is presented as the daily feature. Existing development-tool audit findings are tracked separately at https://trello.com/c/9r37KlNj.
