@@ -209,7 +209,7 @@ describe('nest pigment release', () => {
     legacy.grazers = [];
     legacy.nests = [];
     run(legacy, 1020);
-    const { grazers: _grazers, nests: _nests, schemaRevision: _revision, weatherCall: _call, currents: _currents, skimmers: _skimmers, skimmerAdmissionAt: _admission, ecologyLedger: _ledger, organisms, ...fields } = legacy;
+    const { grazers: _grazers, nests: _nests, schemaRevision: _revision, weatherCall: _call, currents: _currents, skimmers: _skimmers, skimmerAdmissionAt: _admission, ecologyLedger: _ledger, reedwells: _reedwells, reedwellAdmissionAt: _reedwellAdmission, reedwellCandidateAfterId: _reedwellCandidate, organisms, ...fields } = legacy;
     const restored = restoreWorld(JSON.stringify({ ...fields, organisms: organisms.map(({ pigmentCredit: _credit, ...entry }) => entry), version: 1 }));
     expect(restored).not.toBeNull();
     expect(restored!.elapsed).toBe(legacy.elapsed);

@@ -44,6 +44,8 @@ The pigment readout measures the combined strength of sediment in the water. The
 
 Prism skimmers may emerge naturally from well-fed nests. Look for translucent diamonds gathering pigment, then releasing a small feeding light. They compete with grazers, spend stored color to live, and return their remaining material when they starve or reach eight minutes. Empty nests support none; existing saves receive no free arrivals. Observe a diamond to inspect its reserve. Lucent pigment deposits are now funded by actual light intake, so this recycling loop cannot amplify tiny light remnants into large grains. Reproduction remains a later expedition.
 
+Reedwell plants can root in wet pockets that can pay 0.6 loose pigment. Their five-leaf crowns gather external daylight and release little lights for lucents; night stops gathering. Roots retire after fifteen world minutes and return their pigment. They may be absent, and old saves receive no free plants or energy. Observe a crown to inspect its store; no planting control is needed.
+
 ## Publish on GitHub Pages
 
 The project lives at `C:\repos\MAGI\elsewhere` in its own Git checkout, connected to `https://github.com/AustinPoulson/elsewhere.git`. GitHub Pages uses GitHub Actions. Local Git authentication is unavailable and connector tree writes return HTTP 403; the signed-in GitHub browser is a supported publication fallback without changing account permissions.

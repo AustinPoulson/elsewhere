@@ -35,7 +35,7 @@ function pigmentMass(world: World): number {
 }
 
 function legacyPayload(world: World): string {
-  const { grazers: _grazers, nests: _nests, schemaRevision: _revision, weatherCall: _call, currents: _currents, skimmers: _skimmers, skimmerAdmissionAt: _admission, ecologyLedger: _ledger, organisms, ...legacy } = world;
+  const { grazers: _grazers, nests: _nests, schemaRevision: _revision, weatherCall: _call, currents: _currents, skimmers: _skimmers, skimmerAdmissionAt: _admission, ecologyLedger: _ledger, reedwells: _reedwells, reedwellAdmissionAt: _reedwellAdmission, reedwellCandidateAfterId: _reedwellCandidate, organisms, ...legacy } = world;
   return JSON.stringify({ ...legacy, organisms: organisms.map(({ pigmentCredit: _credit, ...entry }) => entry), version: 1 });
 }
 

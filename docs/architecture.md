@@ -57,7 +57,7 @@ New behavior must respect a budget. Accumulated visual history must age, compact
 
 ## Snapshots and browser saves
 
-World snapshots use version `3` with `schemaRevision: 3`, `skimmers`, `skimmerAdmissionAt`, `ecologyLedger`, lucent `pigmentCredit`, `currents`, and `weatherCall: { startedAt, nextAllowedAt }`. They include the seed, random state, clock/tick, next entity ID, entities, cumulative light consumption, grazer cargo and home references, and nest pigment. This lets a snapshot resume the world rather than merely reproducing its opening seed. Pause/tool selection and temporary rendering state belong to the interface rather than ecological history.
+World snapshots use version `3` with `schemaRevision: 4`, `reedwells`, `reedwellAdmissionAt`, `reedwellCandidateAfterId`, `skimmers`, `skimmerAdmissionAt`, `ecologyLedger`, lucent `pigmentCredit`, `currents`, and `weatherCall: { startedAt, nextAllowedAt }`. They include the seed, random state, clock/tick, next entity ID, entities, cumulative light consumption, grazer cargo and home references, and nest pigment. This lets a snapshot resume the world rather than merely reproducing its opening seed. Pause/tool selection and temporary rendering state belong to the interface rather than ecological history.
 
 Imports check the version, numeric ranges, collection limits, entity shapes, and identifiers before replacing the active world. A rejected import leaves the current world intact and shows visible feedback. Local storage failures are visible without preventing play. Future schema changes need either an explicit migration or a clear unsupported-version message.
 
@@ -78,6 +78,18 @@ Skimmers gather at most0.03 pigment/sec, dissipate0.002/sec and convert0.9 reser
 `world/feeding.ts` credits0.02 pigment per actually consumed light, storing at most1/lucent and depositing funded0.06–0.3 grains on the existing cadence. Full floors retain bounded credit and account excess as a sink. This replaces the prior any-positive-intake grain gift and protects the new feedback loop. Pigment, physiological energy and raw light are distinct units.
 
 Nearest-food searches are staggered once per six ticks, at most600 comparisons/skimmer; a reused shared600-entry index resolves saved target IDs between searches. Four reusable display objects/body, six bodies and one three-second cue/body bound rendering, with no new trails or history. Existing Observe includes skimmers; no tool/action was added. The renderer and UI read authoritative state. [Expedition008](expedition-008-prism-skimmers.md) records validation and acceptance.
+
+## Reedwells and external daylight
+
+`world/species/catalog.ts` separates typed definitions from active populations. Both new types use its shared24-record admission ceiling and six-per-type limits; all current species maxima permit12 new bodies, additional to42 lucents and8 grazers. Unknown future catalog entries must join the shared count before implementation. `species/resources.ts` owns their common safe-ID, hue-transfer and finite pigment-return rules.
+
+`world/species/reedwell.ts` attempts one grain-centered pocket every six ticks while rain intensity is at least0.5. A saved scalar source-ID cursor rotates candidates, so an underfunded pocket cannot monopolize admission. One <=600-source candidate pass and one bounded distance/ID funding pass debit exactly0.6 pigment within32 units only after legal coast,64-unit spacing, population, safe-ID and60-second success-rest checks pass. No source queue or refusal PRNG draws exist. Body0.6 is the entire paid root; new populations start empty.
+
+`world/environment/daylight.ts` derives external intensity `max(0, sin(2*pi*((elapsed + seed%360)%360)/360))`. Each root harvests at most0.18 light energy/second into capacity3, then transfers exactly1.5 to an ordinary feeding light with15-second rest. Full light capacity retains stored energy; overflow is unharvested daylight with no banked debt. Night harvest is zero; an already paid store can still release. At age900s, root pigment returns through the same one-grain/nearest-underfilled/mineralization rule as skimmers, unused light energy explicitly dissipates, and the living slot is freed. Fresh wet pigment can fund later reentry. There is no seed, reproduction or dormant stage in this slice.
+
+Revision3-to4 migration adds empty reedwells, an inactive admission deadline, zero candidate cursor and four zero cumulative light-account fields. All earlier paid feeding, weather, currents, populations, identities, time and PRNG remain intact. Older-schema hybrids containing new state reject. Arbitrary-phase saves preserve charge, age, emission/admission clocks and source rotation even after the cursor's grain disappears. Historical shower provenance remains immutable.
+
+`render/ReedwellRenderer.ts` owns four reused display objects/root, five short leaf shapes and one <=3-second release ring/root. The current six-plus-six catalog permits at most12 new-type short cues, below the shared16-effect ceiling; there are no trails or particle queues. Existing Observe supplies pointer/keyboard inspection, and reduced motion removes sway/release rings. Pause, persistence and other controls retain their existing roles. [Expedition009](expedition-009-reedwells.md) records ecological evidence and limitations.
 
 ## A brief for an agent addition
 

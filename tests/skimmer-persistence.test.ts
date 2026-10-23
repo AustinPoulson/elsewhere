@@ -5,7 +5,7 @@ import { createWorld, stepWorld } from '../src/world/simulation';
 import type { Skimmer, World } from '../src/world/types';
 
 function legacy(world: World, version: 1 | 2 | 3, revision = 2) {
-  const { skimmers: _skimmers, skimmerAdmissionAt: _admission, ecologyLedger: _ledger, organisms, ...old } = structuredClone(world);
+  const { skimmers: _skimmers, skimmerAdmissionAt: _admission, ecologyLedger: _ledger, reedwells: _reedwells, reedwellAdmissionAt: _reedwellAdmission, reedwellCandidateAfterId: _reedwellCandidate, organisms, ...old } = structuredClone(world);
   const result: Record<string, any> = { ...old, version,
     organisms: organisms.map(({ pigmentCredit: _credit, ...entry }) => entry) };
   if (version !== 3) { delete result.schemaRevision; delete result.weatherCall; delete result.currents; }
@@ -28,7 +28,7 @@ function inhabited(): World {
   world.skimmers = [skimmer];
   world.skimmerAdmissionAt = 60;
   world.organisms[0].pigmentCredit = .073;
-  world.ecologyLedger = { mineralizedPigment: .2, maintenancePigment: .01, emittedLight: 1.35, pigmentConverted: .9, feedingCreditLost: .03 };
+  world.ecologyLedger = { ...world.ecologyLedger, mineralizedPigment: .2, maintenancePigment: .01, emittedLight: 1.35, pigmentConverted: .9, feedingCreditLost: .03 };
   return world;
 }
 
@@ -40,11 +40,11 @@ describe('prism snapshot revision', () => {
       const before = JSON.stringify(source);
       const restored = restoreWorld(before)!;
       expect(restored).not.toBeNull();
-      expect(restored).toMatchObject({ version: 3, schemaRevision: 3, skimmers: [], skimmerAdmissionAt: 123,
+      expect(restored).toMatchObject({ version: 3, schemaRevision: 4, skimmers: [], skimmerAdmissionAt: 123,
         elapsed: 123, tick: 3690, seed: source.seed, randomState: source.randomState,
         lights: source.lights, sediment: source.sediment, consumed: source.consumed });
       expect(restored.organisms).toEqual(source.organisms.map((entry: object) => ({ ...entry, pigmentCredit: 0 })));
-      expect(Object.values(restored.ecologyLedger)).toEqual([0, 0, 0, 0, 0]);
+      expect(Object.values(restored.ecologyLedger)).toEqual([0, 0, 0, 0, 0, 0, 0, 0, 0]);
       expect(restored.nextId).toBe(source.nextId + (version === 1 ? 8 : 0));
       expect(JSON.stringify(source)).toBe(before);
       expect(restoreWorld(serializeWorld(restored))).toEqual(restored);
@@ -119,7 +119,7 @@ describe('prism snapshot revision', () => {
       w => { w.skimmers[0].lastEmissionAt = 21; }, w => { w.skimmers[0].lastEmissionAt = -1; },
       w => { w.skimmers[0].id = w.currents[0].id; }, w => { w.skimmers[0].id = w.nextId; },
       w => { w.skimmers = Array.from({ length: 7 }, (_, index) => ({ ...w.skimmers[0], id: w.nextId + index })); w.nextId += 7; },
-      w => { w.schemaRevision = 4; },
+      w => { w.schemaRevision = 5; },
     ];
     for (const change of changes) {
       const world = inhabited(); change(world);

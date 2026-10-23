@@ -198,6 +198,9 @@ describe('autonomous prism skimmer', () => {
 
   it('runs a twenty-minute ordinary ecosystem against a no-skimmer control without runaway recycling', () => {
     const world = habitat();
+    // Isolate this historical skimmer comparison from independently funded
+    // reedwell light in both trajectories; their interaction has its own tests.
+    world.reedwellAdmissionAt = 2000;
     world.nests[0].pigment = .61; // Leave room for ordinary nest fade before the first admission poll.
     world.organisms = [world.organisms[0]];
     Object.assign(world.organisms[0], { x: 755, y: 500, vx: 0, vy: 0, energy: .5, trail: [] });
@@ -211,6 +214,7 @@ describe('autonomous prism skimmer', () => {
     grain(world, world.nests[0].x, world.nests[0].y);
     const control = structuredClone(world);
     control.skimmerAdmissionAt = 2000;
+    control.reedwellAdmissionAt = 2000;
     const snapshots: { elapsed: number; emitted: number; converted: number; credit: number }[] = [];
     for (let tick = 0; tick < 30 * 1200; tick++) {
       stepWorld(world); stepWorld(control);
