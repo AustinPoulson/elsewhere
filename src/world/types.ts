@@ -44,12 +44,26 @@ export interface Skimmer extends Point {
   emissionNextAllowedAt: number;
   lastEmissionAt: number | null;
 }
+export interface Reedwell extends Point {
+  id: number;
+  species: 'reedwell';
+  body: 0.6;
+  age: number;
+  hue: number;
+  lightStore: number;
+  emissionNextAllowedAt: number;
+  lastEmissionAt: number | null;
+}
 export interface EcologyLedger {
   mineralizedPigment: number;
   maintenancePigment: number;
   emittedLight: number;
   pigmentConverted: number;
   feedingCreditLost: number;
+  daylightHarvested: number;
+  daylightUnharvested: number;
+  reedwellEmittedLight: number;
+  reedwellDissipatedLight: number;
 }
 export interface LightSource extends Point {
   id: number;
@@ -85,9 +99,12 @@ export interface Nest extends Point {
 }
 export interface World {
   version: 3;
-  schemaRevision: 3;
+  schemaRevision: 4;
   skimmers: Skimmer[];
   skimmerAdmissionAt: number;
+  reedwells: Reedwell[];
+  reedwellAdmissionAt: number;
+  reedwellCandidateAfterId: number;
   ecologyLedger: EcologyLedger;
   currents: Current[];
   weatherCall: { startedAt: number | null; nextAllowedAt: number };
@@ -112,6 +129,7 @@ export interface WorldStats {
   consumed: number;
   grazers: number;
   skimmers: number;
+  reedwells: number;
   nestPigment: number;
 }
 

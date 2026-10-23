@@ -1,10 +1,11 @@
 import {
   GRAZER_CAPACITY, LIMITS, NEST_CAPACITY, isInPool,
-  type Current, type Grazer, type LightSource, type Nest, type Organism, type Sediment, type Skimmer, type EcologyLedger, type World,
+  type Current, type Grazer, type LightSource, type Nest, type Organism, type Sediment, type Skimmer, type Reedwell, type EcologyLedger, type World,
 } from './types';
 import { initializeGrazers } from './simulation';
 import { RAIN_CALL_COOLDOWN } from './weather';
 import { CURRENT_DURATION, CURRENT_RADIUS, MAX_CURRENTS, currentStrength } from './actions/current';
+import { NEW_TYPE_POPULATION_CAP, REEDWELL_CAP, SKIMMER_CAP, SPECIES_CATALOG } from './species/catalog';
 
 const MAX_SAVE_LENGTH = 1_000_000;
 const MAX_NUMBER = Number.MAX_SAFE_INTEGER;
@@ -98,13 +99,31 @@ function skimmer(value: unknown, elapsed: number, nextId: number): boolean {
       : range(value.lastEmissionAt, 0, elapsed) && value.emissionNextAllowedAt === value.lastEmissionAt + 15);
 }
 
-function ledger(value: unknown): value is EcologyLedger {
-  return record(value) && ['mineralizedPigment', 'maintenancePigment', 'emittedLight', 'pigmentConverted', 'feedingCreditLost']
-    .every(key => range(value[key], 0, MAX_NUMBER));
+const PRISM_LEDGER_KEYS = ['mineralizedPigment', 'maintenancePigment', 'emittedLight', 'pigmentConverted', 'feedingCreditLost'] as const;
+const REEDWELL_LEDGER_KEYS = ['daylightHarvested', 'daylightUnharvested', 'reedwellEmittedLight', 'reedwellDissipatedLight'] as const;
+
+function ledger(value: unknown, reedwells: boolean): boolean {
+  return record(value) && PRISM_LEDGER_KEYS.every(key => range(value[key], 0, MAX_NUMBER))
+    && (reedwells ? REEDWELL_LEDGER_KEYS.every(key => range(value[key], 0, MAX_NUMBER))
+      : REEDWELL_LEDGER_KEYS.every(key => !(key in value)));
+}
+
+function reedwell(value: unknown, elapsed: number): boolean {
+  const policy = SPECIES_CATALOG.reedwell;
+  return point(value, policy.margin) && integer(value.id, 1) && value.species === 'reedwell'
+    && value.body === policy.bodyPigment && range(value.age, 0, policy.lifespan)
+    && range(value.hue, 0, 360) && value.hue < 360 && range(value.lightStore, 0, policy.lightCapacity)
+    && range(value.emissionNextAllowedAt, 0, Math.min(MAX_NUMBER, elapsed + policy.emissionRest))
+    && (value.lastEmissionAt === null
+      ? (value.emissionNextAllowedAt as number) <= elapsed
+      : range(value.lastEmissionAt, 0, elapsed) && value.emissionNextAllowedAt === value.lastEmissionAt + policy.emissionRest);
 }
 
 type PrePrismOrganism = Omit<Organism, 'pigmentCredit'>;
-type Revision2World = Omit<World, 'schemaRevision' | 'skimmers' | 'skimmerAdmissionAt' | 'ecologyLedger' | 'organisms'>
+type PrismLedger = Omit<EcologyLedger, typeof REEDWELL_LEDGER_KEYS[number]>;
+type Revision3World = Omit<World, 'schemaRevision' | 'reedwells' | 'reedwellAdmissionAt' | 'reedwellCandidateAfterId' | 'ecologyLedger'>
+  & { schemaRevision: 3; ecologyLedger: PrismLedger };
+type Revision2World = Omit<Revision3World, 'schemaRevision' | 'skimmers' | 'skimmerAdmissionAt' | 'ecologyLedger' | 'organisms'>
   & { schemaRevision: 2; organisms: PrePrismOrganism[] };
 type LegacyWorld = Omit<Revision2World, 'version' | 'schemaRevision' | 'weatherCall' | 'currents'> & { version: 1 | 2 };
 type Revision1World = Omit<Revision2World, 'schemaRevision' | 'currents'> & { schemaRevision: 1 };
@@ -124,10 +143,16 @@ function migrateRevision1To2(previous: Revision1World): Revision2World {
   return { ...previous, schemaRevision: 2, currents: [] };
 }
 
-function migrateRevision2To3(previous: Revision2World): World {
+function migrateRevision2To3(previous: Revision2World): Revision3World {
   return { ...previous, schemaRevision: 3, skimmers: [], skimmerAdmissionAt: previous.elapsed,
     organisms: previous.organisms.map(entry => ({ ...entry, pigmentCredit: 0 })),
     ecologyLedger: { mineralizedPigment: 0, maintenancePigment: 0, emittedLight: 0, pigmentConverted: 0, feedingCreditLost: 0 } };
+}
+
+function migrateRevision3To4(previous: Revision3World): World {
+  return { ...previous, schemaRevision: 4, reedwells: [], reedwellAdmissionAt: previous.elapsed, reedwellCandidateAfterId: 0,
+    ecologyLedger: { ...previous.ecologyLedger, daylightHarvested: 0, daylightUnharvested: 0,
+      reedwellEmittedLight: 0, reedwellDissipatedLight: 0 } };
 }
 
 export function serializeWorld(world: World): string {
@@ -148,10 +173,10 @@ export function restoreWorld(input: string): World | null {
     || !range(parsed.elapsed, 0, MAX_NUMBER) || !integer(parsed.tick)
     || !integer(parsed.nextId, 1) || !range(parsed.consumed, 0, MAX_NUMBER)) return null;
 
-  if ((parsed.version === 3 && ((parsed.schemaRevision !== 1 && parsed.schemaRevision !== 2 && parsed.schemaRevision !== 3) || !weatherCall(parsed.weatherCall, parsed.elapsed)))
+  if ((parsed.version === 3 && ((parsed.schemaRevision !== 1 && parsed.schemaRevision !== 2 && parsed.schemaRevision !== 3 && parsed.schemaRevision !== 4) || !weatherCall(parsed.weatherCall, parsed.elapsed)))
     || (parsed.version !== 3 && ('schemaRevision' in parsed || 'weatherCall' in parsed || 'currents' in parsed))) return null;
   let currents: Current[] = [];
-  if (parsed.version === 3 && (parsed.schemaRevision === 2 || parsed.schemaRevision === 3)) {
+  if (parsed.version === 3 && (parsed.schemaRevision === 2 || parsed.schemaRevision === 3 || parsed.schemaRevision === 4)) {
     if (!Array.isArray(parsed.currents) || parsed.currents.length > MAX_CURRENTS
       || !parsed.currents.every((entry: unknown) => current(entry, parsed.elapsed as number))) return null;
     currents = parsed.currents as Current[];
@@ -162,17 +187,28 @@ export function restoreWorld(input: string): World | null {
     || !Array.isArray(lights) || lights.length > LIMITS.lights
     || !Array.isArray(deposits) || deposits.length > LIMITS.sediment) return null;
   if (!organisms.every(organism) || !lights.every(light) || !deposits.every(sediment)) return null;
-  const prism = parsed.version === 3 && parsed.schemaRevision === 3;
+  const planted = parsed.version === 3 && parsed.schemaRevision === 4;
+  const prism = parsed.version === 3 && (parsed.schemaRevision === 3 || planted);
   let skimmers: Skimmer[] = [];
   if (prism) {
     if (!organisms.every(entry => record(entry) && range(entry.pigmentCredit, 0, 1))
-      || !Array.isArray(parsed.skimmers) || parsed.skimmers.length > 6 || parsed.skimmers.length > 24
+      || !Array.isArray(parsed.skimmers) || parsed.skimmers.length > SKIMMER_CAP || parsed.skimmers.length > NEW_TYPE_POPULATION_CAP
       || !parsed.skimmers.every(entry => skimmer(entry, parsed.elapsed as number, parsed.nextId as number))
       || !range(parsed.skimmerAdmissionAt, 0, Math.min(MAX_NUMBER, parsed.elapsed + 60))
-      || !ledger(parsed.ecologyLedger)) return null;
+      || !ledger(parsed.ecologyLedger, planted)) return null;
     skimmers = parsed.skimmers as Skimmer[];
   } else if ('skimmers' in parsed || 'skimmerAdmissionAt' in parsed || 'ecologyLedger' in parsed
     || organisms.some(entry => record(entry) && 'pigmentCredit' in entry)) return null;
+
+  let reedwells: Reedwell[] = [];
+  if (planted) {
+    if (!Array.isArray(parsed.reedwells) || parsed.reedwells.length > REEDWELL_CAP
+      || parsed.reedwells.length + skimmers.length > NEW_TYPE_POPULATION_CAP
+      || !parsed.reedwells.every(entry => reedwell(entry, parsed.elapsed as number))
+      || !integer(parsed.reedwellCandidateAfterId, 0, parsed.nextId - 1)
+      || !range(parsed.reedwellAdmissionAt, 0, Math.min(MAX_NUMBER, parsed.elapsed + SPECIES_CATALOG.reedwell.admissionRest))) return null;
+    reedwells = parsed.reedwells as Reedwell[];
+  } else if ('reedwells' in parsed || 'reedwellAdmissionAt' in parsed || 'reedwellCandidateAfterId' in parsed) return null;
 
   let grazers: Grazer[] = [];
   let nests: Nest[] = [];
@@ -190,7 +226,7 @@ export function restoreWorld(input: string): World | null {
   if (skimmers.some(entry => !nestIds.has(entry.homeNestId))) return null;
   const ids = new Set<number>();
   let largestId = 0;
-  for (const entry of [...organisms, ...lights, ...deposits, ...grazers, ...nests, ...currents, ...skimmers]) {
+  for (const entry of [...organisms, ...lights, ...deposits, ...grazers, ...nests, ...currents, ...skimmers, ...reedwells]) {
     const id = (entry as Record<string, unknown>).id as number;
     if (ids.has(id)) return null;
     ids.add(id);
@@ -213,11 +249,15 @@ export function restoreWorld(input: string): World | null {
       weatherCall: { ...(parsed.weatherCall as World['weatherCall']) } };
     const revision2: Revision2World = parsed.schemaRevision === 1 ? migrateRevision1To2(revision1)
       : { ...revision1, schemaRevision: 2, currents: currents.filter(entry => currentStrength(entry, parsed.elapsed as number) > 0) };
-    return prism ? { ...revision2, schemaRevision: 3, organisms: organisms as Organism[], skimmers,
-      skimmerAdmissionAt: parsed.skimmerAdmissionAt as number, ecologyLedger: { ...(parsed.ecologyLedger as EcologyLedger) } }
+    const revision3: Revision3World = prism ? { ...revision2, schemaRevision: 3, organisms: organisms as Organism[], skimmers,
+      skimmerAdmissionAt: parsed.skimmerAdmissionAt as number, ecologyLedger: { ...(parsed.ecologyLedger as PrismLedger) } }
       : migrateRevision2To3(revision2);
+    return planted ? { ...revision3, schemaRevision: 4, reedwells,
+      reedwellAdmissionAt: parsed.reedwellAdmissionAt as number, reedwellCandidateAfterId: parsed.reedwellCandidateAfterId as number,
+      ecologyLedger: { ...(parsed.ecologyLedger as EcologyLedger) } }
+      : migrateRevision3To4(revision3);
   }
   let legacy: LegacyWorld = { ...ecology, version: parsed.version };
   if (legacy.version === 1) legacy = migrateV1ToV2(legacy);
-  return migrateRevision2To3(migrateRevision1To2(migrateV2ToV3(legacy)));
+  return migrateRevision3To4(migrateRevision2To3(migrateRevision1To2(migrateV2ToV3(legacy))));
 }

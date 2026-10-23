@@ -1,26 +1,15 @@
 import { confinePosition } from '../geometry';
 import { LIMITS, type Nest, type Sediment, type Skimmer, type World } from '../types';
 
-export const NEW_TYPE_POPULATION_CAP = 24;
-export const SKIMMER_CAP = 6;
-export const SPECIES_CATALOG = { skimmer: { cap: SKIMMER_CAP, bodyPigment: .2, initialReserve: .4,
-  admissionPigment: .6, admissionRest: 60, lifespan: 480, starvationLimit: 60 } } as const;
+import { activeNewTypePopulation, NEW_TYPE_POPULATION_CAP, SKIMMER_CAP, SPECIES_CATALOG } from './catalog';
+import { blendHue, returnPigment, safeId } from './resources';
+export { NEW_TYPE_POPULATION_CAP, SKIMMER_CAP, SPECIES_CATALOG } from './catalog';
 export const SKIMMER_MAINTENANCE = .002;
 export const SKIMMER_INTAKE = .03;
 export const SKIMMER_EMISSION_PIGMENT = .9;
 export const SKIMMER_EMISSION_LIGHT = 1.35;
 const TAU = Math.PI * 2;
 const indexes = new WeakMap<World, Map<number, Sediment>>();
-
-function blendHue(a: number, b: number, amountA: number, amountB: number): number {
-  if (amountA <= 0) return b;
-  const radians = Math.PI / 180;
-  const x = Math.cos(a * radians) * amountA + Math.cos(b * radians) * amountB;
-  const y = Math.sin(a * radians) * amountA + Math.sin(b * radians) * amountB;
-  return Math.hypot(x, y) < 1e-9 ? b : (Math.atan2(y, x) / radians + 360) % 360;
-}
-
-function safeId(world: World): boolean { return Number.isSafeInteger(world.nextId) && world.nextId > 0 && world.nextId < Number.MAX_SAFE_INTEGER; }
 
 function findFood(world: World, skimmer: Skimmer): number | null {
   let best: Sediment | undefined;
@@ -81,37 +70,9 @@ function updateOne(world: World, skimmer: Skimmer, dt: number, index: Map<number
   }
 }
 
-function returnPigment(world: World, skimmer: Skimmer): void {
-  let amount = skimmer.body + skimmer.reserve;
-  if (amount > 0 && world.sediment.length < LIMITS.sediment && safeId(world)) {
-    const returned = Math.min(1, amount);
-    world.sediment.push({ id: world.nextId++, x: skimmer.x, y: skimmer.y, radius: 6,
-      hue: skimmer.hue, strength: returned, age: 0 });
-    amount -= returned;
-  } else if (amount > 0) {
-    let nearest: Sediment | undefined;
-    let distance = Infinity;
-    for (const grain of world.sediment) {
-      if (grain.strength >= 1) continue;
-      const candidate = Math.hypot(grain.x - skimmer.x, grain.y - skimmer.y);
-      if (candidate < distance || (candidate === distance && (!nearest || grain.id < nearest.id))) {
-        nearest = grain;
-        distance = candidate;
-      }
-    }
-    if (nearest) {
-      const returned = Math.min(amount, 1 - nearest.strength);
-      nearest.hue = blendHue(nearest.hue, skimmer.hue, nearest.strength, returned);
-      nearest.strength += returned;
-      amount -= returned;
-    }
-  }
-  world.ecologyLedger.mineralizedPigment += amount;
-}
-
 function admit(world: World): void {
   if (world.tick % 6 !== 0 || world.elapsed < world.skimmerAdmissionAt
-    || world.skimmers.length >= SKIMMER_CAP || world.skimmers.length >= NEW_TYPE_POPULATION_CAP) return;
+    || world.skimmers.length >= SKIMMER_CAP || activeNewTypePopulation(world) >= NEW_TYPE_POPULATION_CAP) return;
   let candidate: Nest | undefined;
   for (const nest of world.nests) {
     if (nest.pigment >= .6 && !world.skimmers.some(skimmer => skimmer.homeNestId === nest.id)
@@ -144,7 +105,7 @@ export function updateSkimmers(world: World, dt: number): void {
   // Stage exits before admissions; no in-loop removal or hidden remains.
   let write = 0;
   for (const skimmer of world.skimmers) {
-    if (skimmer.age >= SPECIES_CATALOG.skimmer.lifespan || skimmer.starvedFor >= SPECIES_CATALOG.skimmer.starvationLimit) returnPigment(world, skimmer);
+    if (skimmer.age >= SPECIES_CATALOG.skimmer.lifespan || skimmer.starvedFor >= SPECIES_CATALOG.skimmer.starvationLimit) returnPigment(world, skimmer, skimmer.hue, skimmer.body + skimmer.reserve);
     else world.skimmers[write++] = skimmer;
   }
   world.skimmers.length = write;
