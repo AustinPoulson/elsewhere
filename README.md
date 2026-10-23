@@ -48,6 +48,8 @@ Reedwell plants can root in wet pockets that can pay 0.6 loose pigment. Their fi
 
 Rainbell polyps can anchor in wet pockets funded by 0.6 loose pigment. They spend stored pigment to pump ordinary currents toward their fixed roots, drawing distant grains into feeding reach. They only gain pigment when a grain actually arrives; pumping and upkeep both cost pigment. Dry, sparse and full-current pools can have no active polyp, and old saves receive none for free. A polyp ends after ten world minutes or a minute without reserve and returns its remaining body and store. Observe its cup to inspect it; no new control is needed.
 
+Siltstitchers may emerge from pigment-rich nests. Watch their forked bodies carry a visible bundle from the nest to a food-poor fringe, leave a real grain, and let a grazer gather that pigment again. Nest pigment pays for each new body, its upkeep, and every carried load. Sparse nests support none; an old save gains no free population. A siltstitcher that cannot keep its reserve or reaches eight world minutes returns its remaining pigment through the pool's bounded return rule. Observe one to inspect its cargo and reserve; no new control is needed.
+
 ## Publish on GitHub Pages
 
 The project lives at `C:\repos\MAGI\elsewhere` in its own Git checkout, connected to `https://github.com/AustinPoulson/elsewhere.git`. GitHub Pages uses GitHub Actions. Local Git authentication is unavailable and connector tree writes return HTTP 403; the signed-in GitHub browser is a supported publication fallback without changing account permissions.

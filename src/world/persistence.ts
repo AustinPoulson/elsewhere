@@ -1,11 +1,11 @@
 import {
   GRAZER_CAPACITY, LIMITS, NEST_CAPACITY, isInPool,
-  type Current, type Grazer, type LightSource, type Nest, type Organism, type Sediment, type Skimmer, type Reedwell, type Rainbell, type EcologyLedger, type World,
+  type Current, type Grazer, type LightSource, type Nest, type Organism, type Sediment, type Skimmer, type Reedwell, type Rainbell, type Siltstitcher, type EcologyLedger, type World,
 } from './types';
 import { initializeGrazers } from './simulation';
 import { RAIN_CALL_COOLDOWN } from './weather';
 import { CURRENT_DURATION, CURRENT_RADIUS, MAX_CURRENTS, currentStrength } from './actions/current';
-import { NEW_TYPE_POPULATION_CAP, RAINBELL_CAP, REEDWELL_CAP, SKIMMER_CAP, SPECIES_CATALOG } from './species/catalog';
+import { NEW_TYPE_POPULATION_CAP, RAINBELL_CAP, REEDWELL_CAP, SILTSTITCHER_CAP, SKIMMER_CAP, SPECIES_CATALOG } from './species/catalog';
 
 const MAX_SAVE_LENGTH = 1_000_000;
 const MAX_NUMBER = Number.MAX_SAFE_INTEGER;
@@ -102,13 +102,16 @@ function skimmer(value: unknown, elapsed: number, nextId: number): boolean {
 const PRISM_LEDGER_KEYS = ['mineralizedPigment', 'maintenancePigment', 'emittedLight', 'pigmentConverted', 'feedingCreditLost'] as const;
 const REEDWELL_LEDGER_KEYS = ['daylightHarvested', 'daylightUnharvested', 'reedwellEmittedLight', 'reedwellDissipatedLight'] as const;
 const RAINBELL_LEDGER_KEYS = ['rainbellIntake', 'rainbellPumpingPigment', 'rainbellMaintenancePigment'] as const;
+const SILTSTITCHER_LEDGER_KEYS = ['siltstitcherNestReserve', 'siltstitcherNestCargo', 'siltstitcherOutwardPigment', 'siltstitcherMaintenancePigment'] as const;
 
-function ledger(value: unknown, reedwells: boolean, rainbells: boolean): boolean {
+function ledger(value: unknown, reedwells: boolean, rainbells: boolean, siltstitchers: boolean): boolean {
   return record(value) && PRISM_LEDGER_KEYS.every(key => range(value[key], 0, MAX_NUMBER))
     && (reedwells ? REEDWELL_LEDGER_KEYS.every(key => range(value[key], 0, MAX_NUMBER))
       : REEDWELL_LEDGER_KEYS.every(key => !(key in value)))
     && (rainbells ? RAINBELL_LEDGER_KEYS.every(key => range(value[key], 0, MAX_NUMBER))
-      : RAINBELL_LEDGER_KEYS.every(key => !(key in value)));
+      : RAINBELL_LEDGER_KEYS.every(key => !(key in value)))
+    && (siltstitchers ? SILTSTITCHER_LEDGER_KEYS.every(key => range(value[key], 0, MAX_NUMBER))
+      : SILTSTITCHER_LEDGER_KEYS.every(key => !(key in value)));
 }
 
 function reedwell(value: unknown, elapsed: number): boolean {
@@ -136,10 +139,28 @@ function rainbell(value: unknown, elapsed: number, nextId: number): boolean {
       : range(value.lastPulseAt, 0, elapsed) && value.pulseNextAllowedAt === value.lastPulseAt + policy.pulseRest);
 }
 
+function siltstitcher(value: unknown, nextId: number): boolean {
+  const policy = SPECIES_CATALOG.siltstitcher;
+  if (!point(value, policy.margin) || !integer(value.id, 1) || value.species !== 'siltstitcher'
+    || value.body !== policy.bodyPigment || !range(value.age, 0, policy.lifespan)
+    || !range(value.vx, -policy.speed, policy.speed) || !range(value.vy, -policy.speed, policy.speed)
+    || Math.hypot(value.vx, value.vy) > policy.speed + 1e-9
+    || !range(value.hue, 0, 360) || value.hue >= 360
+    || !range(value.reserve, 0, policy.reserveCapacity) || !range(value.cargo, 0, policy.cargoCapacity)
+    || !range(value.starvedFor, 0, policy.starvationLimit) || !range(value.blockedFor, 0, policy.blockedLimit)
+    || !integer(value.homeNestId, 1, nextId - 1)) return false;
+  if (value.mode === 'home' || value.mode === 'returning') return value.destination === null && value.blockedFor === 0;
+  return (value.mode === 'outbound' && value.blockedFor === 0 || value.mode === 'blocked')
+    && value.cargo >= policy.minimumPartialCargo && point(value.destination, policy.margin);
+}
+
 type PrePrismOrganism = Omit<Organism, 'pigmentCredit'>;
-type ReedwellLedger = Omit<EcologyLedger, typeof RAINBELL_LEDGER_KEYS[number]>;
+type RainbellLedger = Omit<EcologyLedger, typeof SILTSTITCHER_LEDGER_KEYS[number]>;
+type ReedwellLedger = Omit<RainbellLedger, typeof RAINBELL_LEDGER_KEYS[number]>;
 type PrismLedger = Omit<ReedwellLedger, typeof REEDWELL_LEDGER_KEYS[number]>;
-type Revision4World = Omit<World, 'schemaRevision' | 'rainbells' | 'rainbellAdmissionAt' | 'rainbellCandidateAfterId' | 'ecologyLedger'>
+type Revision5World = Omit<World, 'schemaRevision' | 'siltstitchers' | 'siltstitcherAdmissionAt' | 'siltstitcherCandidateAfterId' | 'ecologyLedger'>
+  & { schemaRevision: 5; ecologyLedger: RainbellLedger };
+type Revision4World = Omit<Revision5World, 'schemaRevision' | 'rainbells' | 'rainbellAdmissionAt' | 'rainbellCandidateAfterId' | 'ecologyLedger'>
   & { schemaRevision: 4; ecologyLedger: ReedwellLedger };
 type Revision3World = Omit<Revision4World, 'schemaRevision' | 'reedwells' | 'reedwellAdmissionAt' | 'reedwellCandidateAfterId' | 'ecologyLedger'>
   & { schemaRevision: 3; ecologyLedger: PrismLedger };
@@ -175,9 +196,15 @@ function migrateRevision3To4(previous: Revision3World): Revision4World {
       reedwellEmittedLight: 0, reedwellDissipatedLight: 0 } };
 }
 
-function migrateRevision4To5(previous: Revision4World): World {
+function migrateRevision4To5(previous: Revision4World): Revision5World {
   return { ...previous, schemaRevision: 5, rainbells: [], rainbellAdmissionAt: previous.elapsed, rainbellCandidateAfterId: 0,
     ecologyLedger: { ...previous.ecologyLedger, rainbellIntake: 0, rainbellPumpingPigment: 0, rainbellMaintenancePigment: 0 } };
+}
+
+function migrateRevision5To6(previous: Revision5World): World {
+  return { ...previous, schemaRevision: 6, siltstitchers: [], siltstitcherAdmissionAt: previous.elapsed, siltstitcherCandidateAfterId: 0,
+    ecologyLedger: { ...previous.ecologyLedger, siltstitcherNestReserve: 0, siltstitcherNestCargo: 0,
+      siltstitcherOutwardPigment: 0, siltstitcherMaintenancePigment: 0 } };
 }
 
 export function serializeWorld(world: World): string {
@@ -198,10 +225,10 @@ export function restoreWorld(input: string): World | null {
     || !range(parsed.elapsed, 0, MAX_NUMBER) || !integer(parsed.tick)
     || !integer(parsed.nextId, 1) || !range(parsed.consumed, 0, MAX_NUMBER)) return null;
 
-  if ((parsed.version === 3 && (!integer(parsed.schemaRevision, 1, 5) || !weatherCall(parsed.weatherCall, parsed.elapsed)))
+  if ((parsed.version === 3 && (!integer(parsed.schemaRevision, 1, 6) || !weatherCall(parsed.weatherCall, parsed.elapsed)))
     || (parsed.version !== 3 && ('schemaRevision' in parsed || 'weatherCall' in parsed || 'currents' in parsed))) return null;
   let currents: Current[] = [];
-  if (parsed.version === 3 && integer(parsed.schemaRevision, 2, 5)) {
+  if (parsed.version === 3 && integer(parsed.schemaRevision, 2, 6)) {
     if (!Array.isArray(parsed.currents) || parsed.currents.length > MAX_CURRENTS
       || !parsed.currents.every((entry: unknown) => current(entry, parsed.elapsed as number))) return null;
     currents = parsed.currents as Current[];
@@ -212,7 +239,8 @@ export function restoreWorld(input: string): World | null {
     || !Array.isArray(lights) || lights.length > LIMITS.lights
     || !Array.isArray(deposits) || deposits.length > LIMITS.sediment) return null;
   if (!organisms.every(organism) || !lights.every(light) || !deposits.every(sediment)) return null;
-  const pumping = parsed.version === 3 && parsed.schemaRevision === 5;
+  const stitching = parsed.version === 3 && parsed.schemaRevision === 6;
+  const pumping = parsed.version === 3 && (parsed.schemaRevision === 5 || stitching);
   const planted = parsed.version === 3 && (parsed.schemaRevision === 4 || pumping);
   const prism = parsed.version === 3 && (parsed.schemaRevision === 3 || planted);
   let skimmers: Skimmer[] = [];
@@ -221,7 +249,7 @@ export function restoreWorld(input: string): World | null {
       || !Array.isArray(parsed.skimmers) || parsed.skimmers.length > SKIMMER_CAP || parsed.skimmers.length > NEW_TYPE_POPULATION_CAP
       || !parsed.skimmers.every(entry => skimmer(entry, parsed.elapsed as number, parsed.nextId as number))
       || !range(parsed.skimmerAdmissionAt, 0, Math.min(MAX_NUMBER, parsed.elapsed + 60))
-      || !ledger(parsed.ecologyLedger, planted, pumping)) return null;
+      || !ledger(parsed.ecologyLedger, planted, pumping, stitching)) return null;
     skimmers = parsed.skimmers as Skimmer[];
   } else if ('skimmers' in parsed || 'skimmerAdmissionAt' in parsed || 'ecologyLedger' in parsed
     || organisms.some(entry => record(entry) && 'pigmentCredit' in entry)) return null;
@@ -246,6 +274,16 @@ export function restoreWorld(input: string): World | null {
     rainbells = parsed.rainbells as Rainbell[];
   } else if ('rainbells' in parsed || 'rainbellAdmissionAt' in parsed || 'rainbellCandidateAfterId' in parsed) return null;
 
+  let siltstitchers: Siltstitcher[] = [];
+  if (stitching) {
+    if (!Array.isArray(parsed.siltstitchers) || parsed.siltstitchers.length > SILTSTITCHER_CAP
+      || skimmers.length + reedwells.length + rainbells.length + parsed.siltstitchers.length > NEW_TYPE_POPULATION_CAP
+      || !parsed.siltstitchers.every(entry => siltstitcher(entry, parsed.nextId as number))
+      || !integer(parsed.siltstitcherCandidateAfterId, 0, parsed.nextId - 1)
+      || !range(parsed.siltstitcherAdmissionAt, 0, Math.min(MAX_NUMBER, parsed.elapsed + SPECIES_CATALOG.siltstitcher.admissionRest))) return null;
+    siltstitchers = parsed.siltstitchers as Siltstitcher[];
+  } else if ('siltstitchers' in parsed || 'siltstitcherAdmissionAt' in parsed || 'siltstitcherCandidateAfterId' in parsed) return null;
+
   let grazers: Grazer[] = [];
   let nests: Nest[] = [];
   if (parsed.version >= 2) {
@@ -262,7 +300,7 @@ export function restoreWorld(input: string): World | null {
   if (skimmers.some(entry => !nestIds.has(entry.homeNestId))) return null;
   const ids = new Set<number>();
   let largestId = 0;
-  for (const entry of [...organisms, ...lights, ...deposits, ...grazers, ...nests, ...currents, ...skimmers, ...reedwells, ...rainbells]) {
+  for (const entry of [...organisms, ...lights, ...deposits, ...grazers, ...nests, ...currents, ...skimmers, ...reedwells, ...rainbells, ...siltstitchers]) {
     const id = (entry as Record<string, unknown>).id as number;
     if (ids.has(id)) return null;
     ids.add(id);
@@ -274,6 +312,16 @@ export function restoreWorld(input: string): World | null {
     && ids.has(entry.targetSedimentId) && !sedimentIds.has(entry.targetSedimentId))) return null;
   if (rainbells.some(entry => [entry.feedTargetSedimentId, entry.pumpTargetSedimentId]
     .some(id => id !== null && ids.has(id) && !sedimentIds.has(id)))) return null;
+  if (siltstitchers.some(entry => ids.has(entry.homeNestId) && !nestIds.has(entry.homeNestId))) return null;
+  if (new Set(siltstitchers.map(entry => entry.homeNestId)).size !== siltstitchers.length) return null;
+  const homes = new Map(nests.map(entry => [entry.id, entry]));
+  const stitcherPolicy = SPECIES_CATALOG.siltstitcher;
+  if (siltstitchers.some(entry => {
+    const home = homes.get(entry.homeNestId);
+    if (!home || entry.destination === null) return false;
+    const reach = Math.hypot(entry.destination.x - home.x, entry.destination.y - home.y);
+    return reach < stitcherPolicy.destinationMinReach - 1e-9 || reach > stitcherPolicy.destinationMaxReach + 1e-9;
+  })) return null;
 
   // Only the versioned contract enters the simulation; storage is a UI concern.
   const ecology = {
@@ -294,11 +342,14 @@ export function restoreWorld(input: string): World | null {
       reedwellAdmissionAt: parsed.reedwellAdmissionAt as number, reedwellCandidateAfterId: parsed.reedwellCandidateAfterId as number,
       ecologyLedger: { ...(parsed.ecologyLedger as ReedwellLedger) } }
       : migrateRevision3To4(revision3);
-    return pumping ? { ...revision4, schemaRevision: 5, rainbells,
+    const revision5: Revision5World = pumping ? { ...revision4, schemaRevision: 5, rainbells,
       rainbellAdmissionAt: parsed.rainbellAdmissionAt as number, rainbellCandidateAfterId: parsed.rainbellCandidateAfterId as number,
-      ecologyLedger: { ...(parsed.ecologyLedger as EcologyLedger) } } : migrateRevision4To5(revision4);
+      ecologyLedger: { ...(parsed.ecologyLedger as RainbellLedger) } } : migrateRevision4To5(revision4);
+    return stitching ? { ...revision5, schemaRevision: 6, siltstitchers,
+      siltstitcherAdmissionAt: parsed.siltstitcherAdmissionAt as number, siltstitcherCandidateAfterId: parsed.siltstitcherCandidateAfterId as number,
+      ecologyLedger: { ...(parsed.ecologyLedger as EcologyLedger) } } : migrateRevision5To6(revision5);
   }
   let legacy: LegacyWorld = { ...ecology, version: parsed.version };
   if (legacy.version === 1) legacy = migrateV1ToV2(legacy);
-  return migrateRevision4To5(migrateRevision3To4(migrateRevision2To3(migrateRevision1To2(migrateV2ToV3(legacy)))));
+  return migrateRevision5To6(migrateRevision4To5(migrateRevision3To4(migrateRevision2To3(migrateRevision1To2(migrateV2ToV3(legacy))))));
 }

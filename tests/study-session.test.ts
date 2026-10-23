@@ -18,7 +18,7 @@ describe('safe shower study', () => {
     const expected = restoreWorld(JSON.stringify(fixture));
     expect(expected).not.toBeNull();
     const { version: _oldVersion, ...historicalEcology } = fixture;
-    const { version: _version, schemaRevision: _revision, weatherCall: _call, currents: _currents, skimmers: _skimmers, skimmerAdmissionAt: _admission, ecologyLedger: _ledger, reedwells: _reedwells, reedwellAdmissionAt: _reedwellAdmission, reedwellCandidateAfterId: _reedwellCandidate, rainbells: _rainbells, rainbellAdmissionAt: _rainbellAdmission, rainbellCandidateAfterId: _rainbellCandidate, organisms, ...normalizedEcology } = expected!;
+    const { version: _version, schemaRevision: _revision, weatherCall: _call, currents: _currents, skimmers: _skimmers, skimmerAdmissionAt: _admission, ecologyLedger: _ledger, reedwells: _reedwells, reedwellAdmissionAt: _reedwellAdmission, reedwellCandidateAfterId: _reedwellCandidate, rainbells: _rainbells, rainbellAdmissionAt: _rainbellAdmission, rainbellCandidateAfterId: _rainbellCandidate, siltstitchers: _siltstitchers, siltstitcherAdmissionAt: _siltstitcherAdmission, siltstitcherCandidateAfterId: _siltstitcherCandidate, organisms, ...normalizedEcology } = expected!;
     expect({ ...normalizedEcology, organisms: organisms.map(({ pigmentCredit: _credit, ...entry }) => entry) }).toEqual(historicalEcology);
     expect(expected!.seed).toBe(SHOWER_STUDY.seed);
     expect(expected!.tick).toBe(SHOWER_STUDY.steps);
@@ -123,7 +123,7 @@ describe('safe shower study', () => {
     const session = new WorldSession(createWorld(22));
     const legacy = JSON.parse(serializeWorld(createWorld(44)));
     legacy.version = 1; delete legacy.grazers; delete legacy.nests; delete legacy.weatherCall; delete legacy.schemaRevision; delete legacy.currents;
-    delete legacy.skimmers; delete legacy.skimmerAdmissionAt; delete legacy.ecologyLedger; delete legacy.reedwells; delete legacy.reedwellAdmissionAt; delete legacy.reedwellCandidateAfterId; delete legacy.rainbells; delete legacy.rainbellAdmissionAt; delete legacy.rainbellCandidateAfterId;
+    delete legacy.skimmers; delete legacy.skimmerAdmissionAt; delete legacy.ecologyLedger; delete legacy.reedwells; delete legacy.reedwellAdmissionAt; delete legacy.reedwellCandidateAfterId; delete legacy.rainbells; delete legacy.rainbellAdmissionAt; delete legacy.rainbellCandidateAfterId; delete legacy.siltstitchers; delete legacy.siltstitcherAdmissionAt; delete legacy.siltstitcherCandidateAfterId;
     for (const entry of legacy.organisms) delete entry.pigmentCredit;
     expect(session.importSnapshot(JSON.stringify(legacy), session.importToken())).toBe('imported');
     expect(session.world.version).toBe(3);

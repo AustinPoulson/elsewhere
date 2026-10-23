@@ -67,6 +67,22 @@ export interface Rainbell extends Point {
   pulseNextAllowedAt: number;
   lastPulseAt: number | null;
 }
+export interface Siltstitcher extends Point {
+  id: number;
+  species: 'siltstitcher';
+  vx: number;
+  vy: number;
+  body: 0.2;
+  reserve: number;
+  cargo: number;
+  age: number;
+  hue: number;
+  homeNestId: number;
+  starvedFor: number;
+  mode: 'home' | 'outbound' | 'blocked' | 'returning';
+  destination: Point | null;
+  blockedFor: number;
+}
 export interface EcologyLedger {
   mineralizedPigment: number;
   maintenancePigment: number;
@@ -80,6 +96,10 @@ export interface EcologyLedger {
   rainbellIntake: number;
   rainbellPumpingPigment: number;
   rainbellMaintenancePigment: number;
+  siltstitcherNestReserve: number;
+  siltstitcherNestCargo: number;
+  siltstitcherOutwardPigment: number;
+  siltstitcherMaintenancePigment: number;
 }
 export interface LightSource extends Point {
   id: number;
@@ -115,7 +135,7 @@ export interface Nest extends Point {
 }
 export interface World {
   version: 3;
-  schemaRevision: 5;
+  schemaRevision: 6;
   skimmers: Skimmer[];
   skimmerAdmissionAt: number;
   reedwells: Reedwell[];
@@ -124,6 +144,9 @@ export interface World {
   rainbells: Rainbell[];
   rainbellAdmissionAt: number;
   rainbellCandidateAfterId: number;
+  siltstitchers: Siltstitcher[];
+  siltstitcherAdmissionAt: number;
+  siltstitcherCandidateAfterId: number;
   ecologyLedger: EcologyLedger;
   currents: Current[];
   weatherCall: { startedAt: number | null; nextAllowedAt: number };
@@ -150,6 +173,7 @@ export interface WorldStats {
   skimmers: number;
   reedwells: number;
   rainbells: number;
+  siltstitchers: number;
   nestPigment: number;
 }
 

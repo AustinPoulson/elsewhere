@@ -9,6 +9,7 @@ import { CALM_LIGHT_REACH, effectiveLightReach, effectiveWeather } from '../worl
 import { currentStrength, MAX_CURRENTS } from '../world/actions/current';
 import { ReedwellRenderer } from './ReedwellRenderer';
 import { RainbellRenderer } from './RainbellRenderer';
+import { SiltstitcherRenderer } from './SiltstitcherRenderer';
 
 interface SpriteVisual {
   sprite: Sprite;
@@ -90,6 +91,7 @@ export class TidepoolRenderer {
   private readonly nestLayer = new Container();
   private readonly reedwellLayer = new Container();
   private readonly rainbellLayer = new Container();
+  private readonly siltstitcherLayer = new Container();
   private readonly lightLayer = new Container();
   private readonly organismLayer = new Container();
   private readonly grazerLayer = new Container();
@@ -116,6 +118,7 @@ export class TidepoolRenderer {
   private readonly lightPatchTexture: Texture;
   private readonly reedwellRenderer: ReedwellRenderer;
   private readonly rainbellRenderer: RainbellRenderer;
+  private readonly siltstitcherRenderer: SiltstitcherRenderer;
   private readonly resizeObserver: ResizeObserver;
   private readonly colors = new Map<number, number>();
   private reducedMotion = false;
@@ -130,6 +133,7 @@ export class TidepoolRenderer {
     this.lightPatchTexture = createLightPatchTexture();
     this.reedwellRenderer = new ReedwellRenderer(this.reedwellLayer, this.glowTexture);
     this.rainbellRenderer = new RainbellRenderer(this.rainbellLayer, this.glowTexture);
+    this.siltstitcherRenderer = new SiltstitcherRenderer(this.siltstitcherLayer, this.glowTexture);
     this.textures.push(terrainTexture, this.glowTexture, this.bodyTexture, this.lightPatchTexture);
     this.app.canvas.style.display = 'block';
     this.app.canvas.style.pointerEvents = 'none';
@@ -146,7 +150,7 @@ export class TidepoolRenderer {
     this.mask.closePath().fill(0xffffff);
     this.root.addChild(this.water, this.mask);
     this.water.mask = this.mask;
-    this.water.addChild(this.lightPatchLayer, this.sedimentLayer, this.sedimentCores, this.nestLayer, this.reedwellLayer, this.rainbellLayer, this.caustics, this.trails, this.lightLayer,
+    this.water.addChild(this.lightPatchLayer, this.sedimentLayer, this.sedimentCores, this.nestLayer, this.reedwellLayer, this.rainbellLayer, this.caustics, this.siltstitcherLayer, this.trails, this.lightLayer,
       this.tendrils, this.organismLayer, this.grazerLayer, this.rain, this.indicator);
     this.caustics.blendMode = 'add';
     this.trails.blendMode = 'add';
@@ -266,11 +270,15 @@ export class TidepoolRenderer {
     this.drawNests(world);
     this.reedwellRenderer.render(world, this.reducedMotion);
     this.rainbellRenderer.render(world, this.reducedMotion);
+    this.siltstitcherRenderer.render(world);
     for (const plant of world.reedwells) {
       if (plant.id === selectedId) this.drawSelection(plant, 38);
     }
     for (const bell of world.rainbells) {
       if (bell.id === selectedId) this.drawSelection(bell, 40);
+    }
+    for (const carrier of world.siltstitchers) {
+      if (carrier.id === selectedId) this.drawSelection(carrier, 29);
     }
 
     let patchCount = 0;
@@ -834,6 +842,7 @@ export class TidepoolRenderer {
     this.skimmers.clear();
     this.reedwellRenderer.clear();
     this.rainbellRenderer.clear();
+    this.siltstitcherRenderer.clear();
     this.nests.clear();
     this.colors.clear();
   }

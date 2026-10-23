@@ -5,6 +5,7 @@ import { createWorld, stepWorld } from '../src/world/simulation';
 import type { World } from '../src/world/types';
 
 const rainbellLedgerKeys = ['rainbellIntake', 'rainbellPumpingPigment', 'rainbellMaintenancePigment'];
+const siltstitcherLedgerKeys = ['siltstitcherNestReserve', 'siltstitcherNestCargo', 'siltstitcherOutwardPigment', 'siltstitcherMaintenancePigment'];
 
 function inhabited(): World {
   const world = createWorld(91);
@@ -27,7 +28,7 @@ function inhabited(): World {
   world.rainbellAdmissionAt = 130;
   world.rainbellCandidateAfterId = world.sediment[1].id;
   world.organisms[0].pigmentCredit = .31;
-  world.ecologyLedger = { mineralizedPigment: .2, maintenancePigment: .01, emittedLight: 1.35,
+  world.ecologyLedger = { ...world.ecologyLedger, mineralizedPigment: .2, maintenancePigment: .01, emittedLight: 1.35,
     pigmentConverted: .9, feedingCreditLost: .03, daylightHarvested: 4.9, daylightUnharvested: .7,
     reedwellEmittedLight: 1.5, reedwellDissipatedLight: 1,
     rainbellIntake: .23, rainbellPumpingPigment: .08, rainbellMaintenancePigment: .013 };
@@ -35,9 +36,9 @@ function inhabited(): World {
 }
 
 function revision4(world: World): Record<string, any> {
-  const { rainbells: _polyps, rainbellAdmissionAt: _admission, rainbellCandidateAfterId: _cursor, ...previous } = structuredClone(world);
+  const { rainbells: _polyps, rainbellAdmissionAt: _admission, rainbellCandidateAfterId: _cursor, siltstitchers: _siltstitchers, siltstitcherAdmissionAt: _siltstitcherAdmission, siltstitcherCandidateAfterId: _siltstitcherCandidate, ...previous } = structuredClone(world);
   const result: Record<string, any> = { ...previous, schemaRevision: 4 };
-  for (const key of rainbellLedgerKeys) delete result.ecologyLedger[key];
+  for (const key of [...rainbellLedgerKeys, ...siltstitcherLedgerKeys]) delete result.ecologyLedger[key];
   return result;
 }
 
@@ -62,13 +63,16 @@ describe('rainbell snapshot revision', () => {
     const before = JSON.stringify(source);
     const restored = restoreWorld(before)!;
     expect(restored).not.toBeNull();
-    const { rainbells, rainbellAdmissionAt, rainbellCandidateAfterId, ...oldFields } = restored;
-    expect(restored.schemaRevision).toBe(5);
+    const { rainbells, rainbellAdmissionAt, rainbellCandidateAfterId, siltstitchers, siltstitcherAdmissionAt, siltstitcherCandidateAfterId, ...oldFields } = restored;
+    expect(restored.schemaRevision).toBe(6);
     expect(rainbells).toEqual([]);
     expect(rainbellAdmissionAt).toBe(source.elapsed);
     expect(rainbellCandidateAfterId).toBe(0);
+    expect(siltstitchers).toEqual([]);
+    expect(siltstitcherAdmissionAt).toBe(source.elapsed);
+    expect(siltstitcherCandidateAfterId).toBe(0);
     const oldLedger = { ...oldFields.ecologyLedger } as Record<string, number>;
-    for (const key of rainbellLedgerKeys) { expect(oldLedger[key]).toBe(0); delete oldLedger[key]; }
+    for (const key of [...rainbellLedgerKeys, ...siltstitcherLedgerKeys]) { expect(oldLedger[key]).toBe(0); delete oldLedger[key]; }
     expect({ ...oldFields, schemaRevision: 4, ecologyLedger: oldLedger }).toEqual(source);
     expect(JSON.stringify(source)).toBe(before);
     expect(restoreWorld(serializeWorld(restored))).toEqual(restored);
@@ -79,7 +83,7 @@ describe('rainbell snapshot revision', () => {
       const source = legacy(version, revision);
       const before = JSON.stringify(source);
       const restored = restoreWorld(before)!;
-      expect(restored).toMatchObject({ schemaRevision: 5, rainbells: [], rainbellAdmissionAt: source.elapsed,
+      expect(restored).toMatchObject({ schemaRevision: 6, rainbells: [], rainbellAdmissionAt: source.elapsed,
         rainbellCandidateAfterId: 0, elapsed: source.elapsed, tick: source.tick, seed: source.seed,
         randomState: source.randomState, lights: source.lights, sediment: source.sediment, consumed: source.consumed });
       expect(restored.nextId).toBe(source.nextId + (version === 1 ? 8 : 0));
@@ -147,7 +151,7 @@ describe('rainbell snapshot revision', () => {
       w => { w.rainbells[0].lastPulseAt = w.elapsed + 1; }, w => { w.rainbells[0].lastPulseAt = -1; },
       w => { w.rainbells[0].lastPulseAt = null; w.rainbells[0].pulseNextAllowedAt = w.elapsed + .01; },
       w => { w.rainbells = Array.from({ length: 5 }, (_, index) => ({ ...w.rainbells[0], id: w.nextId + index })); w.nextId += 5; },
-      w => { w.schemaRevision = 6; },
+      w => { w.schemaRevision = 7; },
     ];
     for (const target of ['feedTargetSedimentId', 'pumpTargetSedimentId']) {
       changes.push(w => { delete w.rainbells[0][target]; }, w => { w.rainbells[0][target] = 0; },
