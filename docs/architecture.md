@@ -48,6 +48,9 @@ The current explicit budgets are:
 | Trail points per organism | 14 |
 | Pigment grazers | 8 |
 | Woven nests | 16 |
+| Active siltstitchers | 6 (within the shared 24 new-type bodies) |
+| New-type renderer objects | 88 (four per body, at most 22 bodies by type caps) |
+| New-type short cues | 16 (siltstitchers add none) |
 | Rain ringlet slots (renderer only) | 48 |
 | Light floor patches (renderer only) | 32 |
 | Active currents | 3 |
@@ -57,7 +60,7 @@ New behavior must respect a budget. Accumulated visual history must age, compact
 
 ## Snapshots and browser saves
 
-World snapshots use version `3` with `schemaRevision: 5`, `rainbells`, `rainbellAdmissionAt`, `rainbellCandidateAfterId`, `reedwells`, `reedwellAdmissionAt`, `reedwellCandidateAfterId`, `skimmers`, `skimmerAdmissionAt`, `ecologyLedger`, lucent `pigmentCredit`, `currents`, and `weatherCall: { startedAt, nextAllowedAt }`. They include the seed, random state, clock/tick, next entity ID, entities, cumulative light consumption, grazer cargo and home references, and nest pigment. This lets a snapshot resume the world rather than merely reproducing its opening seed. Pause/tool selection and temporary rendering state belong to the interface rather than ecological history.
+World snapshots use version `3` with `schemaRevision: 6`, `siltstitchers`, `siltstitcherAdmissionAt`, `siltstitcherCandidateAfterId`, `rainbells`, `rainbellAdmissionAt`, `rainbellCandidateAfterId`, `reedwells`, `reedwellAdmissionAt`, `reedwellCandidateAfterId`, `skimmers`, `skimmerAdmissionAt`, `ecologyLedger`, lucent `pigmentCredit`, `currents`, and `weatherCall: { startedAt, nextAllowedAt }`. They include the seed, random state, clock/tick, next entity ID, entities, cumulative light consumption, grazer cargo and home references, and nest pigment. This lets a snapshot resume the world rather than merely reproducing its opening seed. Pause/tool selection and temporary rendering state belong to the interface rather than ecological history.
 
 Imports check the version, numeric ranges, collection limits, entity shapes, and identifiers before replacing the active world. A rejected import leaves the current world intact and shows visible feedback. Local storage failures are visible without preventing play. Future schema changes need either an explicit migration or a clear unsupported-version message.
 
@@ -81,7 +84,7 @@ Nearest-food searches are staggered once per six ticks, at most600 comparisons/s
 
 ## Reedwells and external daylight
 
-`world/species/catalog.ts` separates typed definitions from active populations. Skimmers and reedwells each have a six-body limit, rainbells have a four-body limit, and all three share a24-record admission ceiling. The current catalog therefore permits at most16 active new-type bodies, additional to42 lucents and8 grazers. Unknown future catalog entries must join that shared count before implementation. `species/resources.ts` owns their common safe-ID, hue-transfer and finite pigment-return rules.
+`world/species/catalog.ts` separates typed definitions from active populations. Skimmers, reedwells and siltstitchers each have a six-body limit; rainbells have a four-body limit. All four share a24-record admission ceiling. The current catalog therefore permits at most22 active new-type bodies, additional to42 lucents and8 grazers. Unknown future catalog entries must join that shared count before implementation. `species/resources.ts` owns their common safe-ID, hue-transfer and finite pigment-return rules.
 
 `world/species/reedwell.ts` attempts one grain-centered pocket every six ticks while rain intensity is at least0.5. A saved scalar source-ID cursor rotates candidates, so an underfunded pocket cannot monopolize admission. One <=600-source candidate pass and one bounded distance/ID funding pass debit exactly0.6 pigment within32 units only after legal coast,64-unit spacing, population, safe-ID and60-second success-rest checks pass. No source queue or refusal PRNG draws exist. Body0.6 is the entire paid root; new populations start empty.
 
@@ -98,6 +101,14 @@ Revision3-to4 migration adds empty reedwells, an inactive admission deadline, ze
 The root takes at most0.02 pigment/second within28 units and spends up to0.001/second on maintenance. During rain, a grain30–60 units away can prompt one ordinary current directed toward the root when the reserve can pay0.04 and at least15 seconds have passed since the last successful pulse. The existing current action decides coast/length/three-field/ID acceptance. Only a successful pulse debits reserve and starts rest; failures spend neither pulse pigment nor random state. Currents can move grains and animals under the existing drift rules, but the polyp does not move. A field already paid for survives its polyp's death until its ordinary eight-second expiry. The pulse debit and maintenance are named pigment sinks; intake is a transfer from actual sediment to reserve.
 
 At age600 seconds or60 continuous seconds with no reserve, the body and actual reserve return through the common one-grain/underfilled-grain/mineralization rule, releasing the living slot. There is no reproduction, larva or dormant stage in this slice; later return requires fresh rain and funded pigment. Revision4-to5 migration adds an empty population, inactive admission deadline, zero cursor and zero cumulative rainbell counters. Earlier paid ecology, IDs, time and PRNG are retained, and hybrid/downgraded snapshots are rejected. `render/RainbellRenderer.ts` owns four reused display objects/body and one <=3-second contraction cue/body, keeping all current new-type cues within16 with no history. Existing Observe and reduced-motion paths apply. [Expedition010](expedition-010-rainbells.md) records test and playable evidence.
+
+## Siltstitcher nest foragers
+
+`world/species/siltstitcher.ts` owns a mobile reciprocal path: a nest with at least 1.5 pigment pays exactly 0.3 for body 0.2 and reserve 0.1; later refills pay for maintenance reserve and at most 0.3 separate cargo while leaving at least 1.2 in the nest. Maintenance dissipates at most 0.001 pigment/second. One body may belong to each home, with six per type, sixty seconds between successful admissions, and the shared 24 new-type ceiling. A saved nest-ID cursor rotates admission without random refusals. Some worlds and all old migrated worlds may have none.
+
+A carrier chooses one legal site 60–100 units from home on a staggered six-tick phase, comparing actual nest/cargo and nearby grain pigment against the destination's grain pigment. The finite 24-site ring and at most 600-grain scan per body/phase bound search. It walks at 10 units/second, receives ordinary current drift, and tries to deposit its exact cargo as one ordinary grain. If the 600-grain floor is full, it may add the whole cargo to one nearby underfilled grain; otherwise it retains the load, waits at most ten seconds, and returns to retry from home. Grazers can gather the deposited grain through their unchanged rules. The visible bundle follows the saved cargo amount rather than a separate visual event.
+
+At age 480 seconds or after 60 continuous seconds without reserve, the body, reserve and cargo return through the common bounded pigment-return rule. A lost home grants no replacement nest, food or resource; the carrier eventually exits under those same limits. There is no reproduction, dormant stage or retained corpse in this slice. Revision 5-to-6 migration adds an empty population, an inactive admission deadline, zero cursor and zeroed transfer/sink counters without changing earlier organisms, resources, IDs, time or PRNG. Strict validation rejects downgraded hybrids and inconsistent cargo/mode/state. `render/SiltstitcherRenderer.ts` owns four reusable objects/body and no short cue, keeping the catalog at most 88 new-type objects and 16 short cues. Existing Observe and reduced-motion paths apply. [Expedition 011](expedition-011-siltstitchers.md) records ecological and playable evidence.
 
 ## A brief for an agent addition
 

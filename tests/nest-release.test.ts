@@ -166,6 +166,7 @@ describe('nest pigment release', () => {
       // Isolate the existing grazer/release contract; mixed-species transfer is
       // exercised separately in skimmer integration checks.
       world.skimmerAdmissionAt = world.elapsed + 60;
+      world.siltstitcherAdmissionAt = world.elapsed + 60;
       stepWorld(world);
       const mass = pigmentMass(world);
       expect(mass).toBeLessThanOrEqual(previousMass + 1e-10);
@@ -209,7 +210,7 @@ describe('nest pigment release', () => {
     legacy.grazers = [];
     legacy.nests = [];
     run(legacy, 1020);
-    const { grazers: _grazers, nests: _nests, schemaRevision: _revision, weatherCall: _call, currents: _currents, skimmers: _skimmers, skimmerAdmissionAt: _admission, ecologyLedger: _ledger, reedwells: _reedwells, reedwellAdmissionAt: _reedwellAdmission, reedwellCandidateAfterId: _reedwellCandidate, rainbells: _rainbells, rainbellAdmissionAt: _rainbellAdmission, rainbellCandidateAfterId: _rainbellCandidate, organisms, ...fields } = legacy;
+    const { grazers: _grazers, nests: _nests, schemaRevision: _revision, weatherCall: _call, currents: _currents, skimmers: _skimmers, skimmerAdmissionAt: _admission, ecologyLedger: _ledger, reedwells: _reedwells, reedwellAdmissionAt: _reedwellAdmission, reedwellCandidateAfterId: _reedwellCandidate, rainbells: _rainbells, rainbellAdmissionAt: _rainbellAdmission, rainbellCandidateAfterId: _rainbellCandidate, siltstitchers: _siltstitchers, siltstitcherAdmissionAt: _siltstitcherAdmission, siltstitcherCandidateAfterId: _siltstitcherCandidate, organisms, ...fields } = legacy;
     const restored = restoreWorld(JSON.stringify({ ...fields, organisms: organisms.map(({ pigmentCredit: _credit, ...entry }) => entry), version: 1 }));
     expect(restored).not.toBeNull();
     expect(restored!.elapsed).toBe(legacy.elapsed);

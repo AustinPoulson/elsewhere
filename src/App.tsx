@@ -260,12 +260,12 @@ export function App() {
       const origin = rendererRef.current!.screenToWorld(0, 0);
       const unit = rendererRef.current!.screenToWorld(1, 0);
       let distance = Math.max(48, Math.hypot(unit.x - origin.x, unit.y - origin.y) * 24);
-      for (const organism of [...worldRef.current.organisms, ...worldRef.current.grazers, ...worldRef.current.skimmers, ...worldRef.current.reedwells, ...worldRef.current.rainbells]) {
+      for (const organism of [...worldRef.current.organisms, ...worldRef.current.grazers, ...worldRef.current.skimmers, ...worldRef.current.reedwells, ...worldRef.current.rainbells, ...worldRef.current.siltstitchers]) {
         const d = Math.hypot(organism.x - point.x, organism.y - point.y);
         if (d < distance) { nearest = organism; distance = d; }
       }
       setSelectedId(nearest?.id ?? null);
-      if (nearest) { setPanel('specimen'); setNotice(nearest.species === 'grazer' ? 'A keeper of borrowed colors.' : nearest.species === 'skimmer' ? 'A prism skimmer, turning color into light.' : nearest.species === 'reedwell' ? 'A rooted reedwell, gathering daylight.' : nearest.species === 'rainbell' ? 'A rainbell, drawing food through water.' : 'A lucent, briefly known.'); }
+      if (nearest) { setPanel('specimen'); setNotice(nearest.species === 'grazer' ? 'A keeper of borrowed colors.' : nearest.species === 'skimmer' ? 'A prism skimmer, turning color into light.' : nearest.species === 'reedwell' ? 'A rooted reedwell, gathering daylight.' : nearest.species === 'rainbell' ? 'A rainbell, drawing food through water.' : nearest.species === 'siltstitcher' ? 'A siltstitcher, bearing color away from its nest.' : 'A lucent, briefly known.'); }
       else setNotice('Touch a living inhabitant to look more closely.');
     }
   }
@@ -409,7 +409,7 @@ export function App() {
     hostRef.current?.focus({ preventScroll: true });
     setNotice('Your pool returns exactly where you left it. No time passed during the study.');
   }
-  const selected = [...worldRef.current.organisms, ...worldRef.current.grazers, ...worldRef.current.skimmers, ...worldRef.current.reedwells, ...worldRef.current.rainbells].find(organism => organism.id === selectedId);
+  const selected = [...worldRef.current.organisms, ...worldRef.current.grazers, ...worldRef.current.skimmers, ...worldRef.current.reedwells, ...worldRef.current.rainbells, ...worldRef.current.siltstitchers].find(organism => organism.id === selectedId);
   const selectedNest = selected?.species === 'grazer' ? worldRef.current.nests.find(nest => nest.id === selected.nestId) : null;
   const openPanel = (next: Panel) => setPanel(current => current === next ? null : next);
   const weather = effectiveWeather(worldRef.current);
@@ -511,14 +511,15 @@ export function App() {
           <div className="guide-entry"><span className="entry-number">10</span><div><h3>The prism skimmer</h3><p>A well-fed nest can give rise to a translucent diamond. Its small body and first meal come from stored color. It competes with grazers for loose pigment, then spends its reserve to release a little light that lucents can eat. A charged skimmer holds its color when the pool is full of light. None may appear if nests are empty or six already swim here. Each lives for at most eight world minutes; a minute without any reserve ends its life sooner, returning what remains to the pool. Pause holds its life, too.</p></div></div>
           <div className="guide-entry"><span className="entry-number">11</span><div><h3>The reedwell</h3><p>Rain can help a pocket of loose pigment take root. Five leaves open around its paid root, catching daylight and slowly storing it as feeding light. A pale ring marks a release; lucents can eat that light. Night stops the gathering, and a pool full of light makes the plant hold its store. Each root lasts fifteen world minutes, then returns its pigment; unused light disperses. Reeds need not appear in every pool. Observe a crown to see its store. No planting is needed.</p></div></div>
           <div className="guide-entry"><span className="entry-number">12</span><div><h3>The rainbell</h3><p>A wet pocket of loose pigment can fund an anchored polyp. In rain, its translucent mantle contracts and pays for a current that draws nearby color toward its mouth. Watch grains move into reach before its reserve can rise. The same current can carry passing creatures, but the polyp stays rooted. Each contraction and every moment of life spend pigment; full currents or distant food make it wait. A minute with no reserve, or ten world minutes of age, ends its life and returns what remains. It may never appear in a dry or food-poor pool.</p></div></div>
+          <div className="guide-entry"><span className="entry-number">13</span><div><h3>The siltstitcher</h3><p>When a nest has surplus color, a small carrier can form from that stored pigment. It refills its own reserve and loads a separate bundle only from color the nest can spare, then walks toward a poorer edge of the feeding grounds. It places the bundle as ordinary loose pigment for grazers to gather again. If that patch is full, it brings the bundle home and tries later. A missing home, exhausted reserve or eight world minutes can end the journey; its remaining color returns. Some nests never support one.</p></div></div>
           <div className="guide-controls"><p className="eyebrow">WAYS TO VISIT</p><p><kbd>L</kbd> Leave light <kbd>O</kbd> Observe <kbd>M</kbd> Carry light <kbd>S</kbd> Stir water <kbd>R</kbd> Call rain <kbd>Space</kbd> Pause</p><p>Tab to the pool, move with arrow keys, then press Enter. <kbd>Esc</kbd> closes these notes.</p></div>
         </>}
         {panel === 'specimen' && <>
-          <h2 id="panel-title">{selected?.species === 'grazer' ? <>A keeper<br/><em>of borrowed colors.</em></> : selected?.species === 'skimmer' ? <>A prism,<br/><em>briefly alight.</em></> : selected?.species === 'reedwell' ? <>A root,<br/><em>holding daylight.</em></> : selected?.species === 'rainbell' ? <>A bell,<br/><em>drawing water.</em></> : <>A lucent,<br/><em>briefly known.</em></>}</h2>
+          <h2 id="panel-title">{selected?.species === 'grazer' ? <>A keeper<br/><em>of borrowed colors.</em></> : selected?.species === 'skimmer' ? <>A prism,<br/><em>briefly alight.</em></> : selected?.species === 'reedwell' ? <>A root,<br/><em>holding daylight.</em></> : selected?.species === 'rainbell' ? <>A bell,<br/><em>drawing water.</em></> : selected?.species === 'siltstitcher' ? <>A carrier,<br/><em>threading the silt.</em></> : <>A lucent,<br/><em>briefly known.</em></>}</h2>
           <p className="panel-intro">Every life is part of the same small story.</p>
           {selected ? <>
-            <div className={`specimen-orb ${selected.species === 'grazer' ? 'grazer-orb' : selected.species === 'skimmer' ? 'skimmer-orb' : selected.species === 'reedwell' ? 'reedwell-orb' : selected.species === 'rainbell' ? 'rainbell-orb' : ''}`} aria-hidden="true"/>
-            <p className="eyebrow">{selected.species === 'grazer' ? 'PIGMENT GRAZER' : selected.species === 'skimmer' ? 'PRISM SKIMMER' : selected.species === 'reedwell' ? 'REEDWELL' : selected.species === 'rainbell' ? 'RAINBELL POLYP' : 'LUCENT'} / {String(selected.id).padStart(3, '0')}</p>
+            <div className={`specimen-orb ${selected.species === 'grazer' ? 'grazer-orb' : selected.species === 'skimmer' ? 'skimmer-orb' : selected.species === 'reedwell' ? 'reedwell-orb' : selected.species === 'rainbell' ? 'rainbell-orb' : selected.species === 'siltstitcher' ? 'siltstitcher-orb' : ''}`} aria-hidden="true"/>
+            <p className="eyebrow">{selected.species === 'grazer' ? 'PIGMENT GRAZER' : selected.species === 'skimmer' ? 'PRISM SKIMMER' : selected.species === 'reedwell' ? 'REEDWELL' : selected.species === 'rainbell' ? 'RAINBELL POLYP' : selected.species === 'siltstitcher' ? 'SILTSTITCHER' : 'LUCENT'} / {String(selected.id).padStart(3, '0')}</p>
             <dl className="specimen-details">
               <div><dt>Time in the pool</dt><dd>{timeLabel(selected.age)}</dd></div>
               {selected.species === 'grazer' ? <>
@@ -533,6 +534,11 @@ export function App() {
                 <div><dt>Color in reserve</dt><dd>{selected.reserve.toFixed(3)}</dd></div>
                 <div><dt>Color in its body</dt><dd>{selected.body.toFixed(1)}</dd></div>
                 <div><dt>Disposition</dt><dd>{selected.reserve <= 0 ? 'Hungry for pigment' : effectiveWeather(worldRef.current).intensity < .5 ? 'Mantle open · calm water' : worldRef.current.currents.length >= MAX_CURRENTS ? 'Holding reserve · currents are full' : worldRef.current.elapsed < selected.pulseNextAllowedAt ? 'Resting between contractions' : 'Mantle open · waiting for food'}</dd></div>
+              </> : selected.species === 'siltstitcher' ? <>
+                <div><dt>Color in reserve</dt><dd>{selected.reserve.toFixed(3)}</dd></div>
+                <div><dt>Color in its bundle</dt><dd>{selected.cargo.toFixed(3)}</dd></div>
+                <div><dt>Color in its body</dt><dd>{selected.body.toFixed(1)}</dd></div>
+                <div><dt>Journey</dt><dd>{selected.mode === 'home' ? 'Gathering nest surplus' : selected.mode === 'outbound' ? 'Walking to a poorer patch' : selected.mode === 'blocked' ? 'Waiting for space to set down color' : 'Returning to its nest'}</dd></div>
               </> : selected.species === 'reedwell' ? <>
                 <div><dt>Stored daylight</dt><dd>{selected.lightStore.toFixed(2)} / 3</dd></div>
                 <div><dt>Color in its root</dt><dd>{selected.body.toFixed(1)}</dd></div>
@@ -542,7 +548,7 @@ export function App() {
                 <div><dt>Disposition</dt><dd>{selected.energy > 1 ? 'Radiant' : selected.energy > 0.4 ? 'Wandering' : 'Seeking light'}</dd></div>
               </>}
             </dl>
-            <p className="guide-caption">{selected.species === 'grazer' ? 'Its shell carries the color of its last finds. Watch the woven nest fill as it returns.' : selected.species === 'skimmer' ? 'Its steady glow shows stored color. A bright diamond outline marks a gift of light. Its body and remaining reserve return to the pool when this short life ends.' : selected.species === 'reedwell' ? 'Daylight is an external source of energy. Its leaves brighten as they store it; a pale ring marks ordinary feeding light released into the water. Its root returns to pigment after fifteen world minutes.' : selected.species === 'rainbell' ? 'Rain lets this anchored animal spend stored pigment to pull water toward its mantle. It can only eat grains that reach it. Pumping and staying alive both cost pigment; its body and reserve return when this finite life ends.' : "Leave light nearby and watch this one's path change."}</p>
+            <p className="guide-caption">{selected.species === 'grazer' ? 'Its shell carries the color of its last finds. Watch the woven nest fill as it returns.' : selected.species === 'skimmer' ? 'Its steady glow shows stored color. A bright diamond outline marks a gift of light. Its body and remaining reserve return to the pool when this short life ends.' : selected.species === 'reedwell' ? 'Daylight is an external source of energy. Its leaves brighten as they store it; a pale ring marks ordinary feeding light released into the water. Its root returns to pigment after fifteen world minutes.' : selected.species === 'rainbell' ? 'Rain lets this anchored animal spend stored pigment to pull water toward its mantle. It can only eat grains that reach it. Pumping and staying alive both cost pigment; its body and reserve return when this finite life ends.' : selected.species === 'siltstitcher' ? 'It turns actual nest surplus into a movable bundle and sets that color down where ordinary grazers can find it. Its body, reserve and any undelivered bundle return when this finite life ends.' : "Leave light nearby and watch this one's path change."}</p>
           </> : <p className="panel-intro">{selectedId !== null ? 'This creature has left the pool. Choose Observe to meet another.' : 'Choose Observe and touch a creature in the water.'}</p>}
           {selected?.species === 'grazer' && selectedNest && <>
             <button className="primary-button" onClick={() => returnNestColor(selectedNest.id)}>Return color to the water <Icon name="arrow"/></button>

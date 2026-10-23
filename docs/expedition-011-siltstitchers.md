@@ -1,0 +1,32 @@
+# Expedition 011 — Siltstitchers
+
+## New ecological capability
+
+The siltstitcher is a mobile nest commensal. A pigment-rich nest can pay for one small forager, which carries a visibly held bundle of actual nest pigment to a poorer fringe of the same pool. It leaves that bundle as ordinary loose pigment. Existing grazers can gather it and carry it back into nests, making a reciprocal path while the visitor simply watches. The deposit is a real sediment record with normal strength, fade and grazer behavior; it is not a drawn effect or a callback that credits a grazer directly. The new type can be absent, and an old save starts with none.
+
+| Condition or transfer | Implemented policy |
+| --- | --- |
+| Establishment | A legal nest holding at least 1.5 pigment pays exactly 0.3: body 0.2 and reserve 0.1. One living carrier per home, 48-unit spacing, six per type, shared 24 new-type bodies, and at least 60 seconds between successful admissions. A saved nest-ID cursor rotates candidates without random refusal. |
+| Continued life | Reserve is capped at 0.1 and spends up to 0.001 pigment/second as a named maintenance sink. Within 16 units of home it can refill from the nest at no more than 0.01/second. |
+| Outbound load | Cargo is separate from health, capped at 0.3, loaded from actual nest pigment at no more than 0.04/second. Reserve and cargo withdrawals both preserve at least 1.2 in the nest. A partial load of at least 0.06 can leave when the protected floor prevents further loading. |
+| Search and travel | One of 24 finite legal sites 60–100 units from home is examined on a staggered six-tick phase. The site must be poorer than the home fringe by actual nest, cargo and nearby grain pigment. At most 600 grains/body/phase are scanned. Walking is at 10 world units/second with ordinary current drift and coastline confinement. |
+| Delivery or refusal | The entire saved cargo becomes one ordinary grain if a slot and safe ID exist. At a full floor it can instead fit wholly into one underfilled grain within 12 units. Otherwise the cargo remains on the body; after at most ten seconds blocked, it returns home and retries. No failed attempt generates pigment, discards cargo or burns a random draw. |
+| Exit and return | At age 480 seconds or after 60 continuous seconds without reserve, body, remaining reserve and any cargo use the common bounded one-grain/underfilled-grain/mineralization return. A missing home provides no replacement stock. There is no reproduction, dormant stage, larva or retained corpse in this lifecycle slice. |
+
+The catalog definitions remain separate from active populations. Existing type caps (six skimmers, six reedwells, four rainbells) plus six siltstitchers allow at most 22 active new-type bodies and remain below the shared 24 ceiling. Each new body owns four reusable renderer objects and no short cue, so the catalog maximum is 88 new-type objects and 16 short cues. Existing limits remain 42 lucents, eight grazers, 16 nests, 600 grains, 32 lights, three currents and 14 trail points/lucent. A paired 20-minute maximum-budget simulation ran twice for 36,000 fixed steps each, with exact save continuation at 20 sampled phases; measured 12,205.2 ms for both trajectories, or 0.1695 ms per whole-world step on this runner. These are bounded local accounts, not a claim that the entire ecosystem is closed.
+
+## Playable before and after
+
+The equal-input disposable control had a stocked nest, a grazer, no loose sediment and siltstitcher admission deferred; after 45 simulated seconds it still had zero loose grains, zero grazer cargo and zero outward-transfer ledger. In the funded world at normal rates, the nest paid the body, loaded 0.6 cumulative pigment over two trips, and the carrier deposited 0.6 outward. It reached 100 world units from home. The unchanged grazer collected the deposited grain and returned color to its nest. The carrier's bundle size followed saved cargo; it emptied on delivery. The matched control had no such path.
+
+The production build was played in fresh, disposable Chrome contexts at 1280×800 desktop and 390×844 portrait. In each layout, browser state showed a paid outbound carrier, 0.3 actual delivered sediment, and ordinary grazer pickup (desktop 0.279, portrait 0.165 by the observation point); the paired no-type control remained at zero. Screenshots of departure, delivery, pickup, control and Observe live in the ignored local `.artifacts/siltstitcher-20261023/` folder. The browser checks also passed pointer and keyboard Observe, exact pause, outbound save/import and export equality, finite exit, historical save migration, reset cancellation/confirmation, study-world restoration and no horizontal overflow or page errors. Reduced-motion import remained paused. These were emulated desktop/portrait browser checks, not physical touch-device verification.
+
+## Persistence and validation
+
+World version 3 advances from schema revision 5 to 6. Migration from each earlier schema adds an empty siltstitcher population, inactive admission deadline, zero cursor and zero named ledgers, preserving existing organisms, paid pigment, IDs, time and PRNG state. Current saves validate body/reserve/cargo bounds, unique global IDs, home reference type, destination reach, mode and blocked timer; historical missing home IDs remain legal so a carrier can follow its finite exit path. Arbitrary outbound, blocked, returning and home states continue exactly after import. The 1,000,000-character snapshot limit is unchanged.
+
+`npm ci` succeeded. `npm run validate` passed 157 tests across 20 files, TypeScript and the production Vite build. The new regression suite covers paid appearance, protected nest floor, exact cargo transfers, ordinary grazer regather, full-floor retention/merge, drifted blocked timeout, missing home, finite exit, strict migration, aggregate budgets and the 20-minute paired profile. `npm audit --omit=dev --json` reported zero production advisories.
+
+## Side work and limits
+
+No independent bug card was changed. Historical source fixtures that intentionally isolate another species now defer siltstitcher admission; this is necessary test isolation for the new type, not a separate ecological feature. The nest may eventually become too poor for further carriers; there is deliberately no seed bank or autonomous reproduction. Physical-device touch and long-running real-browser soak were not verified in this expedition.

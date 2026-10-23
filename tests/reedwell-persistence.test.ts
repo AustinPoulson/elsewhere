@@ -6,6 +6,7 @@ import type { Reedwell, World } from '../src/world/types';
 
 const reedwellLedgerKeys = ['daylightHarvested', 'daylightUnharvested', 'reedwellEmittedLight', 'reedwellDissipatedLight'];
 const rainbellLedgerKeys = ['rainbellIntake', 'rainbellPumpingPigment', 'rainbellMaintenancePigment'];
+const siltstitcherLedgerKeys = ['siltstitcherNestReserve', 'siltstitcherNestCargo', 'siltstitcherOutwardPigment', 'siltstitcherMaintenancePigment'];
 
 function inhabited(): World {
   const world = createWorld(91);
@@ -29,9 +30,9 @@ function inhabited(): World {
 }
 
 function revision3(world: World): Record<string, any> {
-  const { reedwells: _plants, reedwellAdmissionAt: _admission, reedwellCandidateAfterId: _candidate, rainbells: _rainbells, rainbellAdmissionAt: _rainbellAdmission, rainbellCandidateAfterId: _rainbellCandidate, ...previous } = structuredClone(world);
+  const { reedwells: _plants, reedwellAdmissionAt: _admission, reedwellCandidateAfterId: _candidate, rainbells: _rainbells, rainbellAdmissionAt: _rainbellAdmission, rainbellCandidateAfterId: _rainbellCandidate, siltstitchers: _siltstitchers, siltstitcherAdmissionAt: _siltstitcherAdmission, siltstitcherCandidateAfterId: _siltstitcherCandidate, ...previous } = structuredClone(world);
   const result: Record<string, any> = { ...previous, schemaRevision: 3 };
-  for (const key of [...reedwellLedgerKeys, ...rainbellLedgerKeys]) delete result.ecologyLedger[key];
+  for (const key of [...reedwellLedgerKeys, ...rainbellLedgerKeys, ...siltstitcherLedgerKeys]) delete result.ecologyLedger[key];
   return result;
 }
 
@@ -41,15 +42,18 @@ describe('reedwell snapshot revision', () => {
     const before = JSON.stringify(source);
     const restored = restoreWorld(before)!;
     expect(restored).not.toBeNull();
-    const { reedwells, reedwellAdmissionAt, reedwellCandidateAfterId, rainbells, rainbellAdmissionAt, rainbellCandidateAfterId, ...oldFields } = restored;
+    const { reedwells, reedwellAdmissionAt, reedwellCandidateAfterId, rainbells, rainbellAdmissionAt, rainbellCandidateAfterId, siltstitchers, siltstitcherAdmissionAt, siltstitcherCandidateAfterId, ...oldFields } = restored;
     expect(reedwells).toEqual([]);
     expect(reedwellAdmissionAt).toBe(source.elapsed);
     expect(reedwellCandidateAfterId).toBe(0);
     expect(rainbells).toEqual([]);
     expect(rainbellAdmissionAt).toBe(source.elapsed);
     expect(rainbellCandidateAfterId).toBe(0);
+    expect(siltstitchers).toEqual([]);
+    expect(siltstitcherAdmissionAt).toBe(source.elapsed);
+    expect(siltstitcherCandidateAfterId).toBe(0);
     const oldLedger = { ...oldFields.ecologyLedger } as Record<string, number>;
-    for (const key of [...reedwellLedgerKeys, ...rainbellLedgerKeys]) { expect(oldLedger[key]).toBe(0); delete oldLedger[key]; }
+    for (const key of [...reedwellLedgerKeys, ...rainbellLedgerKeys, ...siltstitcherLedgerKeys]) { expect(oldLedger[key]).toBe(0); delete oldLedger[key]; }
     expect({ ...oldFields, schemaRevision: 3, ecologyLedger: oldLedger }).toEqual(source);
     expect(JSON.stringify(source)).toBe(before);
     expect(restoreWorld(serializeWorld(restored))).toEqual(restored);
@@ -58,7 +62,7 @@ describe('reedwell snapshot revision', () => {
   it('keeps the immutable shower empty of new plants and retains its exact old resources', () => {
     const before = JSON.stringify(historicalStudy);
     const restored = restoreWorld(before)!;
-    expect(restored).toMatchObject({ schemaRevision: 5, reedwells: [], reedwellAdmissionAt: historicalStudy.elapsed, reedwellCandidateAfterId: 0,
+    expect(restored).toMatchObject({ schemaRevision: 6, reedwells: [], reedwellAdmissionAt: historicalStudy.elapsed, reedwellCandidateAfterId: 0,
       nextId: historicalStudy.nextId, randomState: historicalStudy.randomState, elapsed: historicalStudy.elapsed,
       tick: historicalStudy.tick, lights: historicalStudy.lights, sediment: historicalStudy.sediment,
       grazers: historicalStudy.grazers, nests: historicalStudy.nests, consumed: historicalStudy.consumed });
@@ -121,7 +125,7 @@ describe('reedwell snapshot revision', () => {
       w => { w.reedwells[0].lastEmissionAt = null; w.reedwells[0].emissionNextAllowedAt = w.elapsed + .1; },
       w => { delete w.reedwells[0].lastEmissionAt; }, w => { delete w.reedwells[0].emissionNextAllowedAt; },
       w => { w.reedwells = Array.from({ length: 7 }, (_, index) => ({ ...w.reedwells[0], id: w.nextId + index })); w.nextId += 7; },
-      w => { w.schemaRevision = 6; },
+      w => { w.schemaRevision = 7; },
     ];
     for (const key of reedwellLedgerKeys) {
       mutations.push(w => { delete w.ecologyLedger[key]; }, w => { w.ecologyLedger[key] = -1; },
