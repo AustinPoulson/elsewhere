@@ -8,6 +8,7 @@ import { confinePosition } from './geometry';
 import { accrueFeedingPigment, depositFeedingPigment } from './feeding';
 import { updateSkimmers } from './species/skimmer';
 import { updateReedwells } from './species/reedwell';
+import { updateRainbells } from './species/rainbell';
 
 const TAU = Math.PI * 2;
 const ENERGY_FLOOR = 0.12;
@@ -118,12 +119,14 @@ export function createWorld(seed = 20261006): World {
   if (!Number.isFinite(seed)) throw new RangeError('World seed must be finite.');
   const normalizedSeed = Math.trunc(seed) >>> 0;
   const world: World = {
-    version: 3, schemaRevision: 4, currents: [], weatherCall: { startedAt: null, nextAllowedAt: 0 },
+    version: 3, schemaRevision: 5, currents: [], weatherCall: { startedAt: null, nextAllowedAt: 0 },
     skimmers: [], skimmerAdmissionAt: 0,
     reedwells: [], reedwellAdmissionAt: 0, reedwellCandidateAfterId: 0,
+    rainbells: [], rainbellAdmissionAt: 0, rainbellCandidateAfterId: 0,
     ecologyLedger: { mineralizedPigment: 0, maintenancePigment: 0, emittedLight: 0,
       pigmentConverted: 0, feedingCreditLost: 0, daylightHarvested: 0, daylightUnharvested: 0,
-      reedwellEmittedLight: 0, reedwellDissipatedLight: 0 },
+      reedwellEmittedLight: 0, reedwellDissipatedLight: 0, rainbellIntake: 0,
+      rainbellPumpingPigment: 0, rainbellMaintenancePigment: 0 },
     seed: normalizedSeed, randomState: normalizedSeed, elapsed: 0, tick: 0,
     nextId: 1, organisms: [], lights: [], sediment: [], grazers: [], nests: [], consumed: 0,
   };
@@ -349,6 +352,7 @@ export function stepWorld(world: World, dt = FIXED_STEP): void {
   for (const grazer of world.grazers) updateGrazer(world, grazer, dt);
   updateSkimmers(world, dt);
   updateReedwells(world, dt);
+  updateRainbells(world, dt);
   applyCurrentDrift(world, dt);
   for (const light of world.lights) {
     light.age += dt;
@@ -378,6 +382,7 @@ export function getStats(world: World): WorldStats {
     grazers: world.grazers.length,
     skimmers: world.skimmers.length,
     reedwells: world.reedwells.length,
+    rainbells: world.rainbells.length,
     nestPigment: world.nests.reduce((total, nest) => total + nest.pigment, 0),
   };
 }
