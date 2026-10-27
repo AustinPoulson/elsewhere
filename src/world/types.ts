@@ -83,6 +83,17 @@ export interface Siltstitcher extends Point {
   destination: Point | null;
   blockedFor: number;
 }
+export interface GlassLimpet extends Point {
+  id: number;
+  species: 'glassLimpet';
+  body: 0.2;
+  reserve: number;
+  cargo: number;
+  age: number;
+  hue: number;
+  starvedFor: number;
+  targetSedimentId: number | null;
+}
 export interface EcologyLedger {
   mineralizedPigment: number;
   maintenancePigment: number;
@@ -100,6 +111,8 @@ export interface EcologyLedger {
   siltstitcherNestCargo: number;
   siltstitcherOutwardPigment: number;
   siltstitcherMaintenancePigment: number;
+  glassLimpetIntake: number;
+  glassLimpetMaintenancePigment: number;
 }
 export interface LightSource extends Point {
   id: number;
@@ -135,9 +148,10 @@ export interface Nest extends Point {
 }
 export interface World {
   version: 3;
-  schemaRevision: 6;
+  schemaRevision: 7;
   skimmers: Skimmer[];
   skimmerAdmissionAt: number;
+  skimmerCandidateAfterId: number;
   reedwells: Reedwell[];
   reedwellAdmissionAt: number;
   reedwellCandidateAfterId: number;
@@ -147,6 +161,11 @@ export interface World {
   siltstitchers: Siltstitcher[];
   siltstitcherAdmissionAt: number;
   siltstitcherCandidateAfterId: number;
+  glassLimpets: GlassLimpet[];
+  glassLimpetAdmissionAt: number;
+  glassLimpetCandidateAfterId: number;
+  nextFoundingTick: number;
+  foundingTypeCursor: number;
   ecologyLedger: EcologyLedger;
   currents: Current[];
   weatherCall: { startedAt: number | null; nextAllowedAt: number };
@@ -174,6 +193,7 @@ export interface WorldStats {
   reedwells: number;
   rainbells: number;
   siltstitchers: number;
+  glassLimpets: number;
   nestPigment: number;
 }
 

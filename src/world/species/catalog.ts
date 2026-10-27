@@ -6,6 +6,7 @@ export const SKIMMER_CAP = 6;
 export const REEDWELL_CAP = 6;
 export const RAINBELL_CAP = 4;
 export const SILTSTITCHER_CAP = 6;
+export const GLASS_LIMPET_CAP = 4;
 export const SPECIES_CATALOG = {
   skimmer: { cap: SKIMMER_CAP, bodyPigment: .2, initialReserve: .4,
     admissionPigment: .6, admissionRest: 60, lifespan: 480, starvationLimit: 60 },
@@ -25,8 +26,14 @@ export const SPECIES_CATALOG = {
     blockedLimit: 10, speed: 10, margin: 11, homeReach: 16, spacing: 48,
     destinationMinReach: 60, destinationMaxReach: 100,
     homeFringeReach: 32, destinationFringeReach: 16, deliveryMergeReach: 12 },
+  glassLimpet: { cap: GLASS_LIMPET_CAP, bodyPigment: .2, initialReserve: .1,
+    admissionPigment: .3, admissionRest: 60, lifespan: 480, starvationLimit: 60,
+    reserveCapacity: .2, cargoCapacity: .8, intakeRate: .04, maintenanceRate: .001,
+    feedReach: 22, rootReach: 32, spacing: 64, margin: 14,
+    coarseThreshold: .12, currentFeedSpeed: .5, shoreMin: .65, shoreMax: .9 },
 } as const;
 
 export function activeNewTypePopulation(world: World): number {
-  return world.skimmers.length + world.reedwells.length + world.rainbells.length + world.siltstitchers.length;
+  return world.skimmers.length + world.reedwells.length + world.rainbells.length
+    + world.siltstitchers.length + world.glassLimpets.length;
 }

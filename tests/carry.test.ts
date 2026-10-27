@@ -38,7 +38,9 @@ describe('carry a living light', () => {
   it('carries a migrated v1 light without changing its legacy ecological history', () => {
     const original = createWorld(23);
     const legacy = { ...original, version: 1, grazers: undefined, nests: undefined, weatherCall: undefined, schemaRevision: undefined, currents: undefined,
-      skimmers: undefined, skimmerAdmissionAt: undefined, ecologyLedger: undefined, reedwells: undefined, reedwellAdmissionAt: undefined, reedwellCandidateAfterId: undefined, rainbells: undefined, rainbellAdmissionAt: undefined, rainbellCandidateAfterId: undefined, siltstitchers: undefined, siltstitcherAdmissionAt: undefined, siltstitcherCandidateAfterId: undefined,
+      skimmers: undefined, skimmerAdmissionAt: undefined, skimmerCandidateAfterId: undefined, ecologyLedger: undefined, reedwells: undefined, reedwellAdmissionAt: undefined, reedwellCandidateAfterId: undefined, rainbells: undefined, rainbellAdmissionAt: undefined, rainbellCandidateAfterId: undefined, siltstitchers: undefined, siltstitcherAdmissionAt: undefined, siltstitcherCandidateAfterId: undefined,
+      glassLimpets: undefined, glassLimpetAdmissionAt: undefined, glassLimpetCandidateAfterId: undefined,
+      nextFoundingTick: undefined, foundingTypeCursor: undefined,
       organisms: original.organisms.map(({ pigmentCredit: _credit, ...entry }) => entry) };
     const world = restoreWorld(JSON.stringify(legacy))!;
     expect(world).not.toBeNull();
@@ -153,5 +155,3 @@ describe('carry a living light', () => {
     expect(world.consumed).toBeGreaterThan(0);
   });
 });
-
-
