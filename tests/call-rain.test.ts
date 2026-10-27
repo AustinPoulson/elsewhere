@@ -6,7 +6,7 @@ import { callRain, effectiveLightReach, effectiveWeather, getWeather } from '../
 import { FIXED_STEP, type World } from '../src/world/types';
 
 function ecology(world: World) {
-  const { version: _version, schemaRevision: _revision, weatherCall: _call, currents: _currents, skimmers: _skimmers, skimmerAdmissionAt: _admission, ecologyLedger: _ledger, reedwells: _reedwells, reedwellAdmissionAt: _reedwellAdmission, reedwellCandidateAfterId: _reedwellCandidate, rainbells: _rainbells, rainbellAdmissionAt: _rainbellAdmission, rainbellCandidateAfterId: _rainbellCandidate, siltstitchers: _siltstitchers, siltstitcherAdmissionAt: _siltstitcherAdmission, siltstitcherCandidateAfterId: _siltstitcherCandidate, organisms, ...rest } = world;
+  const { version: _version, schemaRevision: _revision, weatherCall: _call, currents: _currents, skimmers: _skimmers, skimmerAdmissionAt: _admission, skimmerCandidateAfterId: _skimmerCandidate, ecologyLedger: _ledger, reedwells: _reedwells, reedwellAdmissionAt: _reedwellAdmission, reedwellCandidateAfterId: _reedwellCandidate, rainbells: _rainbells, rainbellAdmissionAt: _rainbellAdmission, rainbellCandidateAfterId: _rainbellCandidate, siltstitchers: _siltstitchers, siltstitcherAdmissionAt: _siltstitcherAdmission, siltstitcherCandidateAfterId: _siltstitcherCandidate, glassLimpets: _glassLimpets, glassLimpetAdmissionAt: _glassLimpetAdmissionAt, glassLimpetCandidateAfterId: _glassLimpetCandidateAfterId, nextFoundingTick: _nextFoundingTick, foundingTypeCursor: _foundingTypeCursor, organisms, ...rest } = world;
   return { ...rest, organisms: organisms.map(({ pigmentCredit: _credit, ...entry }) => entry) };
 }
 
@@ -96,7 +96,7 @@ describe('versioned weather calls', () => {
     const migrated = restoreWorld(old)!;
     const { version: _version, ...original } = fixture;
     expect(ecology(migrated)).toEqual(original);
-    expect(migrated).toMatchObject({ version: 3, schemaRevision: 6, weatherCall: { startedAt: null, nextAllowedAt: 0 } });
+    expect(migrated).toMatchObject({ version: 3, schemaRevision: 7, weatherCall: { startedAt: null, nextAllowedAt: 0 } });
     expect(JSON.stringify(fixture)).toBe(old);
     expect(restoreWorld(serializeWorld(migrated))).toEqual(migrated);
   });
@@ -105,7 +105,7 @@ describe('versioned weather calls', () => {
     const mutations: ((world: Record<string, unknown>) => void)[] = [
       world => { delete world.weatherCall; },
       world => { delete world.schemaRevision; },
-      world => { world.schemaRevision = 7; },
+      world => { world.schemaRevision = 8; },
       world => { world.weatherCall = null; },
       world => { world.weatherCall = { startedAt: null, nextAllowedAt: 60 }; },
       world => { world.weatherCall = { startedAt: 91, nextAllowedAt: 151 }; },

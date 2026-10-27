@@ -50,9 +50,11 @@ Rainbell polyps can anchor in wet pockets funded by 0.6 loose pigment. They spen
 
 Siltstitchers may emerge from pigment-rich nests. Watch their forked bodies carry a visible bundle from the nest to a food-poor fringe, leave a real grain, and let a grazer gather that pigment again. Nest pigment pays for each new body, its upkeep, and every carried load. Sparse nests support none; an old save gains no free population. A siltstitcher that cannot keep its reserve or reaches eight world minutes returns its remaining pigment through the pool's bounded return rule. Observe one to inspect its cargo and reserve; no new control is needed.
 
+Glass limpets may settle in suitable shoreline pockets after loose pigment pays for a small fixed shell and reserve. They filter coarse grains only when a real current carries them within reach, holding that pigment where a downstream grazer cannot gather it yet. Their catch basin brightens as it fills. Calm water brings no meal, but upkeep still costs reserve. The shell returns its body, reserve and catch to ordinary loose pigment after eight world minutes or a minute without reserve. Some pools support none, and imported worlds receive no free shells. Observe a shell to inspect its catch; no new control is needed.
+
 ## Publish on GitHub Pages
 
-The project lives at `C:\repos\MAGI\elsewhere` in its own Git checkout, connected to `https://github.com/AustinPoulson/elsewhere.git`. GitHub Pages uses GitHub Actions. Local Git authentication is unavailable and connector tree writes return HTTP 403; the signed-in GitHub browser is a supported publication fallback without changing account permissions.
+The project lives at `C:\repos\MAGI\elsewhere` in its own Git checkout, connected to `https://github.com/AustinPoulson/elsewhere.git`. GitHub Pages uses GitHub Actions. Use the existing authenticated local Git connection where available; connector tree writes have returned HTTP 403.
 
 The included `.github/workflows/pages.yml` is intended for that standalone root. GitHub does not discover a workflow nested inside `elsewhere/.github/` in the surrounding MAGI repository.
 

@@ -3,6 +3,7 @@ import { LIMITS, isInPool, type Reedwell, type Sediment, type World } from '../t
 import { effectiveWeather } from '../weather';
 import { activeNewTypePopulation, NEW_TYPE_POPULATION_CAP, REEDWELL_CAP, SPECIES_CATALOG } from './catalog';
 import { blendHue, returnPigment, safeId } from './resources';
+import { AdmissionSources } from './admission-sources';
 
 const RULE = SPECIES_CATALOG.reedwell;
 
@@ -25,33 +26,34 @@ function updateOne(world: World, reedwell: Reedwell, dt: number, intensity: numb
   world.ecologyLedger.reedwellEmittedLight += RULE.emissionLight;
 }
 
-function admit(world: World): void {
+export function admitReedwell(world: World): boolean {
   if (world.tick % 6 !== 0 || world.elapsed < world.reedwellAdmissionAt
     || world.reedwells.length >= REEDWELL_CAP || activeNewTypePopulation(world) >= NEW_TYPE_POPULATION_CAP
     || effectiveWeather(world).intensity < .5 || !safeId(world)
-    || world.elapsed > Number.MAX_SAFE_INTEGER - RULE.admissionRest) return;
+    || world.elapsed > Number.MAX_SAFE_INTEGER - RULE.admissionRest) return false;
   // One candidate per poll, rotating in source-ID order. A single saved cursor
   // prevents an unfunded low-ID pocket from permanently hiding later habitat,
   // without a hidden queue, random retries or all-neighborhood search.
   let afterCursor: Sediment | undefined;
   let first: Sediment | undefined;
+  const neighborhoods = new AdmissionSources();
   for (const grain of world.sediment) {
+    neighborhoods.add(grain);
     if (grain.strength <= 0 || !isInPool(grain.x, grain.y, RULE.margin)
       || world.reedwells.some(other => Math.hypot(other.x - grain.x, other.y - grain.y) < RULE.spacing)) continue;
     if (!first || grain.id < first.id) first = grain;
     if (grain.id > world.reedwellCandidateAfterId && (!afterCursor || grain.id < afterCursor.id)) afterCursor = grain;
   }
   const candidate = afterCursor ?? first;
-  if (!candidate) return;
+  if (!candidate) return false;
   // Bookkeeping advances even when this one neighborhood cannot pay. Resource
   // balances, IDs, admission cooldown and PRNG remain untouched on that refusal.
   world.reedwellCandidateAfterId = candidate.id;
   const center = candidate;
-  const sources = world.sediment.filter(grain => grain.strength > 0
-    && Math.hypot(grain.x - center.x, grain.y - center.y) <= RULE.rootReach);
+  const sources = neighborhoods.within(center, RULE.rootReach);
   sources.sort((a, b) => Math.hypot(a.x - center.x, a.y - center.y)
     - Math.hypot(b.x - center.x, b.y - center.y) || a.id - b.id);
-  if (sources.reduce((sum, source) => sum + source.strength, 0) < RULE.admissionPigment) return;
+  if (sources.reduce((sum, source) => sum + source.strength, 0) < RULE.admissionPigment) return false;
   // Stage the debit before mutation: exact availability, no epsilon credit.
   let remaining: number = RULE.admissionPigment;
   const payments: { source: Sediment; amount: number }[] = [];
@@ -67,14 +69,15 @@ function admit(world: World): void {
     }
     if (remaining === 0) break;
   }
-  if (remaining > 0) return;
+  if (remaining > 0) return false;
   for (const { source, amount } of payments) source.strength -= amount;
   world.reedwells.push({ id: world.nextId++, species: 'reedwell', x: center.x, y: center.y,
     body: .6, age: 0, hue, lightStore: 0, emissionNextAllowedAt: world.elapsed, lastEmissionAt: null });
   world.reedwellAdmissionAt = world.elapsed + RULE.admissionRest;
+  return true;
 }
 
-export function updateReedwells(world: World, dt: number): void {
+export function updateReedwells(world: World, dt: number, allowStandaloneAdmission = true): void {
   const intensity = daylight(world);
   for (const reedwell of world.reedwells) updateOne(world, reedwell, dt, intensity);
   let write = 0;
@@ -85,5 +88,5 @@ export function updateReedwells(world: World, dt: number): void {
     } else world.reedwells[write++] = reedwell;
   }
   world.reedwells.length = write;
-  admit(world);
+  if (allowStandaloneAdmission) admitReedwell(world);
 }

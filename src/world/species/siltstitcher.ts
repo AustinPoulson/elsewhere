@@ -134,10 +134,10 @@ function updateOne(world: World, body: Siltstitcher, dt: number): void {
   body.starvedFor = body.reserve <= 0 ? body.starvedFor + dt : 0;
 }
 
-function admit(world: World): void {
+export function admitSiltstitcher(world: World): boolean {
   if (world.tick % 6 !== 0 || world.elapsed < world.siltstitcherAdmissionAt
     || world.siltstitchers.length >= SILTSTITCHER_CAP || activeNewTypePopulation(world) >= NEW_TYPE_POPULATION_CAP
-    || !safeId(world) || world.elapsed > Number.MAX_SAFE_INTEGER - RULE.admissionRest) return;
+    || !safeId(world) || world.elapsed > Number.MAX_SAFE_INTEGER - RULE.admissionRest) return false;
   let first: Nest | undefined;
   let afterCursor: Nest | undefined;
   for (const nest of world.nests) {
@@ -148,16 +148,17 @@ function admit(world: World): void {
     if (nest.id > world.siltstitcherCandidateAfterId && (!afterCursor || nest.id < afterCursor.id)) afterCursor = nest;
   }
   const home = afterCursor ?? first;
-  if (!home) return;
+  if (!home) return false;
   world.siltstitcherCandidateAfterId = home.id;
   home.pigment -= RULE.admissionPigment;
   world.siltstitchers.push({ id: world.nextId++, species: 'siltstitcher', x: home.x, y: home.y,
     vx: 0, vy: 0, body: .2, reserve: .1, cargo: 0, age: 0, hue: home.hue, homeNestId: home.id,
     starvedFor: 0, mode: 'home', destination: null, blockedFor: 0 });
   world.siltstitcherAdmissionAt = world.elapsed + RULE.admissionRest;
+  return true;
 }
 
-export function updateSiltstitchers(world: World, dt: number): void {
+export function updateSiltstitchers(world: World, dt: number, allowStandaloneAdmission = true): void {
   for (const body of world.siltstitchers) updateOne(world, body, dt);
   let write = 0;
   for (const body of world.siltstitchers) {
@@ -165,5 +166,5 @@ export function updateSiltstitchers(world: World, dt: number): void {
     else world.siltstitchers[write++] = body;
   }
   world.siltstitchers.length = write;
-  admit(world);
+  if (allowStandaloneAdmission) admitSiltstitcher(world);
 }

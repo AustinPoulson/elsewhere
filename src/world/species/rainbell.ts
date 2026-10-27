@@ -3,6 +3,7 @@ import { isInPool, type Rainbell, type Sediment, type World } from '../types';
 import { effectiveWeather } from '../weather';
 import { activeNewTypePopulation, NEW_TYPE_POPULATION_CAP, RAINBELL_CAP, SPECIES_CATALOG } from './catalog';
 import { blendHue, returnPigment, safeId } from './resources';
+import { AdmissionSources } from './admission-sources';
 
 const RULE = SPECIES_CATALOG.rainbell;
 const indexes = new WeakMap<World, Map<number, Sediment>>();
@@ -64,27 +65,28 @@ function updateOne(world: World, bell: Rainbell, dt: number, index: Map<number, 
   bell.lastPulseAt = world.elapsed;
 }
 
-function admit(world: World): void {
+export function admitRainbell(world: World): boolean {
   if (world.tick % 6 !== 0 || world.elapsed < world.rainbellAdmissionAt
     || world.rainbells.length >= RAINBELL_CAP || activeNewTypePopulation(world) >= NEW_TYPE_POPULATION_CAP
     || effectiveWeather(world).intensity < .5 || !safeId(world)
-    || world.elapsed > Number.MAX_SAFE_INTEGER - RULE.admissionRest) return;
+    || world.elapsed > Number.MAX_SAFE_INTEGER - RULE.admissionRest) return false;
   let first: Sediment | undefined;
   let afterCursor: Sediment | undefined;
+  const neighborhoods = new AdmissionSources();
   for (const grain of world.sediment) {
+    neighborhoods.add(grain);
     if (grain.strength <= 0 || !isInPool(grain.x, grain.y, RULE.margin)
       || world.rainbells.some(other => Math.hypot(other.x - grain.x, other.y - grain.y) < RULE.spacing)) continue;
     if (!first || grain.id < first.id) first = grain;
     if (grain.id > world.rainbellCandidateAfterId && (!afterCursor || grain.id < afterCursor.id)) afterCursor = grain;
   }
   const center = afterCursor ?? first;
-  if (!center) return;
+  if (!center) return false;
   world.rainbellCandidateAfterId = center.id;
-  const sources = world.sediment.filter(grain => grain.strength > 0
-    && Math.hypot(grain.x - center.x, grain.y - center.y) <= RULE.rootReach);
+  const sources = neighborhoods.within(center, RULE.rootReach);
   sources.sort((a, b) => Math.hypot(a.x - center.x, a.y - center.y)
     - Math.hypot(b.x - center.x, b.y - center.y) || a.id - b.id);
-  if (sources.reduce((sum, source) => sum + source.strength, 0) < RULE.admissionPigment) return;
+  if (sources.reduce((sum, source) => sum + source.strength, 0) < RULE.admissionPigment) return false;
   let remaining: number = RULE.admissionPigment;
   let paid = 0;
   let hue = center.hue;
@@ -98,15 +100,20 @@ function admit(world: World): void {
     }
     if (remaining === 0) break;
   }
-  if (remaining > 0) return;
+  if (remaining > 0) return false;
   for (const { source, amount } of payments) source.strength -= amount;
   world.rainbells.push({ id: world.nextId++, species: 'rainbell', x: center.x, y: center.y,
     body: .2, reserve: .4, age: 0, hue, starvedFor: 0, feedTargetSedimentId: null,
     pumpTargetSedimentId: null, pulseNextAllowedAt: world.elapsed, lastPulseAt: null });
   world.rainbellAdmissionAt = world.elapsed + RULE.admissionRest;
+  return true;
 }
 
-export function updateRainbells(world: World, dt: number): void {
+export function updateRainbells(world: World, dt: number, allowStandaloneAdmission = true): void {
+  if (world.rainbells.length === 0) {
+    if (allowStandaloneAdmission) admitRainbell(world);
+    return;
+  }
   let index = indexes.get(world);
   if (!index) { index = new Map(); indexes.set(world, index); }
   index.clear();
@@ -119,5 +126,5 @@ export function updateRainbells(world: World, dt: number): void {
     else world.rainbells[write++] = bell;
   }
   world.rainbells.length = write;
-  admit(world);
+  if (allowStandaloneAdmission) admitRainbell(world);
 }

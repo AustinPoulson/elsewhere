@@ -70,15 +70,20 @@ function updateOne(world: World, skimmer: Skimmer, dt: number, index: Map<number
   }
 }
 
-function admit(world: World): void {
+export function admitSkimmer(world: World): boolean {
   if (world.tick % 6 !== 0 || world.elapsed < world.skimmerAdmissionAt
-    || world.skimmers.length >= SKIMMER_CAP || activeNewTypePopulation(world) >= NEW_TYPE_POPULATION_CAP) return;
-  let candidate: Nest | undefined;
+    || world.skimmers.length >= SKIMMER_CAP || activeNewTypePopulation(world) >= NEW_TYPE_POPULATION_CAP) return false;
+  let first: Nest | undefined;
+  let afterCursor: Nest | undefined;
   for (const nest of world.nests) {
-    if (nest.pigment >= .6 && !world.skimmers.some(skimmer => skimmer.homeNestId === nest.id)
-      && (!candidate || nest.id < candidate.id)) candidate = nest;
+    if (nest.pigment < .6 || world.skimmers.some(skimmer => skimmer.homeNestId === nest.id)) continue;
+    if (!first || nest.id < first.id) first = nest;
+    if (nest.id > world.skimmerCandidateAfterId && (!afterCursor || nest.id < afterCursor.id)) afterCursor = nest;
   }
-  if (!candidate || !safeId(world) || world.elapsed > Number.MAX_SAFE_INTEGER - 60) return;
+  const candidate = afterCursor ?? first;
+  if (!candidate || !safeId(world) || world.elapsed > Number.MAX_SAFE_INTEGER - 60) return false;
+  // A legal but crowded nest cannot monopolize later paid homes.
+  world.skimmerCandidateAfterId = candidate.id;
   const phase = ((candidate.id % 4096) * 2.39996322973) % TAU;
   const body: Skimmer = { id: world.nextId, species: 'skimmer', size: 8, body: .2,
     x: candidate.x + Math.cos(phase) * 20, y: candidate.y + Math.sin(phase) * 20,
@@ -87,14 +92,19 @@ function admit(world: World): void {
     emissionNextAllowedAt: world.elapsed, lastEmissionAt: null };
   confinePosition(body, 11);
   if (Math.hypot(body.x - candidate.x, body.y - candidate.y) > 24
-    || world.skimmers.some(other => Math.hypot(body.x - other.x, body.y - other.y) < 48)) return;
+    || world.skimmers.some(other => Math.hypot(body.x - other.x, body.y - other.y) < 48)) return false;
   candidate.pigment -= .6;
   world.nextId++;
   world.skimmers.push(body);
   world.skimmerAdmissionAt = world.elapsed + 60;
+  return true;
 }
 
-export function updateSkimmers(world: World, dt: number): void {
+export function updateSkimmers(world: World, dt: number, allowStandaloneAdmission = true): void {
+  if (world.skimmers.length === 0) {
+    if (allowStandaloneAdmission) admitSkimmer(world);
+    return;
+  }
   // The lookup is derived, reused and never authoritative. Restores resolve saved
   // targets identically even between search phases: one shared <=600 pass/tick.
   let index = indexes.get(world);
@@ -109,5 +119,5 @@ export function updateSkimmers(world: World, dt: number): void {
     else world.skimmers[write++] = skimmer;
   }
   world.skimmers.length = write;
-  admit(world);
+  if (allowStandaloneAdmission) admitSkimmer(world);
 }

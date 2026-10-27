@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { addLight, createWorld, stepWorld } from '../src/world/simulation';
 import { restoreWorld, serializeWorld } from '../src/world/persistence';
-import { updateSkimmers } from '../src/world/species/skimmer';
+import { admitSkimmer, updateSkimmers } from '../src/world/species/skimmer';
 import { FIXED_STEP, LIMITS, isInPool, type Skimmer, type World } from '../src/world/types';
 import { confinePosition } from '../src/world/geometry';
 import { applyCurrent } from '../src/world/actions/current';
@@ -68,6 +68,30 @@ describe('autonomous prism skimmer', () => {
     crowded.nests.push({ ...crowded.nests[0], id: crowded.nextId++, x: existing.x, y: existing.y, pigment: .6 });
     updateSkimmers(crowded, FIXED_STEP);
     expect(crowded.skimmers).toHaveLength(1); expect(crowded.nests[1].pigment).toBe(.6);
+  });
+
+  it('rotates past a crowded low-ID nest to a separately fundable home', () => {
+    const world = habitat();
+    const low = world.nests[0];
+    const high = { ...low, id: world.nextId++, x: 950, pigment: .6 };
+    const occupiedHome = { ...low, id: world.nextId++, x: 430, pigment: 0 };
+    world.nests.push(high, occupiedHome);
+    const phase = ((low.id % 4096) * 2.39996322973) % (Math.PI * 2);
+    world.skimmers.push({ id: world.nextId++, species: 'skimmer', size: 8, body: .2,
+      x: low.x + Math.cos(phase) * 20, y: low.y + Math.sin(phase) * 20,
+      vx: 0, vy: 0, hue: low.hue, reserve: .4, age: 0, phase,
+      homeNestId: occupiedHome.id, targetSedimentId: null, starvedFor: 0,
+      emissionNextAllowedAt: 0, lastEmissionAt: null });
+    world.tick = 6;
+    const id = world.nextId; const random = world.randomState;
+    expect(admitSkimmer(world)).toBe(false);
+    expect(world.skimmerCandidateAfterId).toBe(low.id);
+    expect(world.nextId).toBe(id); expect(world.randomState).toBe(random);
+    expect(low.pigment).toBe(.6); expect(high.pigment).toBe(.6);
+    expect(admitSkimmer(world)).toBe(true);
+    expect(world.skimmers.at(-1)?.homeNestId).toBe(high.id);
+    expect(world.skimmerCandidateAfterId).toBe(high.id);
+    expect(high.pigment).toBe(0);
   });
 
   it('searches at its saved phase, chooses distance then ID, and transfers exact intake with circular hue', () => {

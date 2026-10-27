@@ -2,7 +2,9 @@ import { confinePosition } from './geometry';
 import { CURRENT_SPEED, MAX_CURRENT_SPEED, SEDIMENT_DRIFT, currentStrength } from './actions/current';
 import type { Point, World } from './types';
 
-function drift(world: World, body: Point, dt: number, scale: number, margin: number): void {
+const driftVelocity: Point = { x: 0, y: 0 };
+
+function currentVelocity(world: World, body: Point, scale: number, out: Point): Point {
   let vx = 0;
   let vy = 0;
   for (const current of world.currents) {
@@ -13,10 +15,24 @@ function drift(world: World, body: Point, dt: number, scale: number, margin: num
     vy += current.dy * speed;
   }
   const magnitude = Math.hypot(vx, vy);
-  if (magnitude === 0) return;
-  const bounded = Math.min(1, MAX_CURRENT_SPEED / magnitude) * dt * scale;
-  body.x += vx * bounded;
-  body.y += vy * bounded;
+  if (magnitude === 0) { out.x = 0; out.y = 0; return out; }
+  const bounded = Math.min(1, MAX_CURRENT_SPEED / magnitude) * scale;
+  out.x = vx * bounded;
+  out.y = vy * bounded;
+  return out;
+}
+
+// Feeding and transport use exactly the same combined current force and
+// sediment scale, including the clamp when fields overlap.
+export function sedimentCurrentVelocity(world: World, grain: Point): Point {
+  return currentVelocity(world, grain, SEDIMENT_DRIFT, { x: 0, y: 0 });
+}
+
+function drift(world: World, body: Point, dt: number, scale: number, margin: number): void {
+  const velocity = currentVelocity(world, body, scale, driftVelocity);
+  if (velocity.x === 0 && velocity.y === 0) return;
+  body.x += velocity.x * dt;
+  body.y += velocity.y * dt;
   confinePosition(body, margin);
 }
 

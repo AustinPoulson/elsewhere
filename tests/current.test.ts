@@ -135,18 +135,18 @@ describe('current save revisions', () => {
 
   it('migrates actual revision1 without dropping an active rain call or changing old ecology', () => {
     const world = createWorld(84);
-    const { currents: _currents, skimmers: _skimmers, skimmerAdmissionAt: _admission, ecologyLedger: _ledger, reedwells: _reedwells, reedwellAdmissionAt: _reedwellAdmission, reedwellCandidateAfterId: _reedwellCandidate, rainbells: _rainbells, rainbellAdmissionAt: _rainbellAdmission, rainbellCandidateAfterId: _rainbellCandidate, siltstitchers: _siltstitchers, siltstitcherAdmissionAt: _siltstitcherAdmission, siltstitcherCandidateAfterId: _siltstitcherCandidate, organisms, ...rest } = world;
+    const { currents: _currents, skimmers: _skimmers, skimmerAdmissionAt: _admission, skimmerCandidateAfterId: _skimmerCandidate, ecologyLedger: _ledger, reedwells: _reedwells, reedwellAdmissionAt: _reedwellAdmission, reedwellCandidateAfterId: _reedwellCandidate, rainbells: _rainbells, rainbellAdmissionAt: _rainbellAdmission, rainbellCandidateAfterId: _rainbellCandidate, siltstitchers: _siltstitchers, siltstitcherAdmissionAt: _siltstitcherAdmission, siltstitcherCandidateAfterId: _siltstitcherCandidate, glassLimpets: _glassLimpets, glassLimpetAdmissionAt: _glassLimpetAdmissionAt, glassLimpetCandidateAfterId: _glassLimpetCandidateAfterId, nextFoundingTick: _nextFoundingTick, foundingTypeCursor: _foundingTypeCursor, organisms, ...rest } = world;
     const previous = { ...rest, organisms: organisms.map(({ pigmentCredit: _credit, ...entry }) => entry), schemaRevision: 1, elapsed: 12, weatherCall: { startedAt: 10, nextAllowedAt: 70 } };
     const snapshot = JSON.stringify(previous);
     const migrated = restoreWorld(snapshot)!;
-    expect(migrated).toEqual({ ...world, elapsed: 12, schemaRevision: 6, skimmerAdmissionAt: 12, reedwellAdmissionAt: 12, rainbellAdmissionAt: 12, siltstitcherAdmissionAt: 12, weatherCall: previous.weatherCall, currents: [] });
+    expect(migrated).toEqual({ ...world, elapsed: 12, schemaRevision: 7, skimmerAdmissionAt: 12, reedwellAdmissionAt: 12, rainbellAdmissionAt: 12, siltstitcherAdmissionAt: 12, glassLimpetAdmissionAt: 12, weatherCall: previous.weatherCall, currents: [] });
     expect(JSON.stringify(previous)).toBe(snapshot);
     expect(restoreWorld(serializeWorld(migrated))).toEqual(migrated);
   });
 
   it('rejects malformed, future, hybrid and globally duplicate current records before expiration cleanup', () => {
     const mutations: ((world: Record<string, any>) => void)[] = [
-      w => { delete w.currents; }, w => { w.currents = null; }, w => { w.schemaRevision = 7; },
+      w => { delete w.currents; }, w => { w.currents = null; }, w => { w.schemaRevision = 8; },
       w => { w.currents[0].x = 0; }, w => { w.currents[0].dx = .5; }, w => { w.currents[0].dy = NaN; },
       w => { w.currents[0].radius = 111; }, w => { w.currents[0].duration = 9; },
       w => { w.currents[0].startedAt = 1; }, w => { w.currents[0].startedAt = -1; },

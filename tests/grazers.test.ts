@@ -36,7 +36,7 @@ function pigmentMass(world: World): number {
 }
 
 function legacyPayload(world: World): string {
-  const { grazers: _grazers, nests: _nests, schemaRevision: _revision, weatherCall: _call, currents: _currents, skimmers: _skimmers, skimmerAdmissionAt: _admission, ecologyLedger: _ledger, reedwells: _reedwells, reedwellAdmissionAt: _reedwellAdmission, reedwellCandidateAfterId: _reedwellCandidate, rainbells: _rainbells, rainbellAdmissionAt: _rainbellAdmission, rainbellCandidateAfterId: _rainbellCandidate, siltstitchers: _siltstitchers, siltstitcherAdmissionAt: _siltstitcherAdmission, siltstitcherCandidateAfterId: _siltstitcherCandidate, organisms, ...legacy } = world;
+  const { grazers: _grazers, nests: _nests, schemaRevision: _revision, weatherCall: _call, currents: _currents, skimmers: _skimmers, skimmerAdmissionAt: _admission, skimmerCandidateAfterId: _skimmerCandidate, ecologyLedger: _ledger, reedwells: _reedwells, reedwellAdmissionAt: _reedwellAdmission, reedwellCandidateAfterId: _reedwellCandidate, rainbells: _rainbells, rainbellAdmissionAt: _rainbellAdmission, rainbellCandidateAfterId: _rainbellCandidate, siltstitchers: _siltstitchers, siltstitcherAdmissionAt: _siltstitcherAdmission, siltstitcherCandidateAfterId: _siltstitcherCandidate, glassLimpets: _glassLimpets, glassLimpetAdmissionAt: _glassLimpetAdmissionAt, glassLimpetCandidateAfterId: _glassLimpetCandidateAfterId, nextFoundingTick: _nextFoundingTick, foundingTypeCursor: _foundingTypeCursor, organisms, ...legacy } = world;
   return JSON.stringify({ ...legacy, organisms: organisms.map(({ pigmentCredit: _credit, ...entry }) => entry), version: 1 });
 }
 
