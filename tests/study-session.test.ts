@@ -18,7 +18,7 @@ describe('safe shower study', () => {
     const expected = restoreWorld(JSON.stringify(fixture));
     expect(expected).not.toBeNull();
     const { version: _oldVersion, ...historicalEcology } = fixture;
-    const { version: _version, schemaRevision: _revision, weatherCall: _call, currents: _currents, skimmers: _skimmers, skimmerAdmissionAt: _admission, skimmerCandidateAfterId: _skimmerCandidate, ecologyLedger: _ledger, reedwells: _reedwells, reedwellAdmissionAt: _reedwellAdmission, reedwellCandidateAfterId: _reedwellCandidate, rainbells: _rainbells, rainbellAdmissionAt: _rainbellAdmission, rainbellCandidateAfterId: _rainbellCandidate, siltstitchers: _siltstitchers, siltstitcherAdmissionAt: _siltstitcherAdmission, siltstitcherCandidateAfterId: _siltstitcherCandidate, glassLimpets: _glassLimpets, glassLimpetAdmissionAt: _glassLimpetAdmissionAt, glassLimpetCandidateAfterId: _glassLimpetCandidateAfterId, nextFoundingTick: _nextFoundingTick, foundingTypeCursor: _foundingTypeCursor, organisms, ...normalizedEcology } = expected!;
+    const { version: _version, schemaRevision: _revision, weatherCall: _call, currents: _currents, skimmers: _skimmers, skimmerAdmissionAt: _admission, skimmerCandidateAfterId: _skimmerCandidate, ecologyLedger: _ledger, reedwells: _reedwells, reedwellAdmissionAt: _reedwellAdmission, reedwellCandidateAfterId: _reedwellCandidate, rainbells: _rainbells, rainbellAdmissionAt: _rainbellAdmission, rainbellCandidateAfterId: _rainbellCandidate, siltstitchers: _siltstitchers, siltstitcherAdmissionAt: _siltstitcherAdmission, siltstitcherCandidateAfterId: _siltstitcherCandidate, glassLimpets: _glassLimpets, glassLimpetAdmissionAt: _glassLimpetAdmissionAt, glassLimpetCandidateAfterId: _glassLimpetCandidateAfterId, nextFoundingTick: _nextFoundingTick, foundingTypeCursor: _foundingTypeCursor, cargoMites: _cargoMites, cargoMiteAdmissionAt: _cargoMiteAdmissionAt, cargoMiteCandidateAfterId: _cargoMiteCandidateAfterId, organisms, ...normalizedEcology } = expected!;
     expect({ ...normalizedEcology, organisms: organisms.map(({ pigmentCredit: _credit, ...entry }) => entry) }).toEqual(historicalEcology);
     expect(expected!.seed).toBe(SHOWER_STUDY.seed);
     expect(expected!.tick).toBe(SHOWER_STUDY.steps);
@@ -125,6 +125,7 @@ describe('safe shower study', () => {
     legacy.version = 1; delete legacy.grazers; delete legacy.nests; delete legacy.weatherCall; delete legacy.schemaRevision; delete legacy.currents;
     delete legacy.skimmers; delete legacy.skimmerAdmissionAt; delete legacy.skimmerCandidateAfterId; delete legacy.ecologyLedger; delete legacy.reedwells; delete legacy.reedwellAdmissionAt; delete legacy.reedwellCandidateAfterId; delete legacy.rainbells; delete legacy.rainbellAdmissionAt; delete legacy.rainbellCandidateAfterId; delete legacy.siltstitchers; delete legacy.siltstitcherAdmissionAt; delete legacy.siltstitcherCandidateAfterId;
     delete legacy.glassLimpets; delete legacy.glassLimpetAdmissionAt; delete legacy.glassLimpetCandidateAfterId;
+    delete legacy.cargoMites; delete legacy.cargoMiteAdmissionAt; delete legacy.cargoMiteCandidateAfterId;
     delete legacy.nextFoundingTick; delete legacy.foundingTypeCursor;
     for (const entry of legacy.organisms) delete entry.pigmentCredit;
     expect(session.importSnapshot(JSON.stringify(legacy), session.importToken())).toBe('imported');

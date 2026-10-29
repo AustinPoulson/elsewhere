@@ -15,7 +15,7 @@ describe('shared founding budget', () => {
   it('rotates one registered type per six-tick phase, including refusals, without resources or random draws', () => {
     const world = empty();
     const beforeId = world.nextId; const beforeRandom = world.randomState;
-    expect(NORMAL_FOUNDER_COUNT).toBe(5);
+    expect(NORMAL_FOUNDER_COUNT).toBe(6);
     for (let phase = 1; phase <= 10; phase++) {
       world.tick = phase * 6;
       expect(runNormalFounding(world)).toBe(false);
@@ -26,7 +26,7 @@ describe('shared founding budget', () => {
     expect(world.randomState).toBe(beforeRandom);
     world.tick++;
     expect(runNormalFounding(world)).toBe(false);
-    expect(world.foundingTypeCursor).toBe(0);
+    expect(world.foundingTypeCursor).toBe(10 % NORMAL_FOUNDER_COUNT);
   });
 
   it('admits at most one paid body per six ticks and shares the slot with an off-phase event', () => {

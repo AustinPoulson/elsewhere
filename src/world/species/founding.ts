@@ -5,6 +5,7 @@ import { admitReedwell } from './reedwell';
 import { admitRainbell } from './rainbell';
 import { admitSiltstitcher } from './siltstitcher';
 import { admitGlassLimpet } from './glass-limpet';
+import { admitCargoMite } from './cargo-mite';
 import { safeId } from './resources';
 
 // Catalog definitions are possible life; this fixed registry schedules scans
@@ -16,6 +17,7 @@ const FOUNDERS = [
   { cap: SPECIES_CATALOG.rainbell.cap, population: (world: World) => world.rainbells.length, admit: admitRainbell },
   { cap: SPECIES_CATALOG.siltstitcher.cap, population: (world: World) => world.siltstitchers.length, admit: admitSiltstitcher },
   { cap: SPECIES_CATALOG.glassLimpet.cap, population: (world: World) => world.glassLimpets.length, admit: admitGlassLimpet },
+  { cap: SPECIES_CATALOG.cargoMite.cap, population: (world: World) => world.cargoMites.length, admit: admitCargoMite },
 ] as const;
 
 export const NORMAL_FOUNDER_COUNT = FOUNDERS.length;
