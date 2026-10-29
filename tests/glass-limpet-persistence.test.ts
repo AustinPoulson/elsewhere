@@ -10,8 +10,10 @@ function revision6(world: World): Record<string, any> {
   const old = structuredClone(world) as Record<string, any>;
   old.schemaRevision = 6;
   for (const key of ['glassLimpets', 'glassLimpetAdmissionAt', 'glassLimpetCandidateAfterId',
-    'skimmerCandidateAfterId', 'nextFoundingTick', 'foundingTypeCursor']) delete old[key];
+    'skimmerCandidateAfterId', 'nextFoundingTick', 'foundingTypeCursor',
+    'cargoMites', 'cargoMiteAdmissionAt', 'cargoMiteCandidateAfterId']) delete old[key];
   for (const key of limpetLedgerKeys) delete old.ecologyLedger[key];
+  for (const key of ['cargoMiteIntake', 'cargoMiteMaintenancePigment']) delete old.ecologyLedger[key];
   return old;
 }
 
@@ -44,7 +46,7 @@ describe('glass limpet snapshot revision', () => {
     const serialized = JSON.stringify(source);
     const migrated = restoreWorld(serialized)!;
     expect(migrated).not.toBeNull();
-    expect(migrated).toMatchObject({ schemaRevision: 7, glassLimpets: [],
+    expect(migrated).toMatchObject({ schemaRevision: 8, glassLimpets: [], cargoMites: [],
       glassLimpetAdmissionAt: source.elapsed, glassLimpetCandidateAfterId: 0,
       nextFoundingTick: source.tick, foundingTypeCursor: 0,
       nextId: source.nextId, tick: source.tick, elapsed: source.elapsed,
@@ -108,7 +110,7 @@ describe('glass limpet snapshot revision', () => {
       w => { w.glassLimpetAdmissionAt = w.elapsed + 61; },
       w => { w.glassLimpetCandidateAfterId = w.nextId; },
       w => { w.nextFoundingTick = w.tick + 7; },
-      w => { w.foundingTypeCursor = 5; },
+      w => { w.foundingTypeCursor = 6; },
       w => { delete w.ecologyLedger.glassLimpetIntake; },
       w => { w.ecologyLedger.glassLimpetMaintenancePigment = -1; },
       w => { w.glassLimpets.push(...Array.from({ length: 4 }, () => ({ ...w.glassLimpets[0], id: w.nextId++ }))); },

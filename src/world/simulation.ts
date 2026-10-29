@@ -11,6 +11,7 @@ import { updateReedwells } from './species/reedwell';
 import { updateRainbells } from './species/rainbell';
 import { updateSiltstitchers } from './species/siltstitcher';
 import { updateGlassLimpets } from './species/glass-limpet';
+import { syncAttachedCargoMites, updateCargoMites } from './species/cargo-mite';
 import { runNormalFounding } from './species/founding';
 
 const TAU = Math.PI * 2;
@@ -122,19 +123,21 @@ export function createWorld(seed = 20261006): World {
   if (!Number.isFinite(seed)) throw new RangeError('World seed must be finite.');
   const normalizedSeed = Math.trunc(seed) >>> 0;
   const world: World = {
-    version: 3, schemaRevision: 7, currents: [], weatherCall: { startedAt: null, nextAllowedAt: 0 },
+    version: 3, schemaRevision: 8, currents: [], weatherCall: { startedAt: null, nextAllowedAt: 0 },
     skimmers: [], skimmerAdmissionAt: 0, skimmerCandidateAfterId: 0,
     reedwells: [], reedwellAdmissionAt: 0, reedwellCandidateAfterId: 0,
     rainbells: [], rainbellAdmissionAt: 0, rainbellCandidateAfterId: 0,
     siltstitchers: [], siltstitcherAdmissionAt: 0, siltstitcherCandidateAfterId: 0,
     glassLimpets: [], glassLimpetAdmissionAt: 0, glassLimpetCandidateAfterId: 0,
+    cargoMites: [], cargoMiteAdmissionAt: 0, cargoMiteCandidateAfterId: 0,
     nextFoundingTick: 0, foundingTypeCursor: 0,
     ecologyLedger: { mineralizedPigment: 0, maintenancePigment: 0, emittedLight: 0,
       pigmentConverted: 0, feedingCreditLost: 0, daylightHarvested: 0, daylightUnharvested: 0,
       reedwellEmittedLight: 0, reedwellDissipatedLight: 0, rainbellIntake: 0,
       rainbellPumpingPigment: 0, rainbellMaintenancePigment: 0, siltstitcherNestReserve: 0,
       siltstitcherNestCargo: 0, siltstitcherOutwardPigment: 0, siltstitcherMaintenancePigment: 0,
-      glassLimpetIntake: 0, glassLimpetMaintenancePigment: 0 },
+      glassLimpetIntake: 0, glassLimpetMaintenancePigment: 0,
+      cargoMiteIntake: 0, cargoMiteMaintenancePigment: 0 },
     seed: normalizedSeed, randomState: normalizedSeed, elapsed: 0, tick: 0,
     nextId: 1, organisms: [], lights: [], sediment: [], grazers: [], nests: [], consumed: 0,
   };
@@ -365,8 +368,10 @@ export function stepWorld(world: World, dt = FIXED_STEP): void {
   updateRainbells(world, dt, false);
   updateSiltstitchers(world, dt, false);
   updateGlassLimpets(world, dt);
+  updateCargoMites(world, dt);
   runNormalFounding(world);
   applyCurrentDrift(world, dt);
+  syncAttachedCargoMites(world);
   for (const light of world.lights) {
     light.age += dt;
     light.energy = Math.max(0, light.energy - dt * 0.045);
@@ -398,6 +403,7 @@ export function getStats(world: World): WorldStats {
     rainbells: world.rainbells.length,
     siltstitchers: world.siltstitchers.length,
     glassLimpets: world.glassLimpets.length,
+    cargoMites: world.cargoMites.length,
     nestPigment: world.nests.reduce((total, nest) => total + nest.pigment, 0),
   };
 }

@@ -52,6 +52,8 @@ Siltstitchers may emerge from pigment-rich nests. Watch their forked bodies carr
 
 Glass limpets may settle in suitable shoreline pockets after loose pigment pays for a small fixed shell and reserve. They filter coarse grains only when a real current carries them within reach, holding that pigment where a downstream grazer cannot gather it yet. Their catch basin brightens as it fills. Calm water brings no meal, but upkeep still costs reserve. The shell returns its body, reserve and catch to ordinary loose pigment after eight world minutes or a minute without reserve. Some pools support none, and imported worlds receive no free shells. Observe a shell to inspect its catch; no new control is needed.
 
+Cargo mites may appear on grazers carrying enough pigment. The grazer's actual bundle pays for the mite's first body and reserve; attached mites slowly draw more from that bundle, so less may reach the nest. A mature parent with enough reserve can pay for one young mite on the same host. Both lives are finite, and their remaining pigment returns to the water at exit. Grazers with no carried food cannot fund new mites, and old saves receive no free population. Observe the tiny shape on a grazer's rim to inspect its host and reserve; no new control is needed.
+
 ## Publish on GitHub Pages
 
 The project lives at `C:\repos\MAGI\elsewhere` in its own Git checkout, connected to `https://github.com/AustinPoulson/elsewhere.git`. GitHub Pages uses GitHub Actions. Use the existing authenticated local Git connection where available; connector tree writes have returned HTTP 403.

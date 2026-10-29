@@ -7,6 +7,7 @@ import type { World } from '../src/world/types';
 const rainbellLedgerKeys = ['rainbellIntake', 'rainbellPumpingPigment', 'rainbellMaintenancePigment'];
 const siltstitcherLedgerKeys = ['siltstitcherNestReserve', 'siltstitcherNestCargo', 'siltstitcherOutwardPigment', 'siltstitcherMaintenancePigment'];
 const limpetLedgerKeys = ['glassLimpetIntake', 'glassLimpetMaintenancePigment'];
+const cargoMiteLedgerKeys = ['cargoMiteIntake', 'cargoMiteMaintenancePigment'];
 
 function inhabited(): World {
   const world = createWorld(91);
@@ -37,9 +38,9 @@ function inhabited(): World {
 }
 
 function revision4(world: World): Record<string, any> {
-  const { rainbells: _polyps, rainbellAdmissionAt: _admission, rainbellCandidateAfterId: _cursor, siltstitchers: _siltstitchers, siltstitcherAdmissionAt: _siltstitcherAdmission, siltstitcherCandidateAfterId: _siltstitcherCandidate, glassLimpets: _glassLimpets, glassLimpetAdmissionAt: _glassLimpetAdmissionAt, glassLimpetCandidateAfterId: _glassLimpetCandidateAfterId, nextFoundingTick: _nextFoundingTick, foundingTypeCursor: _foundingTypeCursor, skimmerCandidateAfterId: _skimmerCandidate, ...previous } = structuredClone(world);
+  const { rainbells: _polyps, rainbellAdmissionAt: _admission, rainbellCandidateAfterId: _cursor, siltstitchers: _siltstitchers, siltstitcherAdmissionAt: _siltstitcherAdmission, siltstitcherCandidateAfterId: _siltstitcherCandidate, glassLimpets: _glassLimpets, glassLimpetAdmissionAt: _glassLimpetAdmissionAt, glassLimpetCandidateAfterId: _glassLimpetCandidateAfterId, nextFoundingTick: _nextFoundingTick, foundingTypeCursor: _foundingTypeCursor, cargoMites: _cargoMites, cargoMiteAdmissionAt: _cargoMiteAdmissionAt, cargoMiteCandidateAfterId: _cargoMiteCandidateAfterId, skimmerCandidateAfterId: _skimmerCandidate, ...previous } = structuredClone(world);
   const result: Record<string, any> = { ...previous, schemaRevision: 4 };
-  for (const key of [...rainbellLedgerKeys, ...siltstitcherLedgerKeys, ...limpetLedgerKeys]) delete result.ecologyLedger[key];
+  for (const key of [...rainbellLedgerKeys, ...siltstitcherLedgerKeys, ...limpetLedgerKeys, ...cargoMiteLedgerKeys]) delete result.ecologyLedger[key];
   return result;
 }
 
@@ -67,8 +68,8 @@ describe('rainbell snapshot revision', () => {
     const { rainbells, rainbellAdmissionAt, rainbellCandidateAfterId, siltstitchers, siltstitcherAdmissionAt, siltstitcherCandidateAfterId,
       glassLimpets: _glassLimpets, glassLimpetAdmissionAt: _glassLimpetAdmissionAt,
       glassLimpetCandidateAfterId: _glassLimpetCandidateAfterId,
-      nextFoundingTick: _nextFoundingTick, foundingTypeCursor: _foundingTypeCursor, skimmerCandidateAfterId: _skimmerCandidate, ...oldFields } = restored;
-    expect(restored.schemaRevision).toBe(7);
+      nextFoundingTick: _nextFoundingTick, foundingTypeCursor: _foundingTypeCursor, cargoMites: _cargoMites, cargoMiteAdmissionAt: _cargoMiteAdmissionAt, cargoMiteCandidateAfterId: _cargoMiteCandidateAfterId, skimmerCandidateAfterId: _skimmerCandidate, ...oldFields } = restored;
+    expect(restored.schemaRevision).toBe(8);
     expect(rainbells).toEqual([]);
     expect(rainbellAdmissionAt).toBe(source.elapsed);
     expect(rainbellCandidateAfterId).toBe(0);
@@ -76,7 +77,7 @@ describe('rainbell snapshot revision', () => {
     expect(siltstitcherAdmissionAt).toBe(source.elapsed);
     expect(siltstitcherCandidateAfterId).toBe(0);
     const oldLedger = { ...oldFields.ecologyLedger } as Record<string, number>;
-    for (const key of [...rainbellLedgerKeys, ...siltstitcherLedgerKeys, ...limpetLedgerKeys]) { expect(oldLedger[key]).toBe(0); delete oldLedger[key]; }
+    for (const key of [...rainbellLedgerKeys, ...siltstitcherLedgerKeys, ...limpetLedgerKeys, ...cargoMiteLedgerKeys]) { expect(oldLedger[key]).toBe(0); delete oldLedger[key]; }
     expect({ ...oldFields, schemaRevision: 4, ecologyLedger: oldLedger }).toEqual(source);
     expect(JSON.stringify(source)).toBe(before);
     expect(restoreWorld(serializeWorld(restored))).toEqual(restored);
@@ -87,7 +88,7 @@ describe('rainbell snapshot revision', () => {
       const source = legacy(version, revision);
       const before = JSON.stringify(source);
       const restored = restoreWorld(before)!;
-      expect(restored).toMatchObject({ schemaRevision: 7, rainbells: [], rainbellAdmissionAt: source.elapsed,
+      expect(restored).toMatchObject({ schemaRevision: 8, rainbells: [], rainbellAdmissionAt: source.elapsed,
         rainbellCandidateAfterId: 0, elapsed: source.elapsed, tick: source.tick, seed: source.seed,
         randomState: source.randomState, lights: source.lights, sediment: source.sediment, consumed: source.consumed });
       expect(restored.nextId).toBe(source.nextId + (version === 1 ? 8 : 0));
@@ -155,7 +156,7 @@ describe('rainbell snapshot revision', () => {
       w => { w.rainbells[0].lastPulseAt = w.elapsed + 1; }, w => { w.rainbells[0].lastPulseAt = -1; },
       w => { w.rainbells[0].lastPulseAt = null; w.rainbells[0].pulseNextAllowedAt = w.elapsed + .01; },
       w => { w.rainbells = Array.from({ length: 5 }, (_, index) => ({ ...w.rainbells[0], id: w.nextId + index })); w.nextId += 5; },
-      w => { w.schemaRevision = 8; },
+      w => { w.schemaRevision = 9; },
     ];
     for (const target of ['feedTargetSedimentId', 'pumpTargetSedimentId']) {
       changes.push(w => { delete w.rainbells[0][target]; }, w => { w.rainbells[0][target] = 0; },

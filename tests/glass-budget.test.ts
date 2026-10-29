@@ -43,7 +43,7 @@ function mixedMaximum(): World {
     world.reedwells.push({ id: freshId(), species: 'reedwell', x: 450 + i * 90, y: 680,
       body: .6, age: 0, hue: 180, lightStore: 0,
       emissionNextAllowedAt: 0, lastEmissionAt: null });
-    world.siltstitchers.push({ id: freshId(), species: 'siltstitcher', x: nest.x, y: nest.y,
+    if (i < 4) world.siltstitchers.push({ id: freshId(), species: 'siltstitcher', x: nest.x, y: nest.y,
       vx: 0, vy: 0, body: .2, reserve: .1, cargo: 0, age: 0, hue: 180,
       homeNestId: nest.id, starvedFor: 0, mode: 'home', destination: null, blockedFor: 0 });
   }
@@ -57,6 +57,13 @@ function mixedMaximum(): World {
     world.glassLimpets.push({ id: freshId(), species: 'glassLimpet', x, y: 500,
       body: .2, reserve: .1, cargo: 0, age: 0, hue: 180, starvedFor: 0,
       targetSedimentId: null });
+  }
+  for (let i = 0; i < 2; i++) {
+    const host = world.grazers[i];
+    world.cargoMites.push({ id: freshId(), species: 'cargoMite', x: host.x, y: host.y,
+      vx: host.vx, vy: host.vy, body: .1, reserve: .4, age: 0, hue: host.hue,
+      starvedFor: 0, mode: 'attached', hostId: host.id, targetHostId: null,
+      parentId: null, nextBirthAt: 30 });
   }
   for (const x of [320, 720, 1120]) {
     world.currents.push({ id: freshId(), x, y: 500, dx: 1, dy: 0,
@@ -74,6 +81,7 @@ function checkCaps(world: World): void {
   expect(world.currents.length).toBeLessThanOrEqual(3);
   expect(activeNewTypePopulation(world)).toBeLessThanOrEqual(NEW_TYPE_POPULATION_CAP);
   expect(world.glassLimpets.length).toBeLessThanOrEqual(4);
+  expect(world.cargoMites.length).toBeLessThanOrEqual(4);
 }
 
 function stepStress(world: World, index: number): void {
@@ -88,6 +96,10 @@ function stepStress(world: World, index: number): void {
   for (const body of world.rainbells) { body.age %= 599; body.starvedFor = 0; }
   for (const body of world.siltstitchers) { body.age %= 479; body.starvedFor = 0; }
   for (const body of world.glassLimpets) { body.age %= 479; body.starvedFor = 0; }
+  for (const body of world.cargoMites) {
+    body.age %= 239; body.starvedFor = 0;
+    body.nextBirthAt = world.elapsed - body.age + 30;
+  }
   stepWorld(world, FIXED_STEP);
   while (world.sediment.length < LIMITS.sediment) {
     const angle = world.nextId * 2.39996322973;

@@ -6,6 +6,7 @@ import { LIMITS, type World } from '../src/world/types';
 
 const ledgerKeys = ['siltstitcherNestReserve', 'siltstitcherNestCargo', 'siltstitcherOutwardPigment', 'siltstitcherMaintenancePigment'];
 const limpetLedgerKeys = ['glassLimpetIntake', 'glassLimpetMaintenancePigment'];
+const cargoMiteLedgerKeys = ['cargoMiteIntake', 'cargoMiteMaintenancePigment'];
 
 function inhabited(): World {
   const world = createWorld(91);
@@ -40,9 +41,9 @@ function inhabited(): World {
 }
 
 function previous(world: World): Record<string, any> {
-  const { siltstitchers: _bodies, siltstitcherAdmissionAt: _admission, siltstitcherCandidateAfterId: _cursor, glassLimpets: _glassLimpets, glassLimpetAdmissionAt: _glassLimpetAdmissionAt, glassLimpetCandidateAfterId: _glassLimpetCandidateAfterId, nextFoundingTick: _nextFoundingTick, foundingTypeCursor: _foundingTypeCursor, skimmerCandidateAfterId: _skimmerCandidate, ...old } = structuredClone(world);
+  const { siltstitchers: _bodies, siltstitcherAdmissionAt: _admission, siltstitcherCandidateAfterId: _cursor, glassLimpets: _glassLimpets, glassLimpetAdmissionAt: _glassLimpetAdmissionAt, glassLimpetCandidateAfterId: _glassLimpetCandidateAfterId, nextFoundingTick: _nextFoundingTick, foundingTypeCursor: _foundingTypeCursor, cargoMites: _cargoMites, cargoMiteAdmissionAt: _cargoMiteAdmissionAt, cargoMiteCandidateAfterId: _cargoMiteCandidateAfterId, skimmerCandidateAfterId: _skimmerCandidate, ...old } = structuredClone(world);
   const result: Record<string, any> = { ...old, schemaRevision: 5 };
-  for (const key of [...ledgerKeys, ...limpetLedgerKeys]) delete result.ecologyLedger[key];
+  for (const key of [...ledgerKeys, ...limpetLedgerKeys, ...cargoMiteLedgerKeys]) delete result.ecologyLedger[key];
   return result;
 }
 
@@ -73,13 +74,13 @@ describe('siltstitcher snapshot revision', () => {
     const { siltstitchers, siltstitcherAdmissionAt, siltstitcherCandidateAfterId,
       glassLimpets: _glassLimpets, glassLimpetAdmissionAt: _glassLimpetAdmissionAt,
       glassLimpetCandidateAfterId: _glassLimpetCandidateAfterId,
-      nextFoundingTick: _nextFoundingTick, foundingTypeCursor: _foundingTypeCursor, skimmerCandidateAfterId: _skimmerCandidate, ...old } = restored;
-    expect(restored.schemaRevision).toBe(7);
+      nextFoundingTick: _nextFoundingTick, foundingTypeCursor: _foundingTypeCursor, cargoMites: _cargoMites, cargoMiteAdmissionAt: _cargoMiteAdmissionAt, cargoMiteCandidateAfterId: _cargoMiteCandidateAfterId, skimmerCandidateAfterId: _skimmerCandidate, ...old } = restored;
+    expect(restored.schemaRevision).toBe(8);
     expect(siltstitchers).toEqual([]);
     expect(siltstitcherAdmissionAt).toBe(source.elapsed);
     expect(siltstitcherCandidateAfterId).toBe(0);
     const oldLedger = { ...old.ecologyLedger } as Record<string, number>;
-    for (const key of [...ledgerKeys, ...limpetLedgerKeys]) { expect(oldLedger[key]).toBe(0); delete oldLedger[key]; }
+    for (const key of [...ledgerKeys, ...limpetLedgerKeys, ...cargoMiteLedgerKeys]) { expect(oldLedger[key]).toBe(0); delete oldLedger[key]; }
     expect({ ...old, schemaRevision: 5, ecologyLedger: oldLedger }).toEqual(source);
     expect(JSON.stringify(source)).toBe(before);
     expect(restoreWorld(serializeWorld(restored))).toEqual(restored);
@@ -90,7 +91,7 @@ describe('siltstitcher snapshot revision', () => {
       const source = legacy(version, revision);
       const before = JSON.stringify(source);
       const restored = restoreWorld(before)!;
-      expect(restored).toMatchObject({ schemaRevision: 7, siltstitchers: [], siltstitcherAdmissionAt: source.elapsed,
+      expect(restored).toMatchObject({ schemaRevision: 8, siltstitchers: [], siltstitcherAdmissionAt: source.elapsed,
         siltstitcherCandidateAfterId: 0, elapsed: source.elapsed, tick: source.tick, seed: source.seed,
         randomState: source.randomState, lights: source.lights, sediment: source.sediment, consumed: source.consumed });
       expect(restored.nextId).toBe(source.nextId + (version === 1 ? 8 : 0));
@@ -198,7 +199,7 @@ describe('siltstitcher snapshot revision', () => {
       w => { w.siltstitchers[0].mode = 'home'; }, w => { w.siltstitchers[0].mode = 'returning'; },
       w => { w.siltstitchers.push({ ...structuredClone(w.siltstitchers[0]), id: w.nextId++ }); },
       w => { w.siltstitchers = Array.from({ length: 7 }, () => ({ ...w.siltstitchers[0], id: w.nextId++ })); },
-      w => { w.schemaRevision = 8; },
+      w => { w.schemaRevision = 9; },
     ];
     for (const other of ['organisms', 'lights', 'sediment', 'grazers', 'nests', 'currents', 'skimmers', 'reedwells', 'rainbells']) {
       changes.push(w => { w.siltstitchers[0].id = w[other][0].id; });

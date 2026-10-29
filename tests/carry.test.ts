@@ -40,6 +40,7 @@ describe('carry a living light', () => {
     const legacy = { ...original, version: 1, grazers: undefined, nests: undefined, weatherCall: undefined, schemaRevision: undefined, currents: undefined,
       skimmers: undefined, skimmerAdmissionAt: undefined, skimmerCandidateAfterId: undefined, ecologyLedger: undefined, reedwells: undefined, reedwellAdmissionAt: undefined, reedwellCandidateAfterId: undefined, rainbells: undefined, rainbellAdmissionAt: undefined, rainbellCandidateAfterId: undefined, siltstitchers: undefined, siltstitcherAdmissionAt: undefined, siltstitcherCandidateAfterId: undefined,
       glassLimpets: undefined, glassLimpetAdmissionAt: undefined, glassLimpetCandidateAfterId: undefined,
+      cargoMites: undefined, cargoMiteAdmissionAt: undefined, cargoMiteCandidateAfterId: undefined,
       nextFoundingTick: undefined, foundingTypeCursor: undefined,
       organisms: original.organisms.map(({ pigmentCredit: _credit, ...entry }) => entry) };
     const world = restoreWorld(JSON.stringify(legacy))!;

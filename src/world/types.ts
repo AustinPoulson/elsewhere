@@ -94,6 +94,22 @@ export interface GlassLimpet extends Point {
   starvedFor: number;
   targetSedimentId: number | null;
 }
+export interface CargoMite extends Point {
+  id: number;
+  species: 'cargoMite';
+  vx: number;
+  vy: number;
+  body: 0.1;
+  reserve: number;
+  age: number;
+  hue: number;
+  starvedFor: number;
+  mode: 'attached' | 'seeking';
+  hostId: number | null;
+  targetHostId: number | null;
+  parentId: number | null;
+  nextBirthAt: number;
+}
 export interface EcologyLedger {
   mineralizedPigment: number;
   maintenancePigment: number;
@@ -113,6 +129,8 @@ export interface EcologyLedger {
   siltstitcherMaintenancePigment: number;
   glassLimpetIntake: number;
   glassLimpetMaintenancePigment: number;
+  cargoMiteIntake: number;
+  cargoMiteMaintenancePigment: number;
 }
 export interface LightSource extends Point {
   id: number;
@@ -148,7 +166,7 @@ export interface Nest extends Point {
 }
 export interface World {
   version: 3;
-  schemaRevision: 7;
+  schemaRevision: 8;
   skimmers: Skimmer[];
   skimmerAdmissionAt: number;
   skimmerCandidateAfterId: number;
@@ -164,6 +182,9 @@ export interface World {
   glassLimpets: GlassLimpet[];
   glassLimpetAdmissionAt: number;
   glassLimpetCandidateAfterId: number;
+  cargoMites: CargoMite[];
+  cargoMiteAdmissionAt: number;
+  cargoMiteCandidateAfterId: number;
   nextFoundingTick: number;
   foundingTypeCursor: number;
   ecologyLedger: EcologyLedger;
@@ -194,6 +215,7 @@ export interface WorldStats {
   rainbells: number;
   siltstitchers: number;
   glassLimpets: number;
+  cargoMites: number;
   nestPigment: number;
 }
 
