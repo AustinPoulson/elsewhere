@@ -82,6 +82,18 @@ Every production build includes `release.json`. In GitHub Actions, its `commit` 
 
 ## Continue the collaboration
 
-Start with [the architecture](docs/architecture.md), [Phase 1 acceptance](docs/phase-1.md), and [possible next expeditions](docs/next-expeditions.md). A useful brief names a new relationship, the behavior we want to see, its limits, and the evidence that will make it reviewable.
+Start with [the vision](docs/vision.md) for where Elsewhere is going, [the architecture](docs/architecture.md), [Phase 1 acceptance](docs/phase-1.md), and [possible next expeditions](docs/next-expeditions.md). A useful brief names a new relationship, the behavior we want to see, its limits, and the evidence that will make it reviewable.
+
+### Headless simulation harness
+
+Run the ecosystem without rendering to fast-forward through many simulated days:
+
+```bash
+npm run harness -- --days 30 --seed 1
+npm run harness -- --days 10 --seed 42 --json results.json
+npm run harness -- --load mysave.json --days 5
+```
+
+The harness reports population curves, births, deaths, extinctions, and resource flow. Use `--json` for machine-readable output.
 
 We can keep adding species, weather, habitats, and artifacts without turning the opening pool into a large game engine first.
