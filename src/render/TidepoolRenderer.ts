@@ -190,7 +190,10 @@ export class TidepoolRenderer {
     } catch (error) {
       if (app.renderer) app.destroy({ removeView: true }, { children: true });
       const detail = error instanceof Error ? error.message : 'Unknown graphics error';
-      throw new Error(`The tidepool could not start its graphics renderer. Check that WebGL and hardware acceleration are available in your browser. ${detail}`);
+      throw new Error(
+        `The tidepool could not start its graphics renderer. Check that WebGL and hardware acceleration are available in your browser. ${detail}`,
+        { cause: error },
+      );
     }
   }
 

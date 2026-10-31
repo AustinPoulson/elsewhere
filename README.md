@@ -56,9 +56,7 @@ Cargo mites may appear on grazers carrying enough pigment. The grazer's actual b
 
 ## Publish on GitHub Pages
 
-The project lives at `C:\repos\MAGI\elsewhere` in its own Git checkout, connected to `https://github.com/AustinPoulson/elsewhere.git`. GitHub Pages uses GitHub Actions. Use the existing authenticated local Git connection where available; connector tree writes have returned HTTP 403.
-
-The included `.github/workflows/pages.yml` is intended for that standalone root. GitHub does not discover a workflow nested inside `elsewhere/.github/` in the surrounding MAGI repository.
+The project lives at `C:\repos\elsewhere` in its own Git checkout, connected to `https://github.com/AustinPoulson/elsewhere.git`. GitHub Pages uses GitHub Actions. Use the existing authenticated local Git connection where available; connector tree writes have returned HTTP 403.
 
 For each addition:
 

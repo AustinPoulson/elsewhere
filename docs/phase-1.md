@@ -35,7 +35,7 @@ Hardware touch and a real operating-system reduced-motion setting were **source-
 
 ## Publication
 
-The app has its own Git repository at `C:\repos\MAGI\elsewhere` and is published in [AustinPoulson/elsewhere](https://github.com/AustinPoulson/elsewhere). Daily development/deployment at 9 AM Central is active and uses feature branches merged through pull requests.
+The app has its own Git repository at `C:\repos\elsewhere` and is published in [AustinPoulson/elsewhere](https://github.com/AustinPoulson/elsewhere). Daily development/deployment at 9 AM Central is active and uses feature branches merged through pull requests.
 
 [PR #1](https://github.com/AustinPoulson/elsewhere/pull/1) passed branch and PR builds and was squash-merged as `54e7025c156c122e365a456c0c5e3461ccfa11d4`. [The main deployment](https://github.com/AustinPoulson/elsewhere/actions/runs/37699406219) passed build and Pages deployment. The live `release.json` matched that exact merged SHA, and [the published artwork](https://austinpoulson.github.io/elsewhere/) rendered correctly.
 
