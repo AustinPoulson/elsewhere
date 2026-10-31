@@ -37,12 +37,37 @@ describe('carry a living light', () => {
 
   it('carries a migrated v1 light without changing its legacy ecological history', () => {
     const original = createWorld(23);
-    const legacy = { ...original, version: 1, grazers: undefined, nests: undefined, weatherCall: undefined, schemaRevision: undefined, currents: undefined,
-      skimmers: undefined, skimmerAdmissionAt: undefined, skimmerCandidateAfterId: undefined, ecologyLedger: undefined, reedwells: undefined, reedwellAdmissionAt: undefined, reedwellCandidateAfterId: undefined, rainbells: undefined, rainbellAdmissionAt: undefined, rainbellCandidateAfterId: undefined, siltstitchers: undefined, siltstitcherAdmissionAt: undefined, siltstitcherCandidateAfterId: undefined,
-      glassLimpets: undefined, glassLimpetAdmissionAt: undefined, glassLimpetCandidateAfterId: undefined,
-      cargoMites: undefined, cargoMiteAdmissionAt: undefined, cargoMiteCandidateAfterId: undefined,
-      nextFoundingTick: undefined, foundingTypeCursor: undefined,
-      organisms: original.organisms.map(({ pigmentCredit: _credit, ...entry }) => entry) };
+    const legacy = {
+      ...original,
+      version: 1,
+      grazers: undefined,
+      nests: undefined,
+      weatherCall: undefined,
+      schemaRevision: undefined,
+      currents: undefined,
+      skimmers: undefined,
+      skimmerAdmissionAt: undefined,
+      skimmerCandidateAfterId: undefined,
+      ecologyLedger: undefined,
+      reedwells: undefined,
+      reedwellAdmissionAt: undefined,
+      reedwellCandidateAfterId: undefined,
+      rainbells: undefined,
+      rainbellAdmissionAt: undefined,
+      rainbellCandidateAfterId: undefined,
+      siltstitchers: undefined,
+      siltstitcherAdmissionAt: undefined,
+      siltstitcherCandidateAfterId: undefined,
+      glassLimpets: undefined,
+      glassLimpetAdmissionAt: undefined,
+      glassLimpetCandidateAfterId: undefined,
+      cargoMites: undefined,
+      cargoMiteAdmissionAt: undefined,
+      cargoMiteCandidateAfterId: undefined,
+      nextFoundingTick: undefined,
+      foundingTypeCursor: undefined,
+      organisms: original.organisms.map(({ pigmentCredit: _credit, ...entry }) => entry),
+    };
     const world = restoreWorld(JSON.stringify(legacy))!;
     expect(world).not.toBeNull();
     const before = structuredClone(world);
@@ -54,7 +79,12 @@ describe('carry a living light', () => {
   });
   it('rejects invalid destinations and missing or expired sources atomically', () => {
     const world = createWorld();
-    for (const [x, y] of [[0, 0], [NaN, 500], [720, Infinity], [Infinity, 500]]) {
+    for (const [x, y] of [
+      [0, 0],
+      [NaN, 500],
+      [720, Infinity],
+      [Infinity, 500],
+    ]) {
       const before = serializeWorld(world);
       expect(moveLight(world, world.lights[0].id, x, y)).toBe(false);
       expect(serializeWorld(world)).toBe(before);

@@ -1,7 +1,14 @@
 import { Application, Container, Graphics, Sprite, Texture } from 'pixi.js';
 import {
-  GRAZER_CAPACITY, LIMITS, NEST_CAPACITY, WORLD_HEIGHT, WORLD_WIDTH, isInPool,
-  type Point, type Tool, type World,
+  GRAZER_CAPACITY,
+  LIMITS,
+  NEST_CAPACITY,
+  WORLD_HEIGHT,
+  WORLD_WIDTH,
+  isInPool,
+  type Point,
+  type Tool,
+  type World,
 } from '../world/types';
 import { createBloom, createBody, createTerrain, poolPoint } from './terrain';
 import { fitHabitatCamera, viewportToWorld, type HabitatCamera } from './camera';
@@ -66,7 +73,7 @@ function createLightPatchTexture(): Texture {
   const gradient = context.createRadialGradient(256, 256, 0, 256, 256, 256);
   gradient.addColorStop(0, 'rgba(255,255,255,1)');
   gradient.addColorStop(0.24, 'rgba(255,255,255,.96)');
-  gradient.addColorStop(0.50, 'rgba(255,255,255,.78)');
+  gradient.addColorStop(0.5, 'rgba(255,255,255,.78)');
   gradient.addColorStop(0.72, 'rgba(255,255,255,.58)');
   gradient.addColorStop(0.88, 'rgba(255,255,255,.30)');
   gradient.addColorStop(1, 'rgba(255,255,255,0)');
@@ -76,11 +83,12 @@ function createLightPatchTexture(): Texture {
 }
 
 function hueColor(hue: number, saturation = 0.38, lightness = 0.68): number {
-  const h = ((hue % 360) + 360) % 360 / 360;
+  const h = (((hue % 360) + 360) % 360) / 360;
   const channel = (n: number) => {
     const k = (n + h * 12) % 12;
-    return Math.round((lightness - saturation * Math.min(lightness, 1 - lightness)
-      * Math.max(-1, Math.min(k - 3, 9 - k, 1))) * 255);
+    return Math.round(
+      (lightness - saturation * Math.min(lightness, 1 - lightness) * Math.max(-1, Math.min(k - 3, 9 - k, 1))) * 255,
+    );
   };
   return (channel(0) << 16) | (channel(8) << 8) | channel(4);
 }
@@ -133,7 +141,10 @@ export class TidepoolRenderer {
   private frame = 0;
   private camera: HabitatCamera = fitHabitatCamera(WORLD_WIDTH, WORLD_HEIGHT);
 
-  private constructor(private readonly app: Application, private readonly host: HTMLElement) {
+  private constructor(
+    private readonly app: Application,
+    private readonly host: HTMLElement,
+  ) {
     const terrainTexture = Texture.from(createTerrain());
     this.glowTexture = Texture.from(createBloom());
     this.bodyTexture = Texture.from(createBody());
@@ -152,15 +163,32 @@ export class TidepoolRenderer {
     this.root.addChild(new Sprite(terrainTexture));
 
     for (let i = 0; i <= 256; i++) {
-      const point = poolPoint(i / 256 * TAU);
+      const point = poolPoint((i / 256) * TAU);
       if (i === 0) this.mask.moveTo(point.x, point.y);
       else this.mask.lineTo(point.x, point.y);
     }
     this.mask.closePath().fill(0xffffff);
     this.root.addChild(this.water, this.mask);
     this.water.mask = this.mask;
-    this.water.addChild(this.lightPatchLayer, this.sedimentLayer, this.sedimentCores, this.nestLayer, this.reedwellLayer, this.rainbellLayer, this.glassLimpetLayer, this.caustics, this.siltstitcherLayer, this.trails, this.lightLayer,
-      this.tendrils, this.organismLayer, this.grazerLayer, this.cargoMiteLayer, this.rain, this.indicator);
+    this.water.addChild(
+      this.lightPatchLayer,
+      this.sedimentLayer,
+      this.sedimentCores,
+      this.nestLayer,
+      this.reedwellLayer,
+      this.rainbellLayer,
+      this.glassLimpetLayer,
+      this.caustics,
+      this.siltstitcherLayer,
+      this.trails,
+      this.lightLayer,
+      this.tendrils,
+      this.organismLayer,
+      this.grazerLayer,
+      this.cargoMiteLayer,
+      this.rain,
+      this.indicator,
+    );
     this.caustics.blendMode = 'add';
     this.trails.blendMode = 'add';
     this.tendrils.blendMode = 'add';
@@ -190,7 +218,10 @@ export class TidepoolRenderer {
     } catch (error) {
       if (app.renderer) app.destroy({ removeView: true }, { children: true });
       const detail = error instanceof Error ? error.message : 'Unknown graphics error';
-      throw new Error(`The tidepool could not start its graphics renderer. Check that WebGL and hardware acceleration are available in your browser. ${detail}`);
+      throw new Error(
+        `The tidepool could not start its graphics renderer. Check that WebGL and hardware acceleration are available in your browser. ${detail}`,
+        { cause: error },
+      );
     }
   }
 
@@ -234,8 +265,14 @@ export class TidepoolRenderer {
     return sprite;
   }
 
-  render(world: World, selectedId: number | null, cursor: Point | null, tool: Tool,
-    carriedLightId: number | null = null, stirPreview: { start: Point; end: Point } | null = null): void {
+  render(
+    world: World,
+    selectedId: number | null,
+    cursor: Point | null,
+    tool: Tool,
+    carriedLightId: number | null = null,
+    stirPreview: { start: Point; end: Point } | null = null,
+  ): void {
     if (this.destroyed) return;
     this.frame++;
     const time = this.reducedMotion ? 0 : world.elapsed;
@@ -270,7 +307,8 @@ export class TidepoolRenderer {
       const load = Math.min(1, Math.max(0, sediment.strength / 0.5));
       const coreRadius = Math.min(4.2, Math.max(0.7, sediment.radius * 0.4)) * Math.sqrt(load);
       if (coreCount < LIMITS.sediment && coreRadius > 0) {
-        this.sedimentCores.circle(sediment.x, sediment.y, coreRadius)
+        this.sedimentCores
+          .circle(sediment.x, sediment.y, coreRadius)
           .fill({ color: visual.sprite.tint, alpha: Math.min(0.8, sediment.strength * 1.6) });
         coreCount++;
       }
@@ -317,11 +355,13 @@ export class TidepoolRenderer {
       visual.sprite.height = visual.sprite.width;
       visual.sprite.tint = 0xefdb9d;
       visual.sprite.alpha = 0.12 + remaining * 0.53;
-      this.indicator.circle(light.x, light.y, 1.15 + remaining * 0.65)
+      this.indicator
+        .circle(light.x, light.y, 1.15 + remaining * 0.65)
         .fill({ color: 0xf4e8b7, alpha: 0.45 + remaining * 0.45 });
       if (light.age < 2.8 && !this.reducedMotion) {
         const progress = light.age / 2.8;
-        this.indicator.circle(light.x, light.y, 5 + progress * 39)
+        this.indicator
+          .circle(light.x, light.y, 5 + progress * 39)
           .stroke({ width: 0.65, color: 0xcdceaa, alpha: (1 - progress) * 0.23 });
       }
     }
@@ -355,7 +395,7 @@ export class TidepoolRenderer {
       visual.glow.alpha = 0.13 + Math.min(1, organism.energy / 2) * 0.1;
       visual.body.tint = color;
       visual.body.width = size * 5 * breath;
-      visual.body.height = size * 5 / breath;
+      visual.body.height = (size * 5) / breath;
       visual.body.alpha = 0.72 + Math.min(1, organism.energy / 2) * 0.22;
 
       // Trails are tiny bounded histories owned by the simulation, never a growing render log.
@@ -406,7 +446,8 @@ export class TidepoolRenderer {
       this.drawCarryPreview(world, cursor, carriedLightId, lightReach);
     } else if (cursor && isInPool(cursor.x, cursor.y)) {
       const radius = tool === 'light' ? 18 : 10;
-      this.indicator.circle(cursor.x, cursor.y, radius)
+      this.indicator
+        .circle(cursor.x, cursor.y, radius)
         .stroke({ color: tool === 'light' ? 0xdccfa7 : 0xa6c5b5, alpha: 0.45, width: 0.75 });
       this.indicator.circle(cursor.x, cursor.y, 1.2).fill({ color: 0xe3dbbe, alpha: 0.6 });
     }
@@ -416,9 +457,13 @@ export class TidepoolRenderer {
   private drawFlowArrow(x: number, y: number, dx: number, dy: number, style: typeof this.currentArrowStyle): void {
     const tailX = x - dx * 10;
     const tailY = y - dy * 10;
-    this.indicator.moveTo(tailX, tailY).lineTo(x + dx * 8, y + dy * 8)
-      .moveTo(x + dx * 8, y + dy * 8).lineTo(x - dx * 2 - dy * 5, y - dy * 2 + dx * 5)
-      .moveTo(x + dx * 8, y + dy * 8).lineTo(x - dx * 2 + dy * 5, y - dy * 2 - dx * 5)
+    this.indicator
+      .moveTo(tailX, tailY)
+      .lineTo(x + dx * 8, y + dy * 8)
+      .moveTo(x + dx * 8, y + dy * 8)
+      .lineTo(x - dx * 2 - dy * 5, y - dy * 2 + dx * 5)
+      .moveTo(x + dx * 8, y + dy * 8)
+      .lineTo(x - dx * 2 + dy * 5, y - dy * 2 - dx * 5)
       .stroke(style);
   }
 
@@ -440,16 +485,22 @@ export class TidepoolRenderer {
         const offset = (ribbon - 1) * current.radius * 0.32;
         const x = current.x - current.dy * offset;
         const y = current.y + current.dx * offset;
-        this.indicator.moveTo(x - current.dx * span, y - current.dy * span)
-          .lineTo(x + current.dx * span, y + current.dy * span).stroke(this.currentRibbonStyle);
+        this.indicator
+          .moveTo(x - current.dx * span, y - current.dy * span)
+          .lineTo(x + current.dx * span, y + current.dy * span)
+          .stroke(this.currentRibbonStyle);
       }
       for (let arrow = 0; arrow < 4 && arrowCount < arrowBudget; arrow++, arrowCount++) {
         const offset = (arrow - 1.5) * current.radius * 0.24;
-        const phase = this.reducedMotion ? 0.5 : ((age * 0.25 + arrow * 0.27) % 1);
+        const phase = this.reducedMotion ? 0.5 : (age * 0.25 + arrow * 0.27) % 1;
         const travel = (phase - 0.5) * current.radius * 1.1;
-        this.drawFlowArrow(current.x + current.dx * travel - current.dy * offset,
+        this.drawFlowArrow(
+          current.x + current.dx * travel - current.dy * offset,
           current.y + current.dy * travel + current.dx * offset,
-          current.dx, current.dy, this.currentArrowStyle);
+          current.dx,
+          current.dy,
+          this.currentArrowStyle,
+        );
       }
     }
   }
@@ -470,7 +521,7 @@ export class TidepoolRenderer {
     const length = Math.hypot(deltaX, deltaY);
     let valid = Number.isFinite(length) && length >= 24 && length <= 240;
     for (let sample = 0; valid && sample <= 32; sample++) {
-      valid = isInPool(start.x + deltaX * sample / 32, start.y + deltaY * sample / 32);
+      valid = isInPool(start.x + (deltaX * sample) / 32, start.y + (deltaY * sample) / 32);
     }
     // Invalid coast/length remains visible at the in-pool start even if the end is clipped.
     this.stirPreviewStyle.color = valid ? 0xbfead6 : 0xf0a493;
@@ -481,8 +532,12 @@ export class TidepoolRenderer {
     this.indicator.circle(end.x, end.y, 8).stroke(this.stirPreviewStyle);
     if (length > 0) this.drawFlowArrow(end.x, end.y, deltaX / length, deltaY / length, this.stirPreviewStyle);
     if (!valid) {
-      this.indicator.moveTo(start.x - 4, start.y - 4).lineTo(start.x + 4, start.y + 4)
-        .moveTo(start.x + 4, start.y - 4).lineTo(start.x - 4, start.y + 4).stroke(this.stirPreviewStyle);
+      this.indicator
+        .moveTo(start.x - 4, start.y - 4)
+        .lineTo(start.x + 4, start.y + 4)
+        .moveTo(start.x + 4, start.y - 4)
+        .lineTo(start.x - 4, start.y + 4)
+        .stroke(this.stirPreviewStyle);
     }
   }
   private drawCarryPreview(world: World, cursor: Point | null, carriedLightId: number | null, reach: number): void {
@@ -503,8 +558,10 @@ export class TidepoolRenderer {
         const dx = light.x - cursor.x;
         const dy = light.y - cursor.y;
         const distanceSquared = dx * dx + dy * dy;
-        if (distanceSquared < nearestDistanceSquared
-          || (distanceSquared === nearestDistanceSquared && (!source || light.id < source.id))) {
+        if (
+          distanceSquared < nearestDistanceSquared ||
+          (distanceSquared === nearestDistanceSquared && (!source || light.id < source.id))
+        ) {
           source = light;
           nearestDistanceSquared = distanceSquared;
         }
@@ -515,34 +572,40 @@ export class TidepoolRenderer {
     const valid = !!cursor && isInPool(cursor.x, cursor.y);
     const color = carrying && !valid ? 0xed9b8c : 0xf4d681;
     if (source) {
-      this.indicator.circle(source.x, source.y, 13)
-        .stroke({ color, alpha: 0.95, width: 1.8 });
-      this.indicator.circle(source.x, source.y, 17)
-        .stroke({ color, alpha: 0.38, width: 0.8 });
+      this.indicator.circle(source.x, source.y, 13).stroke({ color, alpha: 0.95, width: 1.8 });
+      this.indicator.circle(source.x, source.y, 17).stroke({ color, alpha: 0.38, width: 0.8 });
     }
     if (!cursor) return;
     if (!carrying || !source) {
-      if (valid) this.indicator.circle(cursor.x, cursor.y, 30)
-        .stroke({ color: source ? 0xf4d681 : 0xa6c5b5, alpha: source ? 0.38 : 0.22, width: 0.9 });
+      if (valid)
+        this.indicator
+          .circle(cursor.x, cursor.y, 30)
+          .stroke({ color: source ? 0xf4d681 : 0xa6c5b5, alpha: source ? 0.38 : 0.22, width: 0.9 });
       return;
     }
 
     // One presentation-only ghost: it neither feeds inhabitants nor changes source energy.
     // Fixed shapes remain legible when paused or reduced motion is enabled.
-    this.indicator.moveTo(source.x, source.y).lineTo(cursor.x, cursor.y)
-      .stroke({ color, alpha: 0.5, width: 1 });
-    this.indicator.circle(cursor.x, cursor.y, reach)
-      .stroke({ color, alpha: valid ? 0.28 : 0.16, width: 1.2 });
-    this.indicator.circle(cursor.x, cursor.y, 19)
-      .fill({ color, alpha: 0.14 }).stroke({ color, alpha: 0.85, width: 1.6 });
+    this.indicator.moveTo(source.x, source.y).lineTo(cursor.x, cursor.y).stroke({ color, alpha: 0.5, width: 1 });
+    this.indicator.circle(cursor.x, cursor.y, reach).stroke({ color, alpha: valid ? 0.28 : 0.16, width: 1.2 });
+    this.indicator
+      .circle(cursor.x, cursor.y, 19)
+      .fill({ color, alpha: 0.14 })
+      .stroke({ color, alpha: 0.85, width: 1.6 });
     this.indicator.circle(cursor.x, cursor.y, 5).fill({ color, alpha: 0.84 });
     if (valid) {
-      this.indicator.moveTo(cursor.x - 6, cursor.y + 11).lineTo(cursor.x - 1, cursor.y + 16)
-        .lineTo(cursor.x + 9, cursor.y + 6).stroke({ color, alpha: 0.9, width: 1.8 });
+      this.indicator
+        .moveTo(cursor.x - 6, cursor.y + 11)
+        .lineTo(cursor.x - 1, cursor.y + 16)
+        .lineTo(cursor.x + 9, cursor.y + 6)
+        .stroke({ color, alpha: 0.9, width: 1.8 });
     } else {
       // Also mark the source, because the pool mask can clip an outside destination.
-      this.indicator.moveTo(source.x - 5, source.y - 5).lineTo(source.x + 5, source.y + 5)
-        .moveTo(source.x + 5, source.y - 5).lineTo(source.x - 5, source.y + 5)
+      this.indicator
+        .moveTo(source.x - 5, source.y - 5)
+        .lineTo(source.x + 5, source.y + 5)
+        .moveTo(source.x + 5, source.y - 5)
+        .lineTo(source.x - 5, source.y + 5)
         .stroke({ color, alpha: 0.95, width: 1.8 });
     }
   }
@@ -564,8 +627,9 @@ export class TidepoolRenderer {
 
   private drawSelection(point: Point, radius: number): void {
     for (let arc = 0; arc < 4; arc++) {
-      const start = arc * Math.PI / 2 + 0.18;
-      this.indicator.moveTo(point.x + Math.cos(start) * radius, point.y + Math.sin(start) * radius)
+      const start = (arc * Math.PI) / 2 + 0.18;
+      this.indicator
+        .moveTo(point.x + Math.cos(start) * radius, point.y + Math.sin(start) * radius)
         .arc(point.x, point.y, radius, start, start + 0.47)
         .stroke({ color: 0xe1d7b4, alpha: 0.72, width: 1 });
     }
@@ -598,7 +662,7 @@ export class TidepoolRenderer {
         visual.pigmentHue = hue;
         const weaving = visual.weaving.clear();
         for (let segment = 0; segment <= 48; segment++) {
-          const angle = segment / 48 * TAU;
+          const angle = (segment / 48) * TAU;
           const radius = 23 + Math.sin(angle * 5 + nest.id) * 1.1;
           const x = Math.cos(angle) * radius;
           const y = Math.sin(angle) * radius * 0.72;
@@ -607,9 +671,8 @@ export class TidepoolRenderer {
         }
         weaving.closePath().stroke({ color: 0xb49d73, width: 0.8, alpha: 0.46 });
         for (let fleck = 0; fleck < 12; fleck++) {
-          const angle = fleck / 12 * TAU + nest.id;
-          weaving.circle(Math.cos(angle) * 23, Math.sin(angle) * 16.5, 0.55)
-            .fill({ color: 0xd3b984, alpha: 0.45 });
+          const angle = (fleck / 12) * TAU + nest.id;
+          weaving.circle(Math.cos(angle) * 23, Math.sin(angle) * 16.5, 0.55).fill({ color: 0xd3b984, alpha: 0.45 });
         }
         if (fill > 0) {
           const rings = Math.min(7, Math.ceil(fill * 7));
@@ -617,7 +680,7 @@ export class TidepoolRenderer {
             const radius = 19.5 - ring * 2.75;
             const color = this.color(hue + Math.sin(ring * 1.7 + nest.id) * 13);
             for (let segment = 0; segment <= 48; segment++) {
-              const angle = segment / 48 * TAU;
+              const angle = (segment / 48) * TAU;
               const woven = radius + Math.sin(angle * 9 + ring * 2) * 0.65;
               const x = Math.cos(angle) * woven;
               const y = Math.sin(angle) * woven * 0.72;
@@ -626,13 +689,13 @@ export class TidepoolRenderer {
             }
             weaving.closePath().stroke({ color, width: 1.15, alpha: 0.66 });
             for (let knot = 0; knot < 8; knot++) {
-              const angle = knot / 8 * TAU + ring * 0.36;
-              weaving.circle(Math.cos(angle) * radius, Math.sin(angle) * radius * 0.72, 0.8)
+              const angle = (knot / 8) * TAU + ring * 0.36;
+              weaving
+                .circle(Math.cos(angle) * radius, Math.sin(angle) * radius * 0.72, 0.8)
                 .fill({ color, alpha: 0.73 });
             }
           }
-          weaving.ellipse(0, 0, 3 + fill * 4, 2 + fill * 3)
-            .fill({ color: this.color(hue), alpha: 0.22 + fill * 0.24 });
+          weaving.ellipse(0, 0, 3 + fill * 4, 2 + fill * 3).fill({ color: this.color(hue), alpha: 0.22 + fill * 0.24 });
         }
       }
     }
@@ -653,9 +716,19 @@ export class TidepoolRenderer {
         const node = new Container();
         const glow = this.glow(node);
         const body = new Graphics();
-        body.moveTo(0, -12).lineTo(9, 0).lineTo(0, 12).lineTo(-9, 0).closePath()
-          .fill({ color: 0xd1eee7, alpha: 0.26 }).stroke({ color: 0xe1fff0, alpha: 0.9, width: 1.25 });
-        body.moveTo(0, -12).lineTo(0, 12).moveTo(-9, 0).lineTo(9, 0)
+        body
+          .moveTo(0, -12)
+          .lineTo(9, 0)
+          .lineTo(0, 12)
+          .lineTo(-9, 0)
+          .closePath()
+          .fill({ color: 0xd1eee7, alpha: 0.26 })
+          .stroke({ color: 0xe1fff0, alpha: 0.9, width: 1.25 });
+        body
+          .moveTo(0, -12)
+          .lineTo(0, 12)
+          .moveTo(-9, 0)
+          .lineTo(9, 0)
           .stroke({ color: 0xe1fff0, alpha: 0.55, width: 0.65 });
         body.circle(0, 0, 2.6).fill({ color: 0xf5ffe0, alpha: 0.95 });
         const emission = new Graphics();
@@ -680,8 +753,12 @@ export class TidepoolRenderer {
       if (emissionAge >= 0 && emissionAge < 3) {
         const progress = emissionAge / 3;
         const reach = this.reducedMotion ? 22 : 14 + progress * 24;
-        visual.emission.moveTo(0, -reach).lineTo(reach * 0.75, 0).lineTo(0, reach)
-          .lineTo(-reach * 0.75, 0).closePath()
+        visual.emission
+          .moveTo(0, -reach)
+          .lineTo(reach * 0.75, 0)
+          .lineTo(0, reach)
+          .lineTo(-reach * 0.75, 0)
+          .closePath()
           .stroke({ color: 0xf1e1a9, alpha: (1 - progress) * 0.7, width: 1.4 });
       }
       if (skimmer.id === selectedId) this.drawSelection(skimmer, 23);
@@ -701,14 +778,19 @@ export class TidepoolRenderer {
     const shell = new Graphics();
     node.addChild(limbs, shell);
     // This amber shell is fixed art in local units, independent of collected pigment hue.
-    shell.ellipse(0.86, 0, 0.85, 0.47).fill({ color: 0x786b46, alpha: 0.88 })
+    shell
+      .ellipse(0.86, 0, 0.85, 0.47)
+      .fill({ color: 0x786b46, alpha: 0.88 })
       .stroke({ color: 0xc3ae7b, alpha: 0.37, width: 0.045 });
-    shell.ellipse(-0.13, -0.07, 1.18, 1.01).fill({ color: 0x66533a, alpha: 0.94 })
+    shell
+      .ellipse(-0.13, -0.07, 1.18, 1.01)
+      .fill({ color: 0x66533a, alpha: 0.94 })
       .stroke({ color: 0xcfb183, alpha: 0.68, width: 0.07 });
     shell.ellipse(-0.2, -0.16, 0.96, 0.79).fill({ color: 0x9b8150, alpha: 0.27 });
     for (let groove = 0; groove < 15; groove++) {
-      const angle = groove / 15 * TAU;
-      shell.moveTo(-0.13 + Math.cos(angle) * 0.96, -0.07 + Math.sin(angle) * 0.8)
+      const angle = (groove / 15) * TAU;
+      shell
+        .moveTo(-0.13 + Math.cos(angle) * 0.96, -0.07 + Math.sin(angle) * 0.8)
         .lineTo(-0.13 + Math.cos(angle + 0.04) * 1.16, -0.07 + Math.sin(angle + 0.04) * 0.99)
         .stroke({ color: 0xd2b785, width: 0.025, alpha: 0.31 });
     }
@@ -753,14 +835,16 @@ export class TidepoolRenderer {
         const x = (leg - 1) * 0.68;
         const crawl = Math.sin(time * 3.5 + phase + leg * 1.8) * 0.15;
         for (const side of [-1, 1]) {
-          limbs.moveTo(x, side * 0.7)
+          limbs
+            .moveTo(x, side * 0.7)
             .quadraticCurveTo(x - 0.13 + crawl, side * 1.1, x - 0.31 + crawl, side * 1.26)
             .stroke({ color: 0xb7a074, width: 0.05, alpha: 0.48 });
         }
       }
       for (const side of [-1, 1]) {
         const sway = Math.sin(time * 0.9 + phase + side) * 0.05;
-        limbs.moveTo(1.23, side * 0.22)
+        limbs
+          .moveTo(1.23, side * 0.22)
           .quadraticCurveTo(1.65, side * 0.42, 1.88, side * (0.48 + sway))
           .stroke({ color: 0xd6bd88, width: 0.045, alpha: 0.64 });
       }
@@ -784,8 +868,10 @@ export class TidepoolRenderer {
           for (let bead = 0; bead < granules; bead++) {
             const angle = bead * 2.39996;
             const radius = bead === 0 ? 0 : 0.21 + bead * 0.045;
-            visual.cargo.circle(-0.6 + Math.cos(angle) * radius, 0.54 + Math.sin(angle) * radius * 0.64, 0.13)
-              .fill({ color, alpha: 0.94 }).stroke({ color: 0xe8dbc1, alpha: 0.32, width: 0.025 });
+            visual.cargo
+              .circle(-0.6 + Math.cos(angle) * radius, 0.54 + Math.sin(angle) * radius * 0.64, 0.13)
+              .fill({ color, alpha: 0.94 })
+              .stroke({ color: 0xe8dbc1, alpha: 0.32, width: 0.025 });
           }
         }
       }
@@ -802,8 +888,8 @@ export class TidepoolRenderer {
   private drawWater(time: number): void {
     this.caustics.clear();
     for (let ribbon = 0; ribbon < 13; ribbon++) {
-      const x = 210 + (ribbon * 173) % 1000;
-      const y = 190 + (ribbon * 127) % 640;
+      const x = 210 + ((ribbon * 173) % 1000);
+      const y = 190 + ((ribbon * 127) % 640);
       this.caustics.moveTo(x, y);
       for (let segment = 1; segment <= 9; segment++) {
         const offset = segment * 16;
@@ -830,8 +916,7 @@ export class TidepoolRenderer {
       const position = poolPoint(angle, Math.sqrt(distribution) * 0.94);
       const radius = 3 + progress * (18 + (ring % 6) * 3);
       const alpha = intensity * Math.sin(progress * Math.PI) * 0.26;
-      this.rain.circle(position.x, position.y, radius)
-        .stroke({ color: 0xb2cbc0, width: 1.05, alpha });
+      this.rain.circle(position.x, position.y, radius).stroke({ color: 0xb2cbc0, width: 1.05, alpha });
     }
     // Reduced motion keeps these positions and radii fixed while weather still changes reach.
   }

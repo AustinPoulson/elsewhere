@@ -16,14 +16,23 @@ import { MAX_CURRENTS } from './world/actions/current';
 import { isInPool, LIMITS, WORLD_HEIGHT, WORLD_WIDTH } from './world/types';
 import type { Point, Tool, World } from './world/types';
 
-type PoolControls = { paused: boolean; tool: Tool; selectedId: number | null; hintVisible: boolean; cursor: Point | null; keyboard: boolean };
+type PoolControls = {
+  paused: boolean;
+  tool: Tool;
+  selectedId: number | null;
+  hintVisible: boolean;
+  cursor: Point | null;
+  keyboard: boolean;
+};
 type Panel = 'guide' | 'specimen' | 'pocket' | null;
 function loadInitialWorld(): { world: World; remembered: boolean; storageAvailable: boolean } {
   try {
     const saved = localStorage.getItem(SAVE_KEY);
     const world = saved ? restoreWorld(saved) : null;
     return { world: world ?? createWorld(), remembered: Boolean(world), storageAvailable: true };
-  } catch { return { world: createWorld(), remembered: false, storageAvailable: false }; }
+  } catch {
+    return { world: createWorld(), remembered: false, storageAvailable: false };
+  }
 }
 function timeLabel(seconds: number): string {
   const mins = Math.floor(seconds / 60);
@@ -51,9 +60,14 @@ export function App() {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState('');
   const [storageAvailable, setStorageAvailable] = useState(initial.storageAvailable);
-  const [notice, setNoticeState] = useState(initial.remembered ? 'Your tidepool remembers you.' : 'Leave a little light. See what follows.');
+  const [notice, setNoticeState] = useState(
+    initial.remembered ? 'Your tidepool remembers you.' : 'Leave a little light. See what follows.',
+  );
   const [feedback, setFeedback] = useState('');
-  function setNotice(message: string): void { setNoticeState(message); setFeedback(message); }
+  function setNotice(message: string): void {
+    setNoticeState(message);
+    setFeedback(message);
+  }
   const controlsRef = useRef({ paused, tool, selectedId, reducedMotion });
   controlsRef.current = { paused, tool, selectedId, reducedMotion };
   const cursorRef = useRef<Point | null>(null);
@@ -70,17 +84,28 @@ export function App() {
   function cancelCarry(announce = false): void {
     const hadSource = carryRef.current.state !== null;
     const hadStroke = stirRef.current.state !== null;
-    stirRef.current.cancel(); setStirring(false);
-    carryRef.current.cancel(); pointerOwnerRef.current = null; setCarrying(false);
-    if (announce && (hadSource || hadStroke)) setNotice(hadStroke ? 'The stroke is gone. The water is unchanged.' : 'Light left where it was.');
+    stirRef.current.cancel();
+    setStirring(false);
+    carryRef.current.cancel();
+    pointerOwnerRef.current = null;
+    setCarrying(false);
+    if (announce && (hadSource || hadStroke))
+      setNotice(hadStroke ? 'The stroke is gone. The water is unchanged.' : 'Light left where it was.');
   }
   function chooseTool(next: Tool): void {
-    cancelCarry(); heldRef.current = false; setTool(next);
+    cancelCarry();
+    heldRef.current = false;
+    setTool(next);
   }
   function beginCarry(point: Point, input: 'pointer' | 'keyboard'): void {
     if (carryRef.current.begin(worldRef.current, point.x, point.y, input)) {
-      setCarrying(true); setHintVisible(false);
-      setNotice(input === 'pointer' ? 'Carry this light across the water. Release to set it down.' : 'Light held. Move with arrows, Enter to set down, Escape to cancel.');
+      setCarrying(true);
+      setHintVisible(false);
+      setNotice(
+        input === 'pointer'
+          ? 'Carry this light across the water. Release to set it down.'
+          : 'Light held. Move with arrows, Enter to set down, Escape to cancel.',
+      );
     } else setNotice('Choose an existing light to carry. Leave a little light first if the pool is dark.');
   }
   function finishCarry(point: Point): void {
@@ -89,7 +114,8 @@ export function App() {
     pointerOwnerRef.current = null;
     setCarrying(false);
     if (moved) {
-      setStats(getStats(worldRef.current)); saveWorld();
+      setStats(getStats(worldRef.current));
+      saveWorld();
       setNotice('The same light, in a new place. Watch the lucents follow.');
     } else setNotice('Light stayed where it was. Choose a living light and set it inside the shore.');
   }
@@ -97,39 +123,60 @@ export function App() {
   function beginStir(point: Point, input: 'pointer' | 'keyboard'): void {
     cancelCarry();
     if (stirRef.current.begin(worldRef.current, point, input)) {
-      setStirring(true); setHintVisible(false);
-      setNotice(input === 'pointer' ? 'Draw a short path through the water, then release.' : 'Stroke started. Move with arrows, Enter to stir, Escape to cancel.');
+      setStirring(true);
+      setHintVisible(false);
+      setNotice(
+        input === 'pointer'
+          ? 'Draw a short path through the water, then release.'
+          : 'Stroke started. Move with arrows, Enter to stir, Escape to cancel.',
+      );
     } else setNotice('Begin your stroke inside the shoreline.');
   }
   function finishStir(point: Point): void {
     stirRef.current.update(point);
     const result = stirRef.current.commit(worldRef.current);
-    pointerOwnerRef.current = null; setStirring(false);
+    pointerOwnerRef.current = null;
+    setStirring(false);
     if (result.status === 'applied') {
-      setStats(getStats(worldRef.current)); saveWorld();
-      setNotice(controlsRef.current.paused ? 'A current is waiting. Resume to carry life and color.' : 'Water follows your touch. Watch creatures and loose color drift.');
-    } else if (result.status === 'full') setNotice('Three currents are already moving. Let the water settle before stirring again.');
+      setStats(getStats(worldRef.current));
+      saveWorld();
+      setNotice(
+        controlsRef.current.paused
+          ? 'A current is waiting. Resume to carry life and color.'
+          : 'Water follows your touch. Watch creatures and loose color drift.',
+      );
+    } else if (result.status === 'full')
+      setNotice('Three currents are already moving. Let the water settle before stirring again.');
     else if (result.status === 'exhausted') setNotice('This world has no room for another current.');
     else setNotice('Draw a short stroke inside the shore: one to ten arrow steps. A tap leaves the water still.');
   }
 
   function inviteRain(): void {
     if (!ready) return;
-    heldRef.current = false; cancelCarry();
+    heldRef.current = false;
+    cancelCarry();
     const result = callRain(worldRef.current);
     setStats(getStats(worldRef.current));
     if (result.status === 'called') {
       saveWorld();
-      setNotice(controlsRef.current.paused
-        ? 'A shower is waiting. Resume to let its light spread.'
-        : 'A passing shower answers. Existing light will reach a little farther.');
-    } else setNotice(`Let the water rest for ${Math.ceil(result.secondsRemaining)} world seconds before calling again. Pause holds this rest, too.`);
+      setNotice(
+        controlsRef.current.paused
+          ? 'A shower is waiting. Resume to let its light spread.'
+          : 'A passing shower answers. Existing light will reach a little farther.',
+      );
+    } else
+      setNotice(
+        `Let the water rest for ${Math.ceil(result.secondsRemaining)} world seconds before calling again. Pause holds this rest, too.`,
+      );
   }
 
   function saveWorld(): void {
     if (sessionRef.current.preview) return;
-    try { setStorageAvailable(sessionRef.current.save(localStorage) === 'saved'); }
-    catch { setStorageAvailable(false); }
+    try {
+      setStorageAvailable(sessionRef.current.save(localStorage) === 'saved');
+    } catch {
+      setStorageAvailable(false);
+    }
   }
 
   useEffect(() => {
@@ -154,20 +201,38 @@ export function App() {
       if (cancelled || document.hidden) return;
       const renderer = rendererRef.current;
       if (!renderer) return;
-      if (revision !== sessionRef.current.revision) { revision = sessionRef.current.revision; clock.reset(); lastTime = 0; lastStats = 0; }
+      if (revision !== sessionRef.current.revision) {
+        revision = sessionRef.current.revision;
+        clock.reset();
+        lastTime = 0;
+        lastStats = 0;
+      }
       const delta = lastTime ? (now - lastTime) / 1000 : 0;
       lastTime = now;
-      if (!controlsRef.current.paused) clock.advance(delta, dt => stepWorld(worldRef.current, dt));
+      if (!controlsRef.current.paused) clock.advance(delta, (dt) => stepWorld(worldRef.current, dt));
       else clock.reset();
-      if (heldRef.current && controlsRef.current.tool === 'light' && cursorRef.current && now - lastPlaceRef.current > 180) {
+      if (
+        heldRef.current &&
+        controlsRef.current.tool === 'light' &&
+        cursorRef.current &&
+        now - lastPlaceRef.current > 180
+      ) {
         addLight(worldRef.current, cursorRef.current.x, cursorRef.current.y);
         lastPlaceRef.current = now;
       }
       const carried = carryRef.current.state;
-      if (carried && !worldRef.current.lights.some(light => light.id === carried.sourceId && light.energy > 0.01)) {
-        cancelCarry(); setNotice('That light has faded. Choose another to carry.');
+      if (carried && !worldRef.current.lights.some((light) => light.id === carried.sourceId && light.energy > 0.01)) {
+        cancelCarry();
+        setNotice('That light has faded. Choose another to carry.');
       }
-      renderer.render(worldRef.current, controlsRef.current.selectedId, cursorRef.current, controlsRef.current.tool, carryRef.current.state?.sourceId ?? null, stirRef.current.state);
+      renderer.render(
+        worldRef.current,
+        controlsRef.current.selectedId,
+        cursorRef.current,
+        controlsRef.current.tool,
+        carryRef.current.state?.sourceId ?? null,
+        stirRef.current.state,
+      );
       if (now - lastStats > 450) {
         setStats(getStats(worldRef.current));
         lastStats = now;
@@ -175,15 +240,20 @@ export function App() {
       // A paused world still responds to cursor and tool changes.
       frame = requestAnimationFrame(tick);
     };
-    TidepoolRenderer.create(host).then(renderer => {
-      if (cancelled) { renderer.destroy(); return; }
-      rendererRef.current = renderer;
-      renderer.setReducedMotion(controlsRef.current.reducedMotion);
-      setReady(true);
-      if (!document.hidden) frame = requestAnimationFrame(tick);
-    }).catch(cause => {
-      if (!cancelled) setError(cause instanceof Error ? cause.message : 'The tidepool could not open.');
-    });
+    TidepoolRenderer.create(host)
+      .then((renderer) => {
+        if (cancelled) {
+          renderer.destroy();
+          return;
+        }
+        rendererRef.current = renderer;
+        renderer.setReducedMotion(controlsRef.current.reducedMotion);
+        setReady(true);
+        if (!document.hidden) frame = requestAnimationFrame(tick);
+      })
+      .catch((cause) => {
+        if (!cancelled) setError(cause instanceof Error ? cause.message : 'The tidepool could not open.');
+      });
     document.addEventListener('visibilitychange', hidden);
     const pagehide = () => saveWorld();
     window.addEventListener('pagehide', pagehide);
@@ -201,7 +271,10 @@ export function App() {
 
   useEffect(() => {
     const query = matchMedia('(prefers-reduced-motion: reduce)');
-    const change = () => { setReducedMotion(query.matches); if (query.matches) setPaused(true); };
+    const change = () => {
+      setReducedMotion(query.matches);
+      if (query.matches) setPaused(true);
+    };
     query.addEventListener('change', change);
     return () => query.removeEventListener('change', change);
   }, []);
@@ -210,7 +283,9 @@ export function App() {
     const timer = window.setTimeout(() => setFeedback(''), 4500);
     return () => clearTimeout(timer);
   }, [feedback]);
-  useEffect(() => { rendererRef.current?.setReducedMotion(reducedMotion); }, [reducedMotion, ready]);
+  useEffect(() => {
+    rendererRef.current?.setReducedMotion(reducedMotion);
+  }, [reducedMotion, ready]);
   useEffect(() => {
     if (!panel) return;
     const previousFocus = document.activeElement as HTMLElement;
@@ -224,18 +299,25 @@ export function App() {
   useEffect(() => {
     const key = (event: globalThis.KeyboardEvent) => {
       if (event.key === 'Escape') {
-        setPanel(null); setSelectedId(null); heldRef.current = false; cancelCarry(true);
+        setPanel(null);
+        setSelectedId(null);
+        heldRef.current = false;
+        cancelCarry(true);
         return;
       }
       if (resetRef.current?.open || panelRef.current?.contains(event.target as Node)) return;
       const target = event.target as HTMLElement;
-      if (target.closest('button,input,select,textarea,a') || target.isContentEditable || target === hostRef.current) return;
+      if (target.closest('button,input,select,textarea,a') || target.isContentEditable || target === hostRef.current)
+        return;
       if (event.key.toLowerCase() === 'l') chooseTool('light');
       if (event.key.toLowerCase() === 'o') chooseTool('observe');
       if (event.key.toLowerCase() === 'm') chooseTool('carry');
       if (event.key.toLowerCase() === 's') chooseTool('stir');
       if (event.key.toLowerCase() === 'r') inviteRain();
-      if (event.code === 'Space') { event.preventDefault(); setPaused(value => !value); }
+      if (event.code === 'Space') {
+        event.preventDefault();
+        setPaused((value) => !value);
+      }
     };
     window.addEventListener('keydown', key);
     return () => window.removeEventListener('keydown', key);
@@ -261,35 +343,79 @@ export function App() {
       const origin = rendererRef.current!.screenToWorld(0, 0);
       const unit = rendererRef.current!.screenToWorld(1, 0);
       let distance = Math.max(48, Math.hypot(unit.x - origin.x, unit.y - origin.y) * 24);
-      for (const organism of [...worldRef.current.organisms, ...worldRef.current.grazers, ...worldRef.current.skimmers, ...worldRef.current.reedwells, ...worldRef.current.rainbells, ...worldRef.current.siltstitchers, ...worldRef.current.glassLimpets]) {
+      for (const organism of [
+        ...worldRef.current.organisms,
+        ...worldRef.current.grazers,
+        ...worldRef.current.skimmers,
+        ...worldRef.current.reedwells,
+        ...worldRef.current.rainbells,
+        ...worldRef.current.siltstitchers,
+        ...worldRef.current.glassLimpets,
+      ]) {
         const d = Math.hypot(organism.x - point.x, organism.y - point.y);
-        if (d < distance) { nearest = organism; distance = d; }
+        if (d < distance) {
+          nearest = organism;
+          distance = d;
+        }
       }
       for (const mite of worldRef.current.cargoMites) {
         const display = cargoMiteDisplayPoint(worldRef.current, mite);
         const d = Math.hypot(display.x - point.x, display.y - point.y);
-        if (d < distance) { nearest = mite; distance = d; }
+        if (d < distance) {
+          nearest = mite;
+          distance = d;
+        }
       }
       setSelectedId(nearest?.id ?? null);
-      if (nearest) { setPanel('specimen'); setNotice(nearest.species === 'grazer' ? 'A keeper of borrowed colors.' : nearest.species === 'skimmer' ? 'A prism skimmer, turning color into light.' : nearest.species === 'reedwell' ? 'A rooted reedwell, gathering daylight.' : nearest.species === 'rainbell' ? 'A rainbell, drawing food through water.' : nearest.species === 'siltstitcher' ? 'A siltstitcher, bearing color away from its nest.' : nearest.species === 'glassLimpet' ? 'A glass limpet, catching food carried by currents.' : nearest.species === 'cargoMite' ? 'A cargo mite, feeding on color in a grazer’s bundle.' : 'A lucent, briefly known.'); }
-      else setNotice('Touch a living inhabitant to look more closely.');
+      if (nearest) {
+        setPanel('specimen');
+        setNotice(
+          nearest.species === 'grazer'
+            ? 'A keeper of borrowed colors.'
+            : nearest.species === 'skimmer'
+              ? 'A prism skimmer, turning color into light.'
+              : nearest.species === 'reedwell'
+                ? 'A rooted reedwell, gathering daylight.'
+                : nearest.species === 'rainbell'
+                  ? 'A rainbell, drawing food through water.'
+                  : nearest.species === 'siltstitcher'
+                    ? 'A siltstitcher, bearing color away from its nest.'
+                    : nearest.species === 'glassLimpet'
+                      ? 'A glass limpet, catching food carried by currents.'
+                      : nearest.species === 'cargoMite'
+                        ? 'A cargo mite, feeding on color in a grazer’s bundle.'
+                        : 'A lucent, briefly known.',
+        );
+      } else setNotice('Touch a living inhabitant to look more closely.');
     }
   }
   function pointerDown(event: PointerEvent<HTMLDivElement>) {
-    if (!ready || !event.isPrimary || pointerOwnerRef.current !== null || (event.pointerType === 'mouse' && event.button !== 0)) return;
+    if (
+      !ready ||
+      !event.isPrimary ||
+      pointerOwnerRef.current !== null ||
+      (event.pointerType === 'mouse' && event.button !== 0)
+    )
+      return;
     const point = rendererRef.current!.screenToWorld(event.clientX, event.clientY);
     cursorRef.current = point;
     keyboardRef.current = false;
     hostRef.current?.focus({ preventScroll: true });
-    if (tool === 'stir') { beginStir(point, 'pointer'); if (stirRef.current.state) pointerOwnerRef.current = event.pointerId; }
-    else if (tool === 'carry') { cancelCarry(); beginCarry(point, 'pointer'); if (carryRef.current.state) pointerOwnerRef.current = event.pointerId; }
-    else activateAt(point);
+    if (tool === 'stir') {
+      beginStir(point, 'pointer');
+      if (stirRef.current.state) pointerOwnerRef.current = event.pointerId;
+    } else if (tool === 'carry') {
+      cancelCarry();
+      beginCarry(point, 'pointer');
+      if (carryRef.current.state) pointerOwnerRef.current = event.pointerId;
+    } else activateAt(point);
     heldRef.current = tool === 'light';
     lastPlaceRef.current = performance.now();
     event.currentTarget.setPointerCapture(event.pointerId);
   }
   function pointerMove(event: PointerEvent<HTMLDivElement>) {
-    if (!ready || !event.isPrimary || (pointerOwnerRef.current !== null && pointerOwnerRef.current !== event.pointerId)) return;
+    if (!ready || !event.isPrimary || (pointerOwnerRef.current !== null && pointerOwnerRef.current !== event.pointerId))
+      return;
     keyboardRef.current = false;
     cursorRef.current = rendererRef.current!.screenToWorld(event.clientX, event.clientY);
     if (carryRef.current.state) carryRef.current.update(cursorRef.current.x, cursorRef.current.y);
@@ -308,14 +434,18 @@ export function App() {
       const length = Math.hypot(destination.x - origin.x, destination.y - origin.y);
       keyboardRef.current = true;
       cursorRef.current = {
-        x: Math.max(0, Math.min(WORLD_WIDTH, point.x + (destination.x - origin.x) / length * 24)),
-        y: Math.max(0, Math.min(WORLD_HEIGHT, point.y + (destination.y - origin.y) / length * 24)),
+        x: Math.max(0, Math.min(WORLD_WIDTH, point.x + ((destination.x - origin.x) / length) * 24)),
+        y: Math.max(0, Math.min(WORLD_HEIGHT, point.y + ((destination.y - origin.y) / length) * 24)),
       };
       if (carryRef.current.state) carryRef.current.update(cursorRef.current.x, cursorRef.current.y);
       stirRef.current.update(cursorRef.current);
-    } else if (event.key === 'Enter') { event.preventDefault(); activateAt(point); }
-    else if (event.code === 'Space') { event.preventDefault(); setPaused(value => !value); }
-    else if (event.key.toLowerCase() === 'l') chooseTool('light');
+    } else if (event.key === 'Enter') {
+      event.preventDefault();
+      activateAt(point);
+    } else if (event.code === 'Space') {
+      event.preventDefault();
+      setPaused((value) => !value);
+    } else if (event.key.toLowerCase() === 'l') chooseTool('light');
     else if (event.key.toLowerCase() === 'o') chooseTool('observe');
     else if (event.key.toLowerCase() === 'm') chooseTool('carry');
     else if (event.key.toLowerCase() === 's') chooseTool('stir');
@@ -347,19 +477,35 @@ export function App() {
     link.download = `${sessionRef.current.preview ? 'elsewhere-study-during-a-shower' : 'elsewhere-tidepool'}-${worldRef.current.seed}.json`;
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
-    setNotice(sessionRef.current.preview ? 'A snapshot of the shower study, saved separately from your pool.' : 'A little world, saved for later.');
+    setNotice(
+      sessionRef.current.preview
+        ? 'A snapshot of the shower study, saved separately from your pool.'
+        : 'A little world, saved for later.',
+    );
   }
   async function importSnapshot(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
     const token = sessionRef.current.importToken();
-    if (token === null) { setNotice('Return to your pool before opening a snapshot.'); return; }
-    if (file.size > 2_000_000) { setNotice('That file is too large to be a tidepool snapshot.'); return; }
+    if (token === null) {
+      setNotice('Return to your pool before opening a snapshot.');
+      return;
+    }
+    if (file.size > 2_000_000) {
+      setNotice('That file is too large to be a tidepool snapshot.');
+      return;
+    }
     try {
       const result = sessionRef.current.importSnapshot(await file.text(), token);
-      if (result === 'stale') { setNotice('The visit changed while that file opened. No world was replaced.'); return; }
-      if (result === 'invalid') { setNotice('That snapshot could not be read. Your tidepool is still here.'); return; }
+      if (result === 'stale') {
+        setNotice('The visit changed while that file opened. No world was replaced.');
+        return;
+      }
+      if (result === 'invalid') {
+        setNotice('That snapshot could not be read. Your tidepool is still here.');
+        return;
+      }
       const restored = sessionRef.current.world;
       worldRef.current = restored;
       heldRef.current = false;
@@ -369,236 +515,1073 @@ export function App() {
       setStats(getStats(restored));
       saveWorld();
       setNotice('A remembered tidepool has returned.');
-    } catch { setNotice('That file could not be opened. Your tidepool is still here.'); }
+    } catch {
+      setNotice('That file could not be opened. Your tidepool is still here.');
+    }
   }
   function resetWorld() {
     sessionRef.current.reset();
     worldRef.current = sessionRef.current.world;
-    if (sessionRef.current.preview) { setPaused(true); controlsRef.current.paused = true; }
-    heldRef.current = false; cancelCarry();
+    if (sessionRef.current.preview) {
+      setPaused(true);
+      controlsRef.current.paused = true;
+    }
+    heldRef.current = false;
+    cancelCarry();
     setSelectedId(null);
     setStats(getStats(worldRef.current));
     saveWorld();
-    setNotice(sessionRef.current.preview ? 'The shower study is back at its paused first moment. Your pool is untouched.' : 'A new beginning, along the same shore.');
+    setNotice(
+      sessionRef.current.preview
+        ? 'The shower study is back at its paused first moment. Your pool is untouched.'
+        : 'A new beginning, along the same shore.',
+    );
     resetRef.current?.close();
     resetTriggerRef.current?.focus();
   }
   function previewStudy() {
     try {
       let storage: { setItem(key: string, value: string): void };
-      try { storage = localStorage; } catch { storage = { setItem() { throw new Error('Storage unavailable'); } }; }
-      const result = sessionRef.current.enterStudy({ paused, tool, selectedId, hintVisible,
-        cursor: cursorRef.current, keyboard: keyboardRef.current }, storage);
+      try {
+        storage = localStorage;
+      } catch {
+        storage = {
+          setItem() {
+            throw new Error('Storage unavailable');
+          },
+        };
+      }
+      const result = sessionRef.current.enterStudy(
+        { paused, tool, selectedId, hintVisible, cursor: cursorRef.current, keyboard: keyboardRef.current },
+        storage,
+      );
       if (result === 'preview') return;
       setStorageAvailable(result === 'saved');
       worldRef.current = sessionRef.current.world;
       heldRef.current = false;
-      cancelCarry(); cursorRef.current = null; keyboardRef.current = false;
+      cancelCarry();
+      cursorRef.current = null;
+      keyboardRef.current = false;
       controlsRef.current = { paused: true, tool: 'observe', selectedId: null, reducedMotion };
-      setPaused(true); chooseTool('observe'); setSelectedId(null); setHintVisible(false);
-      setStudyMode(true); setStats(getStats(worldRef.current));
-      panelReturnFocusRef.current = hostRef.current; setPanel(null);
-      setNotice(result === 'saved'
-        ? 'During a shower: a paused study. Your pool is checkpointed; this visit never autosaves.'
-        : 'During a shower: your pool is held in memory only. Storage failed; return before closing or reloading to keep it.');
-    } catch { setNotice('The study could not open. Your pool is still here.'); }
+      setPaused(true);
+      chooseTool('observe');
+      setSelectedId(null);
+      setHintVisible(false);
+      setStudyMode(true);
+      setStats(getStats(worldRef.current));
+      panelReturnFocusRef.current = hostRef.current;
+      setPanel(null);
+      setNotice(
+        result === 'saved'
+          ? 'During a shower: a paused study. Your pool is checkpointed; this visit never autosaves.'
+          : 'During a shower: your pool is held in memory only. Storage failed; return before closing or reloading to keep it.',
+      );
+    } catch {
+      setNotice('The study could not open. Your pool is still here.');
+    }
   }
   function returnToPool() {
     const controls = sessionRef.current.returnToPool();
     if (!controls) return;
     worldRef.current = sessionRef.current.world;
-    heldRef.current = false; cancelCarry(); cursorRef.current = controls.cursor; keyboardRef.current = controls.keyboard;
-    controlsRef.current = { paused: controls.paused, tool: controls.tool, selectedId: controls.selectedId, reducedMotion };
-    setPaused(controls.paused); setTool(controls.tool); setSelectedId(controls.selectedId);
-    setHintVisible(controls.hintVisible); setStudyMode(false); setStats(getStats(worldRef.current));
-    resetRef.current?.close(); panelReturnFocusRef.current = hostRef.current; setPanel(null);
+    heldRef.current = false;
+    cancelCarry();
+    cursorRef.current = controls.cursor;
+    keyboardRef.current = controls.keyboard;
+    controlsRef.current = {
+      paused: controls.paused,
+      tool: controls.tool,
+      selectedId: controls.selectedId,
+      reducedMotion,
+    };
+    setPaused(controls.paused);
+    setTool(controls.tool);
+    setSelectedId(controls.selectedId);
+    setHintVisible(controls.hintVisible);
+    setStudyMode(false);
+    setStats(getStats(worldRef.current));
+    resetRef.current?.close();
+    panelReturnFocusRef.current = hostRef.current;
+    setPanel(null);
     hostRef.current?.focus({ preventScroll: true });
     setNotice('Your pool returns exactly where you left it. No time passed during the study.');
   }
-  const selected = [...worldRef.current.organisms, ...worldRef.current.grazers, ...worldRef.current.skimmers, ...worldRef.current.reedwells, ...worldRef.current.rainbells, ...worldRef.current.siltstitchers, ...worldRef.current.glassLimpets, ...worldRef.current.cargoMites].find(organism => organism.id === selectedId);
-  const selectedNest = selected?.species === 'grazer' ? worldRef.current.nests.find(nest => nest.id === selected.nestId) : null;
-  const openPanel = (next: Panel) => setPanel(current => current === next ? null : next);
+  const selected = [
+    ...worldRef.current.organisms,
+    ...worldRef.current.grazers,
+    ...worldRef.current.skimmers,
+    ...worldRef.current.reedwells,
+    ...worldRef.current.rainbells,
+    ...worldRef.current.siltstitchers,
+    ...worldRef.current.glassLimpets,
+    ...worldRef.current.cargoMites,
+  ].find((organism) => organism.id === selectedId);
+  const selectedNest =
+    selected?.species === 'grazer' ? worldRef.current.nests.find((nest) => nest.id === selected.nestId) : null;
+  const openPanel = (next: Panel) => setPanel((current) => (current === next ? null : next));
   const weather = effectiveWeather(worldRef.current);
 
-  return <main className="elsewhere">
-    <div ref={hostRef} className={`habitat tool-${tool}`} role="group" tabIndex={0}
-      aria-label="Interactive luminous tidepool" aria-describedby="habitat-instructions"
-      onPointerDown={pointerDown} onPointerMove={pointerMove}
-      onPointerUp={event => {
-        if (!event.isPrimary || (pointerOwnerRef.current !== null && pointerOwnerRef.current !== event.pointerId)) return;
-        heldRef.current = false;
-        if (stirRef.current.state?.input === 'pointer') finishStir(rendererRef.current!.screenToWorld(event.clientX, event.clientY));
-        if (carryRef.current.state?.input === 'pointer') finishCarry(rendererRef.current!.screenToWorld(event.clientX, event.clientY));
-      }} onPointerCancel={event => { if (tool !== 'carry' && tool !== 'stir') heldRef.current = false; else if (pointerOwnerRef.current === event.pointerId) { heldRef.current = false; cancelCarry(true); } }}
-      onLostPointerCapture={event => { if (tool !== 'carry' && tool !== 'stir') heldRef.current = false; else if (pointerOwnerRef.current === event.pointerId) { heldRef.current = false; cancelCarry(true); } }}
-      onPointerLeave={() => { if (!heldRef.current && !keyboardRef.current && !carryRef.current.state && !stirRef.current.state) cursorRef.current = null; }}
-      onFocus={() => { if (!cursorRef.current) cursorRef.current = { x: WORLD_WIDTH / 2, y: WORLD_HEIGHT / 2 }; }}
-      onBlur={() => { heldRef.current = false; cancelCarry(); if (keyboardRef.current) cursorRef.current = null; }}
-      onKeyDown={habitatKey} />
+  return (
+    <main className="elsewhere">
+      <div
+        ref={hostRef}
+        className={`habitat tool-${tool}`}
+        role="group"
+        tabIndex={0}
+        aria-label="Interactive luminous tidepool"
+        aria-describedby="habitat-instructions"
+        onPointerDown={pointerDown}
+        onPointerMove={pointerMove}
+        onPointerUp={(event) => {
+          if (!event.isPrimary || (pointerOwnerRef.current !== null && pointerOwnerRef.current !== event.pointerId))
+            return;
+          heldRef.current = false;
+          if (stirRef.current.state?.input === 'pointer')
+            finishStir(rendererRef.current!.screenToWorld(event.clientX, event.clientY));
+          if (carryRef.current.state?.input === 'pointer')
+            finishCarry(rendererRef.current!.screenToWorld(event.clientX, event.clientY));
+        }}
+        onPointerCancel={(event) => {
+          if (tool !== 'carry' && tool !== 'stir') heldRef.current = false;
+          else if (pointerOwnerRef.current === event.pointerId) {
+            heldRef.current = false;
+            cancelCarry(true);
+          }
+        }}
+        onLostPointerCapture={(event) => {
+          if (tool !== 'carry' && tool !== 'stir') heldRef.current = false;
+          else if (pointerOwnerRef.current === event.pointerId) {
+            heldRef.current = false;
+            cancelCarry(true);
+          }
+        }}
+        onPointerLeave={() => {
+          if (!heldRef.current && !keyboardRef.current && !carryRef.current.state && !stirRef.current.state)
+            cursorRef.current = null;
+        }}
+        onFocus={() => {
+          if (!cursorRef.current) cursorRef.current = { x: WORLD_WIDTH / 2, y: WORLD_HEIGHT / 2 };
+        }}
+        onBlur={() => {
+          heldRef.current = false;
+          cancelCarry();
+          if (keyboardRef.current) cursorRef.current = null;
+        }}
+        onKeyDown={habitatKey}
+      />
 
-    {studyMode && <section className="study-banner" aria-label="Temporary study visit">
-      <span><strong>During a shower</strong> · Study · Your pool is held aside</span>
-      <button className="secondary-button" onClick={returnToPool}>Return to your pool <Icon name="arrow"/></button>
-    </section>}
-    <header className="masthead">
-      <a className="wordmark" href="./" aria-label="Elsewhere home"><Icon name="spark" size={25}/><span>elsewhere<span className="wordmark-dot">.</span></span></a>
-      <div className="masthead-right"><span className="edition">AN UNFINISHED WORLD</span><button className="guide-toggle" onClick={() => openPanel('guide')} aria-expanded={panel === 'guide'} aria-controls="field-panel"><Icon name="book"/><span>Field guide</span></button></div>
-    </header>
+      {studyMode && (
+        <section className="study-banner" aria-label="Temporary study visit">
+          <span>
+            <strong>During a shower</strong> · Study · Your pool is held aside
+          </span>
+          <button className="secondary-button" onClick={returnToPool}>
+            Return to your pool <Icon name="arrow" />
+          </button>
+        </section>
+      )}
+      <header className="masthead">
+        <a className="wordmark" href="./" aria-label="Elsewhere home">
+          <Icon name="spark" size={25} />
+          <span>
+            elsewhere<span className="wordmark-dot">.</span>
+          </span>
+        </a>
+        <div className="masthead-right">
+          <span className="edition">AN UNFINISHED WORLD</span>
+          <button
+            className="guide-toggle"
+            onClick={() => openPanel('guide')}
+            aria-expanded={panel === 'guide'}
+            aria-controls="field-panel"
+          >
+            <Icon name="book" />
+            <span>Field guide</span>
+          </button>
+        </div>
+      </header>
 
-    <section className="habitat-heading" aria-label="Current habitat">
-      <p className="eyebrow"><span className="tiny-line"/> HABITAT 001 <span className="eyebrow-divider">/</span> THE FIRST SHORE</p>
-      <h1>The luminous<br/><em>tidepool.</em></h1>
-      <p className="habitat-description">Some things grow where<br/>a little light is left behind.</p>
-    </section>
-    <div className="habitat-coordinate" aria-hidden="true"><span>01 — 001</span><span>SHALLOW WATER / LOW TIDE</span></div>
-
-    {!ready && <div className="loading-state" role="status">{error ? <><Icon name="spark" size={32}/><h2>The shore is out of reach.</h2><p>{error}</p><p>Try a browser with WebGL enabled, then reload.</p><button className="text-button" onClick={() => location.reload()}>Try again <Icon name="arrow"/></button></> : <><span className="loading-ring"/><p>Finding the shoreline…</p></>}</div>}
-
-    {ready && hintVisible && <div className="first-hint"><span className="hint-star">✧</span><span>Touch the water to leave light</span></div>}
-
-    <aside className="pool-readout" aria-label="Tidepool observations">
-      <span className={`live-dot ${paused ? 'is-paused' : ''}`}/><span>{paused ? 'STILL, FOR A MOMENT' : 'A SMALL WORLD, ALIVE'}</span>
-      <div className="readout-values"><span><strong>{stats.population}</strong> lucents</span><span className="readout-separator">·</span><span><strong>{Math.round(stats.pigment)}</strong> pigment</span><span className="readout-separator">·</span><time>{timeLabel(stats.elapsed)}</time></div>
-      <div className="grazer-readout"><span>{stats.grazers} grazers</span><span>·</span><span>{stats.nestPigment.toFixed(1)} color nested</span></div>
-      {stats.skimmers > 0 && <div className="skimmer-readout">◇ {stats.skimmers} prism skimmer{stats.skimmers === 1 ? '' : 's'}</div>}
-      <div className={`weather-readout ${weather.raining ? 'is-raining' : ''}`} aria-label="Pool weather">
-        <span aria-hidden="true">◌</span><span>{weather.called ? 'Called shower' : weather.raining ? 'Rain · wider light' : 'Rain in'} <time>{timeLabel(Math.ceil(weather.secondsUntilChange))}</time></span>
+      <section className="habitat-heading" aria-label="Current habitat">
+        <p className="eyebrow">
+          <span className="tiny-line" /> HABITAT 001 <span className="eyebrow-divider">/</span> THE FIRST SHORE
+        </p>
+        <h1>
+          The luminous
+          <br />
+          <em>tidepool.</em>
+        </h1>
+        <p className="habitat-description">
+          Some things grow where
+          <br />a little light is left behind.
+        </p>
+      </section>
+      <div className="habitat-coordinate" aria-hidden="true">
+        <span>01 — 001</span>
+        <span>SHALLOW WATER / LOW TIDE</span>
       </div>
-      {worldRef.current.currents.length > 0 && <div className="current-readout">↝ {worldRef.current.currents.length} current{worldRef.current.currents.length === 1 ? '' : 's'} · {paused ? 'waiting' : 'carrying life & color'}</div>}
-      <button className={`rain-button ${weather.called ? 'is-called' : ''}`} onClick={inviteRain}
-        aria-label="Call a passing shower" aria-describedby="rain-help" aria-disabled={weather.callCooldown > 0}
-        aria-pressed={weather.called} title="Call rain (R)">
-        <span aria-hidden="true">☂</span><span>{weather.called ? 'Shower called' : weather.callCooldown > 0 ? 'Water resting' : 'Call rain'}</span>
-        <kbd>R</kbd>
-      </button>
-      <span id="rain-help" className="sr-only">A passing shower widens existing feeding light for thirty world seconds. Rest sixty world seconds between calls. Pause holds rain and rest.</span>
-    </aside>
 
-    <div className="toolbar-area">
-      <div className="tool-hint" id="habitat-instructions">{tool === 'light' ? 'Touch or hold to leave light' : tool === 'carry' ? (carrying ? 'Set down inside the shore · Escape cancels' : 'Drag an existing light to a new place') : tool === 'stir' ? (stirring ? 'Draw a short path · Release or Enter to stir · Escape cancels' : 'Draw a short stroke to carry life and color') : 'Touch a creature to observe'}<span className="keyboard-hint"> · Arrows + Enter when the pool is focused</span></div>
-      <nav className="tool-dock" aria-label="Tidepool tools">
-        <button className={`tool-button ${tool === 'light' ? 'active' : ''}`} onClick={() => chooseTool('light')} aria-pressed={tool === 'light'} title="Leave light (L)"><Icon name="spark"/><span>Leave light</span><kbd>L</kbd></button>
-        <button className={`tool-button ${tool === 'observe' ? 'active' : ''}`} onClick={() => { chooseTool('observe'); setHintVisible(false); }} aria-pressed={tool === 'observe'} title="Observe (O)"><Icon name="eye"/><span>Observe</span><kbd>O</kbd></button>
-        <button className={`tool-button ${tool === 'carry' ? 'active' : ''}`} onClick={() => chooseTool('carry')} aria-pressed={tool === 'carry'} title="Carry light (M)"><Icon name="arrow"/><span>Carry light</span><kbd>M</kbd></button>
-        <button className={`tool-button ${tool === 'stir' ? 'active' : ''}`} onClick={() => chooseTool('stir')} aria-pressed={tool === 'stir'} title="Stir water (S)"><Icon name="current"/><span>Stir water</span><kbd>S</kbd></button>
-        <span className="dock-divider"/>
-        <button className="icon-button" onClick={() => setPaused(value => !value)} aria-label={paused ? 'Resume the tidepool' : 'Pause the tidepool'} aria-pressed={paused} title={paused ? 'Resume (Space)' : 'Pause (Space)'}><Icon name={paused ? 'play' : 'pause'}/></button>
-        <button className="icon-button" onClick={event => { resetTriggerRef.current = event.currentTarget; resetRef.current?.showModal(); }} aria-label="Reset tidepool" title="Begin again"><Icon name="reset"/></button>
-      </nav>
-    </div>
-    <footer className="site-footer"><span>A WORLD WE DISCOVER BY BUILDING IT</span><button className="pocket-button" onClick={() => openPanel('pocket')} aria-expanded={panel === 'pocket'} aria-controls="field-panel"><Icon name="download" size={15}/><span>Pocket this world</span></button></footer>
+      {!ready && (
+        <div className="loading-state" role="status">
+          {error ? (
+            <>
+              <Icon name="spark" size={32} />
+              <h2>The shore is out of reach.</h2>
+              <p>{error}</p>
+              <p>Try a browser with WebGL enabled, then reload.</p>
+              <button className="text-button" onClick={() => location.reload()}>
+                Try again <Icon name="arrow" />
+              </button>
+            </>
+          ) : (
+            <>
+              <span className="loading-ring" />
+              <p>Finding the shoreline…</p>
+            </>
+          )}
+        </div>
+      )}
 
-    {panel && <>
-      <div className="panel-scrim" onClick={() => setPanel(null)} aria-hidden="true"/>
-      <aside ref={panelRef} className="field-panel" id="field-panel" role="dialog" aria-modal="true" aria-labelledby="panel-title"
-        onKeyDown={event => {
-          if (event.key !== 'Tab') return;
-          const nodes = panelRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled),input:not(:disabled),a,[tabindex="0"]');
-          if (!nodes?.length) return;
-          const first = nodes[0], last = nodes[nodes.length - 1];
-          if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
-          else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
-        }}>
-        <div className="panel-top"><span className="eyebrow">NOTES FROM ELSEWHERE</span><button className="icon-button" aria-label="Close panel" onClick={() => setPanel(null)}><Icon name="close"/></button></div>
-        {panel === 'guide' && <>
-          <h2 id="panel-title">A field guide<br/><em>to small wonders.</em></h2>
-          <p className="panel-intro">The first place in an unfinished world. Stay a while. Leave something behind.</p>
-          <div className="specimen-art" aria-hidden="true"><svg viewBox="0 0 280 130"><defs><radialGradient id="body-glow"><stop stopColor="#d8ecc1" stopOpacity=".7"/><stop offset="1" stopColor="#99d1bb" stopOpacity="0"/></radialGradient></defs><ellipse cx="140" cy="62" rx="72" ry="58" fill="url(#body-glow)"/><path d="M145 63q-30 8-52 32t-25 13M144 69q-8 25-37 31t-20 16M149 73q10 30-8 42M155 64q30 20 37 39" fill="none" stroke="#b7d5ae" strokeWidth=".7"/><ellipse cx="150" cy="61" rx="22" ry="15" fill="#b0d8b6" fillOpacity=".2" stroke="#c1ddba" strokeWidth=".8" transform="rotate(-22 150 61)"/><circle cx="157" cy="56" r="3" fill="#e3f3c8"/><path d="M184 45h45m-16-4 16 4-16 4" fill="none" stroke="#66897c" strokeWidth=".6"/><text x="215" y="32" fill="#a6b8a6" fontSize="9" fontFamily="monospace">FIG. 001</text></svg></div>
-          <div className="guide-entry"><span className="entry-number">01</span><div><h3>The lucent</h3><p>A little wanderer drawn to light. As it feeds, it grows brighter and leaves a trace of colored sediment.</p></div></div>
-          <div className="guide-entry"><span className="entry-number">02</span><div><h3>A gift of light</h3><p>Touch or hold inside the shoreline. Your light slowly fades, and nearby lucents come to feed. A full pool needs a moment to catch up.</p></div></div>
-          <div className="guide-entry"><span className="entry-number">03</span><div><h3>What remains</h3><p>Pigment settles on the pool floor. A meal becomes a trace, and a trace becomes something another creature can use.</p></div></div>
-          <div className="guide-entry"><span className="entry-number">04</span><div><h3>The pigment grazer</h3><p>Look for the small amber shells. They gather colored sediment, then carry it home. Their empty woven nests slowly fill with borrowed colors. Leave light near a nest to keep the story going.</p></div></div>
-          <div className="guide-entry"><span className="entry-number">05</span><div><h3>A passing rain</h3><p>Watch for ringlets on the water. During rain, golden patches of light widen over six seconds. Lucents can feed across that larger patch and leave color across a wider floor. Leave a fresh light during the shower to see it; rain cannot bring back a spent light. Grazers follow the traces home. The shower passes after 38 seconds and returns every three minutes. Pause holds the weather, too.</p></div></div>
-          <div className="guide-entry"><span className="entry-number">06</span><div><h3>Borrowed color</h3><p>A nest can give its color back. Observe a grazer, then choose Return color to the water. Up to three stored color becomes six grains near its home, ready to be gathered again. No color is created; a nearly empty nest or a crowded floor needs time.</p></div></div>
-          {worldRef.current.grazers.length > 0 && <button className="secondary-button" onClick={() => { setSelectedId(worldRef.current.grazers[0].id); setPanel('specimen'); chooseTool('observe'); setHintVisible(false); setNotice('A keeper of borrowed colors.'); }}>Follow a grazer <Icon name="eye"/></button>}
-          <div className="guide-entry"><span className="entry-number">07</span><div><h3>Carry a living light</h3><p>Choose Carry light and drag an existing light to a new feeding ground. Its glow waits at the source until you release inside the shore. No energy is added. With the pool focused, press M, move the cursor to a light, Enter to pick it up, arrows to carry it, and Enter to set it down. Escape cancels. You can carry while paused; resume to watch lucents change course.</p></div></div>
-          <div className="guide-entry"><span className="entry-number">08</span><div><h3>A gentle invitation</h3><p>Choose Call rain or press R to invite a thirty-second shower. It widens existing feeding light over six seconds; it cannot revive a spent light or create energy. The water rests for sixty world seconds between calls. Pause holds both the shower and its rest, and a snapshot remembers them. Natural showers still pass on their own.</p></div></div>
-          <div className="guide-entry"><span className="entry-number">09</span><div><h3>A passing current</h3><p>Choose Stir water, then draw a short stroke. Lucents, grazers and loose color drift along it for eight world seconds. Light and nests stay anchored. Up to three currents can overlap. With the keyboard: S, Enter, arrows, Enter. Escape cancels. Pause holds the flow.</p></div></div>
-          <div className="guide-entry"><span className="entry-number">10</span><div><h3>The prism skimmer</h3><p>A well-fed nest can give rise to a translucent diamond. Its small body and first meal come from stored color. It competes with grazers for loose pigment, then spends its reserve to release a little light that lucents can eat. A charged skimmer holds its color when the pool is full of light. None may appear if nests are empty or six already swim here. Each lives for at most eight world minutes; a minute without any reserve ends its life sooner, returning what remains to the pool. Pause holds its life, too.</p></div></div>
-          <div className="guide-entry"><span className="entry-number">11</span><div><h3>The reedwell</h3><p>Rain can help a pocket of loose pigment take root. Five leaves open around its paid root, catching daylight and slowly storing it as feeding light. A pale ring marks a release; lucents can eat that light. Night stops the gathering, and a pool full of light makes the plant hold its store. Each root lasts fifteen world minutes, then returns its pigment; unused light disperses. Reeds need not appear in every pool. Observe a crown to see its store. No planting is needed.</p></div></div>
-          <div className="guide-entry"><span className="entry-number">12</span><div><h3>The rainbell</h3><p>A wet pocket of loose pigment can fund an anchored polyp. In rain, its translucent mantle contracts and pays for a current that draws nearby color toward its mouth. Watch grains move into reach before its reserve can rise. The same current can carry passing creatures, but the polyp stays rooted. Each contraction and every moment of life spend pigment; full currents or distant food make it wait. A minute with no reserve, or ten world minutes of age, ends its life and returns what remains. It may never appear in a dry or food-poor pool.</p></div></div>
-          <div className="guide-entry"><span className="entry-number">13</span><div><h3>The siltstitcher</h3><p>When a nest has surplus color, a small carrier can form from that stored pigment. It refills its own reserve and loads a separate bundle only from color the nest can spare, then walks toward a poorer edge of the feeding grounds. It places the bundle as ordinary loose pigment for grazers to gather again. If that patch is full, it brings the bundle home and tries later. A missing home, exhausted reserve or eight world minutes can end the journey; its remaining color returns. Some nests never support one.</p></div></div>
-          <div className="guide-entry"><span className="entry-number">14</span><div><h3>The glass limpet</h3><p>In a suitable shoreline pocket, loose pigment can pay for a clear, anchored shell. A rainbell's current may carry coarse grains past it. Only moving food that actually reaches the shell can fill its small reserve and catch basin; grazers have less to gather downstream while it holds that color. In calm water it waits and still spends a little reserve. It does not multiply, and it may be absent from a pool. After eight world minutes or a minute without reserve, the shell and all stored color return as loose pigment for grazers to find.</p></div></div>
-          <div className="guide-controls"><p className="eyebrow">WAYS TO VISIT</p><p><kbd>L</kbd> Leave light <kbd>O</kbd> Observe <kbd>M</kbd> Carry light <kbd>S</kbd> Stir water <kbd>R</kbd> Call rain <kbd>Space</kbd> Pause</p><p>Tab to the pool, move with arrow keys, then press Enter. <kbd>Esc</kbd> closes these notes.</p></div>
-        </>}
-        {panel === 'specimen' && <>
-          <h2 id="panel-title">{selected?.species === 'grazer' ? <>A keeper<br/><em>of borrowed colors.</em></> : selected?.species === 'skimmer' ? <>A prism,<br/><em>briefly alight.</em></> : selected?.species === 'reedwell' ? <>A root,<br/><em>holding daylight.</em></> : selected?.species === 'rainbell' ? <>A bell,<br/><em>drawing water.</em></> : selected?.species === 'siltstitcher' ? <>A carrier,<br/><em>threading the silt.</em></> : selected?.species === 'glassLimpet' ? <>A shell,<br/><em>holding the current.</em></> : selected?.species === 'cargoMite' ? <>A mite,<br/><em>living on borrowed color.</em></> : <>A lucent,<br/><em>briefly known.</em></>}</h2>
-          <p className="panel-intro">Every life is part of the same small story.</p>
-          {selected ? <>
-            <div className={`specimen-orb ${selected.species === 'grazer' ? 'grazer-orb' : selected.species === 'skimmer' ? 'skimmer-orb' : selected.species === 'reedwell' ? 'reedwell-orb' : selected.species === 'rainbell' ? 'rainbell-orb' : selected.species === 'siltstitcher' ? 'siltstitcher-orb' : selected.species === 'glassLimpet' ? 'glass-limpet-orb' : selected.species === 'cargoMite' ? 'cargo-mite-orb' : ''}`} aria-hidden="true"/>
-            <p className="eyebrow">{selected.species === 'grazer' ? 'PIGMENT GRAZER' : selected.species === 'skimmer' ? 'PRISM SKIMMER' : selected.species === 'reedwell' ? 'REEDWELL' : selected.species === 'rainbell' ? 'RAINBELL POLYP' : selected.species === 'siltstitcher' ? 'SILTSTITCHER' : selected.species === 'glassLimpet' ? 'GLASS LIMPET' : selected.species === 'cargoMite' ? 'CARGO MITE' : 'LUCENT'} / {String(selected.id).padStart(3, '0')}</p>
-            <dl className="specimen-details">
-              <div><dt>Time in the pool</dt><dd>{timeLabel(selected.age)}</dd></div>
-              {selected.species === 'grazer' ? <>
-                <div><dt>Carrying color</dt><dd>{selected.cargo.toFixed(1)}</dd></div>
-                <div><dt>Color in its nest</dt><dd>{(selectedNest?.pigment ?? 0).toFixed(1)}</dd></div>
-                <div><dt>Disposition</dt><dd>{selected.returning ? 'Returning home' : 'Gathering pigment'}</dd></div>
-              </> : selected.species === 'skimmer' ? <>
-                <div><dt>Color in reserve</dt><dd>{selected.reserve.toFixed(2)}</dd></div>
-                <div><dt>Color in its body</dt><dd>{selected.body.toFixed(1)}</dd></div>
-                <div><dt>Disposition</dt><dd>{selected.reserve >= 0.9 && worldRef.current.lights.length >= LIMITS.lights ? 'Holding color · light is full' : selected.reserve >= 0.9 ? 'Charged with color' : selected.reserve <= 0 ? 'Hungry for pigment' : 'Gathering pigment'}</dd></div>
-              </> : selected.species === 'rainbell' ? <>
-                <div><dt>Color in reserve</dt><dd>{selected.reserve.toFixed(3)}</dd></div>
-                <div><dt>Color in its body</dt><dd>{selected.body.toFixed(1)}</dd></div>
-                <div><dt>Disposition</dt><dd>{selected.reserve <= 0 ? 'Hungry for pigment' : effectiveWeather(worldRef.current).intensity < .5 ? 'Mantle open · calm water' : worldRef.current.currents.length >= MAX_CURRENTS ? 'Holding reserve · currents are full' : worldRef.current.elapsed < selected.pulseNextAllowedAt ? 'Resting between contractions' : 'Mantle open · waiting for food'}</dd></div>
-              </> : selected.species === 'siltstitcher' ? <>
-                <div><dt>Color in reserve</dt><dd>{selected.reserve.toFixed(3)}</dd></div>
-                <div><dt>Color in its bundle</dt><dd>{selected.cargo.toFixed(3)}</dd></div>
-                <div><dt>Color in its body</dt><dd>{selected.body.toFixed(1)}</dd></div>
-                <div><dt>Journey</dt><dd>{selected.mode === 'home' ? 'Gathering nest surplus' : selected.mode === 'outbound' ? 'Walking to a poorer patch' : selected.mode === 'blocked' ? 'Waiting for space to set down color' : 'Returning to its nest'}</dd></div>
-              </> : selected.species === 'glassLimpet' ? <>
-                <div><dt>Color in reserve</dt><dd>{selected.reserve.toFixed(3)}</dd></div>
-                <div><dt>Color caught</dt><dd>{selected.cargo.toFixed(3)}</dd></div>
-                <div><dt>Color in its shell</dt><dd>{selected.body.toFixed(1)}</dd></div>
-                <div><dt>Disposition</dt><dd>{selected.reserve <= 0 ? 'Waiting for moving food' : selected.cargo >= .8 - 1e-6 ? 'Catch basin full' : selected.cargo > 0 ? 'Holding intercepted color' : 'Waiting for moving food'}</dd></div>
-              </> : selected.species === 'cargoMite' ? <>
-                <div><dt>Color in reserve</dt><dd>{selected.reserve.toFixed(3)}</dd></div>
-                <div><dt>Color in its body</dt><dd>{selected.body.toFixed(1)}</dd></div>
-                <div><dt>Life stage</dt><dd>{selected.age < 30 ? 'Young mite' : 'Adult mite'}</dd></div>
-                <div><dt>Disposition</dt><dd>{selected.mode === 'attached' ? `On grazer ${selected.hostId}` : 'Seeking a loaded grazer'}</dd></div>
-              </> : selected.species === 'reedwell' ? <>
-                <div><dt>Stored daylight</dt><dd>{selected.lightStore.toFixed(2)} / 3</dd></div>
-                <div><dt>Color in its root</dt><dd>{selected.body.toFixed(1)}</dd></div>
-                <div><dt>Disposition</dt><dd>{selected.lightStore >= 1.5 && worldRef.current.lights.length >= LIMITS.lights ? 'Holding light · pool is full' : getDaylight(worldRef.current).intensity > 0 ? 'Gathering daylight' : 'Resting through night'}</dd></div>
-              </> : <>
-                <div><dt>Energy</dt><dd>{Math.round(selected.energy * 50)}%</dd></div>
-                <div><dt>Disposition</dt><dd>{selected.energy > 1 ? 'Radiant' : selected.energy > 0.4 ? 'Wandering' : 'Seeking light'}</dd></div>
-              </>}
-            </dl>
-            <p className="guide-caption">{selected.species === 'grazer' ? 'Its shell carries the color of its last finds. Watch the woven nest fill as it returns.' : selected.species === 'skimmer' ? 'Its steady glow shows stored color. A bright diamond outline marks a gift of light. Its body and remaining reserve return to the pool when this short life ends.' : selected.species === 'reedwell' ? 'Daylight is an external source of energy. Its leaves brighten as they store it; a pale ring marks ordinary feeding light released into the water. Its root returns to pigment after fifteen world minutes.' : selected.species === 'rainbell' ? 'Rain lets this anchored animal spend stored pigment to pull water toward its mantle. It can only eat grains that reach it. Pumping and staying alive both cost pigment; its body and reserve return when this finite life ends.' : selected.species === 'siltstitcher' ? 'It turns actual nest surplus into a movable bundle and sets that color down where ordinary grazers can find it. Its body, reserve and any undelivered bundle return when this finite life ends.' : selected.species === 'glassLimpet' ? 'Only real current-borne coarse food that reaches this shell fills its reserve and basin. Its body and catch return to the pool at the end of its finite life.' : selected.species === 'cargoMite' ? 'A grazer’s carried color feeds this mite instead of reaching the nest. A grown parent can pay color from its own reserve for a young mite; both return remaining color when their short lives end.' : "Leave light nearby and watch this one's path change."}</p>
-          </> : <p className="panel-intro">{selectedId !== null ? 'This creature has left the pool. Choose Observe to meet another.' : 'Choose Observe and touch a creature in the water.'}</p>}
-          {selected?.species === 'grazer' && selectedNest && <>
-            <button className="primary-button" onClick={() => returnNestColor(selectedNest.id)}>Return color to the water <Icon name="arrow"/></button>
-            <p className="guide-caption">Release up to 3 color from this nest into six nearby grains. The grazers can gather them again.</p>
-            <p className="snapshot-feedback" role="status">{notice}</p>
-          </>}
-        </>}
-        {panel === 'pocket' && <>
-          <h2 id="panel-title">A world<br/><em>in your pocket.</em></h2>
-          <p className="panel-intro">{studyMode ? 'You are visiting During a shower. This study never autosaves over your pool. A saved snapshot contains the study.' : `Your tidepool is ${storageAvailable ? 'remembered automatically on this device' : 'running without automatic saves'}. Take a snapshot to carry it somewhere else.`}</p>
-          <div className="snapshot-stamp"><Icon name="spark" size={38}/><span>THE FIRST SHORE</span><strong>{timeLabel(stats.elapsed)}</strong><span>{stats.population} LUCENTS · {stats.grazers} GRAZERS{stats.skimmers > 0 ? ` · ${stats.skimmers} SKIMMERS` : ''}</span><span>SEED {worldRef.current.seed}</span></div>
-          <button className="primary-button" onClick={exportSnapshot}><Icon name="download"/>Save a snapshot <Icon name="arrow"/></button>
-          <button className="secondary-button" disabled={studyMode} onClick={() => importRef.current?.click()}><Icon name="upload"/>Open a snapshot</button>
-          <p className="snapshot-feedback" role="status">{notice}</p>
-          <p className="guide-caption">{studyMode ? 'Return to your pool before opening a snapshot. Reset only restarts this study.' : "Opening a snapshot replaces the current pool. Save this one first if you'd like to keep both. A snapshot captures this version of the world."}</p>
-          {studyMode ? <button className="secondary-button" onClick={returnToPool}>Return to your pool <Icon name="arrow"/></button> : <>
-            <h3>During a shower</h3>
-            <p className="guide-caption">Visit a paused rain study with color ready to return from its nests. Your pool and controls stay held aside. The study never overwrites its autosave.</p>
-            <button className="secondary-button" onClick={previewStudy}>Preview During a shower <Icon name="eye"/></button>
-          </>}
-          <p className="guide-caption">Study provenance: seed {SHOWER_STUDY.seed}, {SHOWER_STUDY.steps} fixed steps, 00:40. Generated from the first shore without visitor actions.</p>
-        </>}
-        <div className="panel-foot">ELSEWHERE <span>CHAPTER 01</span></div>
+      {ready && hintVisible && (
+        <div className="first-hint">
+          <span className="hint-star">✧</span>
+          <span>Touch the water to leave light</span>
+        </div>
+      )}
+
+      <aside className="pool-readout" aria-label="Tidepool observations">
+        <span className={`live-dot ${paused ? 'is-paused' : ''}`} />
+        <span>{paused ? 'STILL, FOR A MOMENT' : 'A SMALL WORLD, ALIVE'}</span>
+        <div className="readout-values">
+          <span>
+            <strong>{stats.population}</strong> lucents
+          </span>
+          <span className="readout-separator">·</span>
+          <span>
+            <strong>{Math.round(stats.pigment)}</strong> pigment
+          </span>
+          <span className="readout-separator">·</span>
+          <time>{timeLabel(stats.elapsed)}</time>
+        </div>
+        <div className="grazer-readout">
+          <span>{stats.grazers} grazers</span>
+          <span>·</span>
+          <span>{stats.nestPigment.toFixed(1)} color nested</span>
+        </div>
+        {stats.skimmers > 0 && (
+          <div className="skimmer-readout">
+            ◇ {stats.skimmers} prism skimmer{stats.skimmers === 1 ? '' : 's'}
+          </div>
+        )}
+        <div className={`weather-readout ${weather.raining ? 'is-raining' : ''}`} aria-label="Pool weather">
+          <span aria-hidden="true">◌</span>
+          <span>
+            {weather.called ? 'Called shower' : weather.raining ? 'Rain · wider light' : 'Rain in'}{' '}
+            <time>{timeLabel(Math.ceil(weather.secondsUntilChange))}</time>
+          </span>
+        </div>
+        {worldRef.current.currents.length > 0 && (
+          <div className="current-readout">
+            ↝ {worldRef.current.currents.length} current{worldRef.current.currents.length === 1 ? '' : 's'} ·{' '}
+            {paused ? 'waiting' : 'carrying life & color'}
+          </div>
+        )}
+        <button
+          className={`rain-button ${weather.called ? 'is-called' : ''}`}
+          onClick={inviteRain}
+          aria-label="Call a passing shower"
+          aria-describedby="rain-help"
+          aria-disabled={weather.callCooldown > 0}
+          aria-pressed={weather.called}
+          title="Call rain (R)"
+        >
+          <span aria-hidden="true">☂</span>
+          <span>{weather.called ? 'Shower called' : weather.callCooldown > 0 ? 'Water resting' : 'Call rain'}</span>
+          <kbd>R</kbd>
+        </button>
+        <span id="rain-help" className="sr-only">
+          A passing shower widens existing feeding light for thirty world seconds. Rest sixty world seconds between
+          calls. Pause holds rain and rest.
+        </span>
       </aside>
-    </>}
-    <input ref={importRef} type="file" accept=".json,application/json" hidden aria-label="Open tidepool snapshot" onChange={importSnapshot}/>
-    <dialog ref={resetRef} className="reset-dialog" aria-labelledby="reset-title" onClose={() => resetTriggerRef.current?.focus()}>
-      <p className="eyebrow">THE TIDE TURNS</p><h2 id="reset-title">Begin again?</h2><p>{studyMode ? 'Only the study will return to its paused first moment. Your personal pool stays held aside.' : "The pool will return to its first moment. Save a snapshot first to keep what you've made."}</p>
-      <div className="dialog-actions"><button className="secondary-button" autoFocus onClick={() => resetRef.current?.close()}>Stay here</button><button className="primary-button" onClick={resetWorld}>Begin again <Icon name="reset"/></button></div>
-    </dialog>
-    <p className="sr-only" role="status" aria-live="polite">{notice}</p>
-    {feedback && !panel && <div className="action-notice" aria-hidden="true">{feedback}</div>}
-    {!storageAvailable && <div className="storage-notice">{studyMode ? 'Your personal pool is held in memory only. Return before closing or reloading; study snapshots do not contain your pool.' : 'Automatic saving is unavailable. Use “Pocket this world” to keep a snapshot.'}</div>}
-    {reducedMotion && paused && <div className="motion-notice">Opened quietly for your motion preference. Press Play to bring it to life.</div>}
-  </main>;
+
+      <div className="toolbar-area">
+        <div className="tool-hint" id="habitat-instructions">
+          {tool === 'light'
+            ? 'Touch or hold to leave light'
+            : tool === 'carry'
+              ? carrying
+                ? 'Set down inside the shore · Escape cancels'
+                : 'Drag an existing light to a new place'
+              : tool === 'stir'
+                ? stirring
+                  ? 'Draw a short path · Release or Enter to stir · Escape cancels'
+                  : 'Draw a short stroke to carry life and color'
+                : 'Touch a creature to observe'}
+          <span className="keyboard-hint"> · Arrows + Enter when the pool is focused</span>
+        </div>
+        <nav className="tool-dock" aria-label="Tidepool tools">
+          <button
+            className={`tool-button ${tool === 'light' ? 'active' : ''}`}
+            onClick={() => chooseTool('light')}
+            aria-pressed={tool === 'light'}
+            title="Leave light (L)"
+          >
+            <Icon name="spark" />
+            <span>Leave light</span>
+            <kbd>L</kbd>
+          </button>
+          <button
+            className={`tool-button ${tool === 'observe' ? 'active' : ''}`}
+            onClick={() => {
+              chooseTool('observe');
+              setHintVisible(false);
+            }}
+            aria-pressed={tool === 'observe'}
+            title="Observe (O)"
+          >
+            <Icon name="eye" />
+            <span>Observe</span>
+            <kbd>O</kbd>
+          </button>
+          <button
+            className={`tool-button ${tool === 'carry' ? 'active' : ''}`}
+            onClick={() => chooseTool('carry')}
+            aria-pressed={tool === 'carry'}
+            title="Carry light (M)"
+          >
+            <Icon name="arrow" />
+            <span>Carry light</span>
+            <kbd>M</kbd>
+          </button>
+          <button
+            className={`tool-button ${tool === 'stir' ? 'active' : ''}`}
+            onClick={() => chooseTool('stir')}
+            aria-pressed={tool === 'stir'}
+            title="Stir water (S)"
+          >
+            <Icon name="current" />
+            <span>Stir water</span>
+            <kbd>S</kbd>
+          </button>
+          <span className="dock-divider" />
+          <button
+            className="icon-button"
+            onClick={() => setPaused((value) => !value)}
+            aria-label={paused ? 'Resume the tidepool' : 'Pause the tidepool'}
+            aria-pressed={paused}
+            title={paused ? 'Resume (Space)' : 'Pause (Space)'}
+          >
+            <Icon name={paused ? 'play' : 'pause'} />
+          </button>
+          <button
+            className="icon-button"
+            onClick={(event) => {
+              resetTriggerRef.current = event.currentTarget;
+              resetRef.current?.showModal();
+            }}
+            aria-label="Reset tidepool"
+            title="Begin again"
+          >
+            <Icon name="reset" />
+          </button>
+        </nav>
+      </div>
+      <footer className="site-footer">
+        <span>A WORLD WE DISCOVER BY BUILDING IT</span>
+        <button
+          className="pocket-button"
+          onClick={() => openPanel('pocket')}
+          aria-expanded={panel === 'pocket'}
+          aria-controls="field-panel"
+        >
+          <Icon name="download" size={15} />
+          <span>Pocket this world</span>
+        </button>
+      </footer>
+
+      {panel && (
+        <>
+          <div className="panel-scrim" onClick={() => setPanel(null)} aria-hidden="true" />
+          <aside
+            ref={panelRef}
+            className="field-panel"
+            id="field-panel"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="panel-title"
+            onKeyDown={(event) => {
+              if (event.key !== 'Tab') return;
+              const nodes = panelRef.current?.querySelectorAll<HTMLElement>(
+                'button:not(:disabled),input:not(:disabled),a,[tabindex="0"]',
+              );
+              if (!nodes?.length) return;
+              const first = nodes[0],
+                last = nodes[nodes.length - 1];
+              if (event.shiftKey && document.activeElement === first) {
+                event.preventDefault();
+                last.focus();
+              } else if (!event.shiftKey && document.activeElement === last) {
+                event.preventDefault();
+                first.focus();
+              }
+            }}
+          >
+            <div className="panel-top">
+              <span className="eyebrow">NOTES FROM ELSEWHERE</span>
+              <button className="icon-button" aria-label="Close panel" onClick={() => setPanel(null)}>
+                <Icon name="close" />
+              </button>
+            </div>
+            {panel === 'guide' && (
+              <>
+                <h2 id="panel-title">
+                  A field guide
+                  <br />
+                  <em>to small wonders.</em>
+                </h2>
+                <p className="panel-intro">
+                  The first place in an unfinished world. Stay a while. Leave something behind.
+                </p>
+                <div className="specimen-art" aria-hidden="true">
+                  <svg viewBox="0 0 280 130">
+                    <defs>
+                      <radialGradient id="body-glow">
+                        <stop stopColor="#d8ecc1" stopOpacity=".7" />
+                        <stop offset="1" stopColor="#99d1bb" stopOpacity="0" />
+                      </radialGradient>
+                    </defs>
+                    <ellipse cx="140" cy="62" rx="72" ry="58" fill="url(#body-glow)" />
+                    <path
+                      d="M145 63q-30 8-52 32t-25 13M144 69q-8 25-37 31t-20 16M149 73q10 30-8 42M155 64q30 20 37 39"
+                      fill="none"
+                      stroke="#b7d5ae"
+                      strokeWidth=".7"
+                    />
+                    <ellipse
+                      cx="150"
+                      cy="61"
+                      rx="22"
+                      ry="15"
+                      fill="#b0d8b6"
+                      fillOpacity=".2"
+                      stroke="#c1ddba"
+                      strokeWidth=".8"
+                      transform="rotate(-22 150 61)"
+                    />
+                    <circle cx="157" cy="56" r="3" fill="#e3f3c8" />
+                    <path d="M184 45h45m-16-4 16 4-16 4" fill="none" stroke="#66897c" strokeWidth=".6" />
+                    <text x="215" y="32" fill="#a6b8a6" fontSize="9" fontFamily="monospace">
+                      FIG. 001
+                    </text>
+                  </svg>
+                </div>
+                <div className="guide-entry">
+                  <span className="entry-number">01</span>
+                  <div>
+                    <h3>The lucent</h3>
+                    <p>
+                      A little wanderer drawn to light. As it feeds, it grows brighter and leaves a trace of colored
+                      sediment.
+                    </p>
+                  </div>
+                </div>
+                <div className="guide-entry">
+                  <span className="entry-number">02</span>
+                  <div>
+                    <h3>A gift of light</h3>
+                    <p>
+                      Touch or hold inside the shoreline. Your light slowly fades, and nearby lucents come to feed. A
+                      full pool needs a moment to catch up.
+                    </p>
+                  </div>
+                </div>
+                <div className="guide-entry">
+                  <span className="entry-number">03</span>
+                  <div>
+                    <h3>What remains</h3>
+                    <p>
+                      Pigment settles on the pool floor. A meal becomes a trace, and a trace becomes something another
+                      creature can use.
+                    </p>
+                  </div>
+                </div>
+                <div className="guide-entry">
+                  <span className="entry-number">04</span>
+                  <div>
+                    <h3>The pigment grazer</h3>
+                    <p>
+                      Look for the small amber shells. They gather colored sediment, then carry it home. Their empty
+                      woven nests slowly fill with borrowed colors. Leave light near a nest to keep the story going.
+                    </p>
+                  </div>
+                </div>
+                <div className="guide-entry">
+                  <span className="entry-number">05</span>
+                  <div>
+                    <h3>A passing rain</h3>
+                    <p>
+                      Watch for ringlets on the water. During rain, golden patches of light widen over six seconds.
+                      Lucents can feed across that larger patch and leave color across a wider floor. Leave a fresh
+                      light during the shower to see it; rain cannot bring back a spent light. Grazers follow the traces
+                      home. The shower passes after 38 seconds and returns every three minutes. Pause holds the weather,
+                      too.
+                    </p>
+                  </div>
+                </div>
+                <div className="guide-entry">
+                  <span className="entry-number">06</span>
+                  <div>
+                    <h3>Borrowed color</h3>
+                    <p>
+                      A nest can give its color back. Observe a grazer, then choose Return color to the water. Up to
+                      three stored color becomes six grains near its home, ready to be gathered again. No color is
+                      created; a nearly empty nest or a crowded floor needs time.
+                    </p>
+                  </div>
+                </div>
+                {worldRef.current.grazers.length > 0 && (
+                  <button
+                    className="secondary-button"
+                    onClick={() => {
+                      setSelectedId(worldRef.current.grazers[0].id);
+                      setPanel('specimen');
+                      chooseTool('observe');
+                      setHintVisible(false);
+                      setNotice('A keeper of borrowed colors.');
+                    }}
+                  >
+                    Follow a grazer <Icon name="eye" />
+                  </button>
+                )}
+                <div className="guide-entry">
+                  <span className="entry-number">07</span>
+                  <div>
+                    <h3>Carry a living light</h3>
+                    <p>
+                      Choose Carry light and drag an existing light to a new feeding ground. Its glow waits at the
+                      source until you release inside the shore. No energy is added. With the pool focused, press M,
+                      move the cursor to a light, Enter to pick it up, arrows to carry it, and Enter to set it down.
+                      Escape cancels. You can carry while paused; resume to watch lucents change course.
+                    </p>
+                  </div>
+                </div>
+                <div className="guide-entry">
+                  <span className="entry-number">08</span>
+                  <div>
+                    <h3>A gentle invitation</h3>
+                    <p>
+                      Choose Call rain or press R to invite a thirty-second shower. It widens existing feeding light
+                      over six seconds; it cannot revive a spent light or create energy. The water rests for sixty world
+                      seconds between calls. Pause holds both the shower and its rest, and a snapshot remembers them.
+                      Natural showers still pass on their own.
+                    </p>
+                  </div>
+                </div>
+                <div className="guide-entry">
+                  <span className="entry-number">09</span>
+                  <div>
+                    <h3>A passing current</h3>
+                    <p>
+                      Choose Stir water, then draw a short stroke. Lucents, grazers and loose color drift along it for
+                      eight world seconds. Light and nests stay anchored. Up to three currents can overlap. With the
+                      keyboard: S, Enter, arrows, Enter. Escape cancels. Pause holds the flow.
+                    </p>
+                  </div>
+                </div>
+                <div className="guide-entry">
+                  <span className="entry-number">10</span>
+                  <div>
+                    <h3>The prism skimmer</h3>
+                    <p>
+                      A well-fed nest can give rise to a translucent diamond. Its small body and first meal come from
+                      stored color. It competes with grazers for loose pigment, then spends its reserve to release a
+                      little light that lucents can eat. A charged skimmer holds its color when the pool is full of
+                      light. None may appear if nests are empty or six already swim here. Each lives for at most eight
+                      world minutes; a minute without any reserve ends its life sooner, returning what remains to the
+                      pool. Pause holds its life, too.
+                    </p>
+                  </div>
+                </div>
+                <div className="guide-entry">
+                  <span className="entry-number">11</span>
+                  <div>
+                    <h3>The reedwell</h3>
+                    <p>
+                      Rain can help a pocket of loose pigment take root. Five leaves open around its paid root, catching
+                      daylight and slowly storing it as feeding light. A pale ring marks a release; lucents can eat that
+                      light. Night stops the gathering, and a pool full of light makes the plant hold its store. Each
+                      root lasts fifteen world minutes, then returns its pigment; unused light disperses. Reeds need not
+                      appear in every pool. Observe a crown to see its store. No planting is needed.
+                    </p>
+                  </div>
+                </div>
+                <div className="guide-entry">
+                  <span className="entry-number">12</span>
+                  <div>
+                    <h3>The rainbell</h3>
+                    <p>
+                      A wet pocket of loose pigment can fund an anchored polyp. In rain, its translucent mantle
+                      contracts and pays for a current that draws nearby color toward its mouth. Watch grains move into
+                      reach before its reserve can rise. The same current can carry passing creatures, but the polyp
+                      stays rooted. Each contraction and every moment of life spend pigment; full currents or distant
+                      food make it wait. A minute with no reserve, or ten world minutes of age, ends its life and
+                      returns what remains. It may never appear in a dry or food-poor pool.
+                    </p>
+                  </div>
+                </div>
+                <div className="guide-entry">
+                  <span className="entry-number">13</span>
+                  <div>
+                    <h3>The siltstitcher</h3>
+                    <p>
+                      When a nest has surplus color, a small carrier can form from that stored pigment. It refills its
+                      own reserve and loads a separate bundle only from color the nest can spare, then walks toward a
+                      poorer edge of the feeding grounds. It places the bundle as ordinary loose pigment for grazers to
+                      gather again. If that patch is full, it brings the bundle home and tries later. A missing home,
+                      exhausted reserve or eight world minutes can end the journey; its remaining color returns. Some
+                      nests never support one.
+                    </p>
+                  </div>
+                </div>
+                <div className="guide-entry">
+                  <span className="entry-number">14</span>
+                  <div>
+                    <h3>The glass limpet</h3>
+                    <p>
+                      In a suitable shoreline pocket, loose pigment can pay for a clear, anchored shell. A rainbell's
+                      current may carry coarse grains past it. Only moving food that actually reaches the shell can fill
+                      its small reserve and catch basin; grazers have less to gather downstream while it holds that
+                      color. In calm water it waits and still spends a little reserve. It does not multiply, and it may
+                      be absent from a pool. After eight world minutes or a minute without reserve, the shell and all
+                      stored color return as loose pigment for grazers to find.
+                    </p>
+                  </div>
+                </div>
+                <div className="guide-controls">
+                  <p className="eyebrow">WAYS TO VISIT</p>
+                  <p>
+                    <kbd>L</kbd> Leave light <kbd>O</kbd> Observe <kbd>M</kbd> Carry light <kbd>S</kbd> Stir water{' '}
+                    <kbd>R</kbd> Call rain <kbd>Space</kbd> Pause
+                  </p>
+                  <p>
+                    Tab to the pool, move with arrow keys, then press Enter. <kbd>Esc</kbd> closes these notes.
+                  </p>
+                </div>
+              </>
+            )}
+            {panel === 'specimen' && (
+              <>
+                <h2 id="panel-title">
+                  {selected?.species === 'grazer' ? (
+                    <>
+                      A keeper
+                      <br />
+                      <em>of borrowed colors.</em>
+                    </>
+                  ) : selected?.species === 'skimmer' ? (
+                    <>
+                      A prism,
+                      <br />
+                      <em>briefly alight.</em>
+                    </>
+                  ) : selected?.species === 'reedwell' ? (
+                    <>
+                      A root,
+                      <br />
+                      <em>holding daylight.</em>
+                    </>
+                  ) : selected?.species === 'rainbell' ? (
+                    <>
+                      A bell,
+                      <br />
+                      <em>drawing water.</em>
+                    </>
+                  ) : selected?.species === 'siltstitcher' ? (
+                    <>
+                      A carrier,
+                      <br />
+                      <em>threading the silt.</em>
+                    </>
+                  ) : selected?.species === 'glassLimpet' ? (
+                    <>
+                      A shell,
+                      <br />
+                      <em>holding the current.</em>
+                    </>
+                  ) : selected?.species === 'cargoMite' ? (
+                    <>
+                      A mite,
+                      <br />
+                      <em>living on borrowed color.</em>
+                    </>
+                  ) : (
+                    <>
+                      A lucent,
+                      <br />
+                      <em>briefly known.</em>
+                    </>
+                  )}
+                </h2>
+                <p className="panel-intro">Every life is part of the same small story.</p>
+                {selected ? (
+                  <>
+                    <div
+                      className={`specimen-orb ${selected.species === 'grazer' ? 'grazer-orb' : selected.species === 'skimmer' ? 'skimmer-orb' : selected.species === 'reedwell' ? 'reedwell-orb' : selected.species === 'rainbell' ? 'rainbell-orb' : selected.species === 'siltstitcher' ? 'siltstitcher-orb' : selected.species === 'glassLimpet' ? 'glass-limpet-orb' : selected.species === 'cargoMite' ? 'cargo-mite-orb' : ''}`}
+                      aria-hidden="true"
+                    />
+                    <p className="eyebrow">
+                      {selected.species === 'grazer'
+                        ? 'PIGMENT GRAZER'
+                        : selected.species === 'skimmer'
+                          ? 'PRISM SKIMMER'
+                          : selected.species === 'reedwell'
+                            ? 'REEDWELL'
+                            : selected.species === 'rainbell'
+                              ? 'RAINBELL POLYP'
+                              : selected.species === 'siltstitcher'
+                                ? 'SILTSTITCHER'
+                                : selected.species === 'glassLimpet'
+                                  ? 'GLASS LIMPET'
+                                  : selected.species === 'cargoMite'
+                                    ? 'CARGO MITE'
+                                    : 'LUCENT'}{' '}
+                      / {String(selected.id).padStart(3, '0')}
+                    </p>
+                    <dl className="specimen-details">
+                      <div>
+                        <dt>Time in the pool</dt>
+                        <dd>{timeLabel(selected.age)}</dd>
+                      </div>
+                      {selected.species === 'grazer' ? (
+                        <>
+                          <div>
+                            <dt>Carrying color</dt>
+                            <dd>{selected.cargo.toFixed(1)}</dd>
+                          </div>
+                          <div>
+                            <dt>Color in its nest</dt>
+                            <dd>{(selectedNest?.pigment ?? 0).toFixed(1)}</dd>
+                          </div>
+                          <div>
+                            <dt>Disposition</dt>
+                            <dd>{selected.returning ? 'Returning home' : 'Gathering pigment'}</dd>
+                          </div>
+                        </>
+                      ) : selected.species === 'skimmer' ? (
+                        <>
+                          <div>
+                            <dt>Color in reserve</dt>
+                            <dd>{selected.reserve.toFixed(2)}</dd>
+                          </div>
+                          <div>
+                            <dt>Color in its body</dt>
+                            <dd>{selected.body.toFixed(1)}</dd>
+                          </div>
+                          <div>
+                            <dt>Disposition</dt>
+                            <dd>
+                              {selected.reserve >= 0.9 && worldRef.current.lights.length >= LIMITS.lights
+                                ? 'Holding color · light is full'
+                                : selected.reserve >= 0.9
+                                  ? 'Charged with color'
+                                  : selected.reserve <= 0
+                                    ? 'Hungry for pigment'
+                                    : 'Gathering pigment'}
+                            </dd>
+                          </div>
+                        </>
+                      ) : selected.species === 'rainbell' ? (
+                        <>
+                          <div>
+                            <dt>Color in reserve</dt>
+                            <dd>{selected.reserve.toFixed(3)}</dd>
+                          </div>
+                          <div>
+                            <dt>Color in its body</dt>
+                            <dd>{selected.body.toFixed(1)}</dd>
+                          </div>
+                          <div>
+                            <dt>Disposition</dt>
+                            <dd>
+                              {selected.reserve <= 0
+                                ? 'Hungry for pigment'
+                                : effectiveWeather(worldRef.current).intensity < 0.5
+                                  ? 'Mantle open · calm water'
+                                  : worldRef.current.currents.length >= MAX_CURRENTS
+                                    ? 'Holding reserve · currents are full'
+                                    : worldRef.current.elapsed < selected.pulseNextAllowedAt
+                                      ? 'Resting between contractions'
+                                      : 'Mantle open · waiting for food'}
+                            </dd>
+                          </div>
+                        </>
+                      ) : selected.species === 'siltstitcher' ? (
+                        <>
+                          <div>
+                            <dt>Color in reserve</dt>
+                            <dd>{selected.reserve.toFixed(3)}</dd>
+                          </div>
+                          <div>
+                            <dt>Color in its bundle</dt>
+                            <dd>{selected.cargo.toFixed(3)}</dd>
+                          </div>
+                          <div>
+                            <dt>Color in its body</dt>
+                            <dd>{selected.body.toFixed(1)}</dd>
+                          </div>
+                          <div>
+                            <dt>Journey</dt>
+                            <dd>
+                              {selected.mode === 'home'
+                                ? 'Gathering nest surplus'
+                                : selected.mode === 'outbound'
+                                  ? 'Walking to a poorer patch'
+                                  : selected.mode === 'blocked'
+                                    ? 'Waiting for space to set down color'
+                                    : 'Returning to its nest'}
+                            </dd>
+                          </div>
+                        </>
+                      ) : selected.species === 'glassLimpet' ? (
+                        <>
+                          <div>
+                            <dt>Color in reserve</dt>
+                            <dd>{selected.reserve.toFixed(3)}</dd>
+                          </div>
+                          <div>
+                            <dt>Color caught</dt>
+                            <dd>{selected.cargo.toFixed(3)}</dd>
+                          </div>
+                          <div>
+                            <dt>Color in its shell</dt>
+                            <dd>{selected.body.toFixed(1)}</dd>
+                          </div>
+                          <div>
+                            <dt>Disposition</dt>
+                            <dd>
+                              {selected.reserve <= 0
+                                ? 'Waiting for moving food'
+                                : selected.cargo >= 0.8 - 1e-6
+                                  ? 'Catch basin full'
+                                  : selected.cargo > 0
+                                    ? 'Holding intercepted color'
+                                    : 'Waiting for moving food'}
+                            </dd>
+                          </div>
+                        </>
+                      ) : selected.species === 'cargoMite' ? (
+                        <>
+                          <div>
+                            <dt>Color in reserve</dt>
+                            <dd>{selected.reserve.toFixed(3)}</dd>
+                          </div>
+                          <div>
+                            <dt>Color in its body</dt>
+                            <dd>{selected.body.toFixed(1)}</dd>
+                          </div>
+                          <div>
+                            <dt>Life stage</dt>
+                            <dd>{selected.age < 30 ? 'Young mite' : 'Adult mite'}</dd>
+                          </div>
+                          <div>
+                            <dt>Disposition</dt>
+                            <dd>
+                              {selected.mode === 'attached'
+                                ? `On grazer ${selected.hostId}`
+                                : 'Seeking a loaded grazer'}
+                            </dd>
+                          </div>
+                        </>
+                      ) : selected.species === 'reedwell' ? (
+                        <>
+                          <div>
+                            <dt>Stored daylight</dt>
+                            <dd>{selected.lightStore.toFixed(2)} / 3</dd>
+                          </div>
+                          <div>
+                            <dt>Color in its root</dt>
+                            <dd>{selected.body.toFixed(1)}</dd>
+                          </div>
+                          <div>
+                            <dt>Disposition</dt>
+                            <dd>
+                              {selected.lightStore >= 1.5 && worldRef.current.lights.length >= LIMITS.lights
+                                ? 'Holding light · pool is full'
+                                : getDaylight(worldRef.current).intensity > 0
+                                  ? 'Gathering daylight'
+                                  : 'Resting through night'}
+                            </dd>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div>
+                            <dt>Energy</dt>
+                            <dd>{Math.round(selected.energy * 50)}%</dd>
+                          </div>
+                          <div>
+                            <dt>Disposition</dt>
+                            <dd>
+                              {selected.energy > 1 ? 'Radiant' : selected.energy > 0.4 ? 'Wandering' : 'Seeking light'}
+                            </dd>
+                          </div>
+                        </>
+                      )}
+                    </dl>
+                    <p className="guide-caption">
+                      {selected.species === 'grazer'
+                        ? 'Its shell carries the color of its last finds. Watch the woven nest fill as it returns.'
+                        : selected.species === 'skimmer'
+                          ? 'Its steady glow shows stored color. A bright diamond outline marks a gift of light. Its body and remaining reserve return to the pool when this short life ends.'
+                          : selected.species === 'reedwell'
+                            ? 'Daylight is an external source of energy. Its leaves brighten as they store it; a pale ring marks ordinary feeding light released into the water. Its root returns to pigment after fifteen world minutes.'
+                            : selected.species === 'rainbell'
+                              ? 'Rain lets this anchored animal spend stored pigment to pull water toward its mantle. It can only eat grains that reach it. Pumping and staying alive both cost pigment; its body and reserve return when this finite life ends.'
+                              : selected.species === 'siltstitcher'
+                                ? 'It turns actual nest surplus into a movable bundle and sets that color down where ordinary grazers can find it. Its body, reserve and any undelivered bundle return when this finite life ends.'
+                                : selected.species === 'glassLimpet'
+                                  ? 'Only real current-borne coarse food that reaches this shell fills its reserve and basin. Its body and catch return to the pool at the end of its finite life.'
+                                  : selected.species === 'cargoMite'
+                                    ? 'A grazer’s carried color feeds this mite instead of reaching the nest. A grown parent can pay color from its own reserve for a young mite; both return remaining color when their short lives end.'
+                                    : "Leave light nearby and watch this one's path change."}
+                    </p>
+                  </>
+                ) : (
+                  <p className="panel-intro">
+                    {selectedId !== null
+                      ? 'This creature has left the pool. Choose Observe to meet another.'
+                      : 'Choose Observe and touch a creature in the water.'}
+                  </p>
+                )}
+                {selected?.species === 'grazer' && selectedNest && (
+                  <>
+                    <button className="primary-button" onClick={() => returnNestColor(selectedNest.id)}>
+                      Return color to the water <Icon name="arrow" />
+                    </button>
+                    <p className="guide-caption">
+                      Release up to 3 color from this nest into six nearby grains. The grazers can gather them again.
+                    </p>
+                    <p className="snapshot-feedback" role="status">
+                      {notice}
+                    </p>
+                  </>
+                )}
+              </>
+            )}
+            {panel === 'pocket' && (
+              <>
+                <h2 id="panel-title">
+                  A world
+                  <br />
+                  <em>in your pocket.</em>
+                </h2>
+                <p className="panel-intro">
+                  {studyMode
+                    ? 'You are visiting During a shower. This study never autosaves over your pool. A saved snapshot contains the study.'
+                    : `Your tidepool is ${storageAvailable ? 'remembered automatically on this device' : 'running without automatic saves'}. Take a snapshot to carry it somewhere else.`}
+                </p>
+                <div className="snapshot-stamp">
+                  <Icon name="spark" size={38} />
+                  <span>THE FIRST SHORE</span>
+                  <strong>{timeLabel(stats.elapsed)}</strong>
+                  <span>
+                    {stats.population} LUCENTS · {stats.grazers} GRAZERS
+                    {stats.skimmers > 0 ? ` · ${stats.skimmers} SKIMMERS` : ''}
+                  </span>
+                  <span>SEED {worldRef.current.seed}</span>
+                </div>
+                <button className="primary-button" onClick={exportSnapshot}>
+                  <Icon name="download" />
+                  Save a snapshot <Icon name="arrow" />
+                </button>
+                <button className="secondary-button" disabled={studyMode} onClick={() => importRef.current?.click()}>
+                  <Icon name="upload" />
+                  Open a snapshot
+                </button>
+                <p className="snapshot-feedback" role="status">
+                  {notice}
+                </p>
+                <p className="guide-caption">
+                  {studyMode
+                    ? 'Return to your pool before opening a snapshot. Reset only restarts this study.'
+                    : "Opening a snapshot replaces the current pool. Save this one first if you'd like to keep both. A snapshot captures this version of the world."}
+                </p>
+                {studyMode ? (
+                  <button className="secondary-button" onClick={returnToPool}>
+                    Return to your pool <Icon name="arrow" />
+                  </button>
+                ) : (
+                  <>
+                    <h3>During a shower</h3>
+                    <p className="guide-caption">
+                      Visit a paused rain study with color ready to return from its nests. Your pool and controls stay
+                      held aside. The study never overwrites its autosave.
+                    </p>
+                    <button className="secondary-button" onClick={previewStudy}>
+                      Preview During a shower <Icon name="eye" />
+                    </button>
+                  </>
+                )}
+                <p className="guide-caption">
+                  Study provenance: seed {SHOWER_STUDY.seed}, {SHOWER_STUDY.steps} fixed steps, 00:40. Generated from
+                  the first shore without visitor actions.
+                </p>
+              </>
+            )}
+            <div className="panel-foot">
+              ELSEWHERE <span>CHAPTER 01</span>
+            </div>
+          </aside>
+        </>
+      )}
+      <input
+        ref={importRef}
+        type="file"
+        accept=".json,application/json"
+        hidden
+        aria-label="Open tidepool snapshot"
+        onChange={importSnapshot}
+      />
+      <dialog
+        ref={resetRef}
+        className="reset-dialog"
+        aria-labelledby="reset-title"
+        onClose={() => resetTriggerRef.current?.focus()}
+      >
+        <p className="eyebrow">THE TIDE TURNS</p>
+        <h2 id="reset-title">Begin again?</h2>
+        <p>
+          {studyMode
+            ? 'Only the study will return to its paused first moment. Your personal pool stays held aside.'
+            : "The pool will return to its first moment. Save a snapshot first to keep what you've made."}
+        </p>
+        <div className="dialog-actions">
+          <button className="secondary-button" autoFocus onClick={() => resetRef.current?.close()}>
+            Stay here
+          </button>
+          <button className="primary-button" onClick={resetWorld}>
+            Begin again <Icon name="reset" />
+          </button>
+        </div>
+      </dialog>
+      <p className="sr-only" role="status" aria-live="polite">
+        {notice}
+      </p>
+      {feedback && !panel && (
+        <div className="action-notice" aria-hidden="true">
+          {feedback}
+        </div>
+      )}
+      {!storageAvailable && (
+        <div className="storage-notice">
+          {studyMode
+            ? 'Your personal pool is held in memory only. Return before closing or reloading; study snapshots do not contain your pool.'
+            : 'Automatic saving is unavailable. Use “Pocket this world” to keep a snapshot.'}
+        </div>
+      )}
+      {reducedMotion && paused && (
+        <div className="motion-notice">Opened quietly for your motion preference. Press Play to bring it to life.</div>
+      )}
+    </main>
+  );
 }

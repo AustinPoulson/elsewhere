@@ -3,7 +3,12 @@ import { isInPool, type LightSource, type World } from '../types';
 export const LIGHT_PICK_RADIUS = 30;
 
 /** Bounded nearest-source lookup. Equal distances resolve by stable entity ID. */
-export function nearestLiveLight(world: World, x: number, y: number, radius = LIGHT_PICK_RADIUS): LightSource | undefined {
+export function nearestLiveLight(
+  world: World,
+  x: number,
+  y: number,
+  radius = LIGHT_PICK_RADIUS,
+): LightSource | undefined {
   if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(radius) || radius < 0) return undefined;
   let nearest: LightSource | undefined;
   let bestDistance = radius;

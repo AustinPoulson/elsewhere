@@ -15,16 +15,28 @@ const FOUNDERS = [
   { cap: SPECIES_CATALOG.skimmer.cap, population: (world: World) => world.skimmers.length, admit: admitSkimmer },
   { cap: SPECIES_CATALOG.reedwell.cap, population: (world: World) => world.reedwells.length, admit: admitReedwell },
   { cap: SPECIES_CATALOG.rainbell.cap, population: (world: World) => world.rainbells.length, admit: admitRainbell },
-  { cap: SPECIES_CATALOG.siltstitcher.cap, population: (world: World) => world.siltstitchers.length, admit: admitSiltstitcher },
-  { cap: SPECIES_CATALOG.glassLimpet.cap, population: (world: World) => world.glassLimpets.length, admit: admitGlassLimpet },
+  {
+    cap: SPECIES_CATALOG.siltstitcher.cap,
+    population: (world: World) => world.siltstitchers.length,
+    admit: admitSiltstitcher,
+  },
+  {
+    cap: SPECIES_CATALOG.glassLimpet.cap,
+    population: (world: World) => world.glassLimpets.length,
+    admit: admitGlassLimpet,
+  },
   { cap: SPECIES_CATALOG.cargoMite.cap, population: (world: World) => world.cargoMites.length, admit: admitCargoMite },
 ] as const;
 
 export const NORMAL_FOUNDER_COUNT = FOUNDERS.length;
 
 export function foundingBudgetAvailable(world: World): boolean {
-  return world.tick >= world.nextFoundingTick && world.tick <= Number.MAX_SAFE_INTEGER - 6
-    && safeId(world) && activeNewTypePopulation(world) < NEW_TYPE_POPULATION_CAP;
+  return (
+    world.tick >= world.nextFoundingTick &&
+    world.tick <= Number.MAX_SAFE_INTEGER - 6 &&
+    safeId(world) &&
+    activeNewTypePopulation(world) < NEW_TYPE_POPULATION_CAP
+  );
 }
 
 // An actual birth, including a future off-phase death offer, takes the same

@@ -100,20 +100,48 @@ describe('versioned local snapshots', () => {
       expect(restoreWorld(payload)).toBeNull();
     }
     const mutations: ((world: World) => void)[] = [
-      (world) => { (world as { version: number }).version = 4; },
-      (world) => { world.elapsed = -1; },
-      (world) => { world.randomState = -1; },
-      (world) => { world.consumed = Infinity; },
-      (world) => { world.organisms[0].x = 0; },
-      (world) => { world.organisms[0].hue = 360; },
-      (world) => { world.organisms[0].energy = 10; },
-      (world) => { world.organisms[0].trail = Array.from({ length: LIMITS.trail + 1 }, () => ({ x: 720, y: 500 })); },
-      (world) => { world.organisms = []; },
-      (world) => { world.organisms.push(...Array.from({ length: LIMITS.organisms }, () => world.organisms[0])); },
-      (world) => { world.lights[0].energy = world.lights[0].initialEnergy + 1; },
-      (world) => { world.sediment[0].radius = -1; },
-      (world) => { world.sediment[0].id = world.organisms[0].id; },
-      (world) => { world.nextId = 1; },
+      (world) => {
+        (world as { version: number }).version = 4;
+      },
+      (world) => {
+        world.elapsed = -1;
+      },
+      (world) => {
+        world.randomState = -1;
+      },
+      (world) => {
+        world.consumed = Infinity;
+      },
+      (world) => {
+        world.organisms[0].x = 0;
+      },
+      (world) => {
+        world.organisms[0].hue = 360;
+      },
+      (world) => {
+        world.organisms[0].energy = 10;
+      },
+      (world) => {
+        world.organisms[0].trail = Array.from({ length: LIMITS.trail + 1 }, () => ({ x: 720, y: 500 }));
+      },
+      (world) => {
+        world.organisms = [];
+      },
+      (world) => {
+        world.organisms.push(...Array.from({ length: LIMITS.organisms }, () => world.organisms[0]));
+      },
+      (world) => {
+        world.lights[0].energy = world.lights[0].initialEnergy + 1;
+      },
+      (world) => {
+        world.sediment[0].radius = -1;
+      },
+      (world) => {
+        world.sediment[0].id = world.organisms[0].id;
+      },
+      (world) => {
+        world.nextId = 1;
+      },
     ];
     for (const mutate of mutations) {
       const world = createWorld();

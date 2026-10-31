@@ -17,12 +17,20 @@ function search(world: World, bell: Rainbell): void {
   for (const grain of world.sediment) {
     if (grain.strength <= 0) continue;
     const distance = Math.hypot(grain.x - bell.x, grain.y - bell.y);
-    if (distance <= RULE.feedReach && (distance < feedDistance || (distance === feedDistance && (!feed || grain.id < feed.id)))) {
-      feed = grain; feedDistance = distance;
+    if (
+      distance <= RULE.feedReach &&
+      (distance < feedDistance || (distance === feedDistance && (!feed || grain.id < feed.id)))
+    ) {
+      feed = grain;
+      feedDistance = distance;
     }
-    if (distance >= RULE.pumpMinReach && distance <= RULE.pumpMaxReach
-      && (distance < pumpDistance || (distance === pumpDistance && (!pump || grain.id < pump.id)))) {
-      pump = grain; pumpDistance = distance;
+    if (
+      distance >= RULE.pumpMinReach &&
+      distance <= RULE.pumpMaxReach &&
+      (distance < pumpDistance || (distance === pumpDistance && (!pump || grain.id < pump.id)))
+    ) {
+      pump = grain;
+      pumpDistance = distance;
     }
   }
   bell.feedTargetSedimentId = feed?.id ?? null;
@@ -54,8 +62,14 @@ function updateOne(world: World, bell: Rainbell, dt: number, index: Map<number, 
     bell.pumpTargetSedimentId = null;
     return;
   }
-  if (!raining || bell.reserve < RULE.pulsePigment || world.elapsed < bell.pulseNextAllowedAt
-    || !safeId(world) || world.elapsed > Number.MAX_SAFE_INTEGER - RULE.pulseRest) return;
+  if (
+    !raining ||
+    bell.reserve < RULE.pulsePigment ||
+    world.elapsed < bell.pulseNextAllowedAt ||
+    !safeId(world) ||
+    world.elapsed > Number.MAX_SAFE_INTEGER - RULE.pulseRest
+  )
+    return;
   // The existing action owns midpoint, coast, cap, speed and current lifetime.
   // Failed pulses spend neither pigment nor their next opportunity.
   if (applyCurrent(world, pump, bell).status !== 'applied') return;
@@ -66,17 +80,27 @@ function updateOne(world: World, bell: Rainbell, dt: number, index: Map<number, 
 }
 
 export function admitRainbell(world: World): boolean {
-  if (world.tick % 6 !== 0 || world.elapsed < world.rainbellAdmissionAt
-    || world.rainbells.length >= RAINBELL_CAP || activeNewTypePopulation(world) >= NEW_TYPE_POPULATION_CAP
-    || effectiveWeather(world).intensity < .5 || !safeId(world)
-    || world.elapsed > Number.MAX_SAFE_INTEGER - RULE.admissionRest) return false;
+  if (
+    world.tick % 6 !== 0 ||
+    world.elapsed < world.rainbellAdmissionAt ||
+    world.rainbells.length >= RAINBELL_CAP ||
+    activeNewTypePopulation(world) >= NEW_TYPE_POPULATION_CAP ||
+    effectiveWeather(world).intensity < 0.5 ||
+    !safeId(world) ||
+    world.elapsed > Number.MAX_SAFE_INTEGER - RULE.admissionRest
+  )
+    return false;
   let first: Sediment | undefined;
   let afterCursor: Sediment | undefined;
   const neighborhoods = new AdmissionSources();
   for (const grain of world.sediment) {
     neighborhoods.add(grain);
-    if (grain.strength <= 0 || !isInPool(grain.x, grain.y, RULE.margin)
-      || world.rainbells.some(other => Math.hypot(other.x - grain.x, other.y - grain.y) < RULE.spacing)) continue;
+    if (
+      grain.strength <= 0 ||
+      !isInPool(grain.x, grain.y, RULE.margin) ||
+      world.rainbells.some((other) => Math.hypot(other.x - grain.x, other.y - grain.y) < RULE.spacing)
+    )
+      continue;
     if (!first || grain.id < first.id) first = grain;
     if (grain.id > world.rainbellCandidateAfterId && (!afterCursor || grain.id < afterCursor.id)) afterCursor = grain;
   }
@@ -84,8 +108,9 @@ export function admitRainbell(world: World): boolean {
   if (!center) return false;
   world.rainbellCandidateAfterId = center.id;
   const sources = neighborhoods.within(center, RULE.rootReach);
-  sources.sort((a, b) => Math.hypot(a.x - center.x, a.y - center.y)
-    - Math.hypot(b.x - center.x, b.y - center.y) || a.id - b.id);
+  sources.sort(
+    (a, b) => Math.hypot(a.x - center.x, a.y - center.y) - Math.hypot(b.x - center.x, b.y - center.y) || a.id - b.id,
+  );
   if (sources.reduce((sum, source) => sum + source.strength, 0) < RULE.admissionPigment) return false;
   let remaining: number = RULE.admissionPigment;
   let paid = 0;
@@ -96,15 +121,28 @@ export function admitRainbell(world: World): boolean {
     if (amount > 0) {
       payments.push({ source, amount });
       hue = blendHue(hue, source.hue, paid, amount);
-      paid += amount; remaining -= amount;
+      paid += amount;
+      remaining -= amount;
     }
     if (remaining === 0) break;
   }
   if (remaining > 0) return false;
   for (const { source, amount } of payments) source.strength -= amount;
-  world.rainbells.push({ id: world.nextId++, species: 'rainbell', x: center.x, y: center.y,
-    body: .2, reserve: .4, age: 0, hue, starvedFor: 0, feedTargetSedimentId: null,
-    pumpTargetSedimentId: null, pulseNextAllowedAt: world.elapsed, lastPulseAt: null });
+  world.rainbells.push({
+    id: world.nextId++,
+    species: 'rainbell',
+    x: center.x,
+    y: center.y,
+    body: 0.2,
+    reserve: 0.4,
+    age: 0,
+    hue,
+    starvedFor: 0,
+    feedTargetSedimentId: null,
+    pumpTargetSedimentId: null,
+    pulseNextAllowedAt: world.elapsed,
+    lastPulseAt: null,
+  });
   world.rainbellAdmissionAt = world.elapsed + RULE.admissionRest;
   return true;
 }
@@ -115,14 +153,18 @@ export function updateRainbells(world: World, dt: number, allowStandaloneAdmissi
     return;
   }
   let index = indexes.get(world);
-  if (!index) { index = new Map(); indexes.set(world, index); }
+  if (!index) {
+    index = new Map();
+    indexes.set(world, index);
+  }
   index.clear();
   for (const grain of world.sediment) index.set(grain.id, grain);
-  const raining = effectiveWeather(world).intensity >= .5;
+  const raining = effectiveWeather(world).intensity >= 0.5;
   for (const bell of world.rainbells) updateOne(world, bell, dt, index, raining);
   let write = 0;
   for (const bell of world.rainbells) {
-    if (bell.age >= RULE.lifespan || bell.starvedFor >= RULE.starvationLimit) returnPigment(world, bell, bell.hue, bell.body + bell.reserve);
+    if (bell.age >= RULE.lifespan || bell.starvedFor >= RULE.starvationLimit)
+      returnPigment(world, bell, bell.hue, bell.body + bell.reserve);
     else world.rainbells[write++] = bell;
   }
   world.rainbells.length = write;

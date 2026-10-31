@@ -7,7 +7,7 @@ import { blendHue, returnPigment, safeId } from './resources';
 const RULE = SPECIES_CATALOG.cargoMite;
 
 function hostFor(world: World, id: number | null): Grazer | undefined {
-  return id === null ? undefined : world.grazers.find(host => host.id === id);
+  return id === null ? undefined : world.grazers.find((host) => host.id === id);
 }
 
 function hostPopulation(world: World, hostId: number): number {
@@ -26,9 +26,14 @@ function detach(mite: CargoMite): void {
 // Its saved host-ID cursor rotates one loaded candidate; refusal advances only
 // that cursor and never spends cargo, an ID, a breeding deadline, or randomness.
 export function admitCargoMite(world: World): boolean {
-  if (world.elapsed < world.cargoMiteAdmissionAt || world.cargoMites.length >= RULE.cap
-    || activeNewTypePopulation(world) >= NEW_TYPE_POPULATION_CAP || !safeId(world)
-    || world.elapsed > Number.MAX_SAFE_INTEGER - RULE.admissionRest) return false;
+  if (
+    world.elapsed < world.cargoMiteAdmissionAt ||
+    world.cargoMites.length >= RULE.cap ||
+    activeNewTypePopulation(world) >= NEW_TYPE_POPULATION_CAP ||
+    !safeId(world) ||
+    world.elapsed > Number.MAX_SAFE_INTEGER - RULE.admissionRest
+  )
+    return false;
   let first: Grazer | undefined;
   let after: Grazer | undefined;
   for (const host of world.grazers) {
@@ -39,16 +44,34 @@ export function admitCargoMite(world: World): boolean {
   const host = after ?? first;
   if (!host) return false;
   world.cargoMiteCandidateAfterId = host.id;
-  if (world.cargoMites.some(mite => Math.hypot(mite.x - host.x, mite.y - host.y) < RULE.spacing)
-    || world.elapsed > Number.MAX_SAFE_INTEGER - RULE.maturityAge) return false;
+  if (
+    world.cargoMites.some((mite) => Math.hypot(mite.x - host.x, mite.y - host.y) < RULE.spacing) ||
+    world.elapsed > Number.MAX_SAFE_INTEGER - RULE.maturityAge
+  )
+    return false;
   const mite: CargoMite = {
-    id: world.nextId, species: 'cargoMite', x: host.x, y: host.y, vx: 0, vy: 0,
-    body: RULE.bodyPigment, reserve: RULE.initialReserve, age: 0, hue: host.hue,
-    starvedFor: 0, mode: 'attached', hostId: host.id, targetHostId: null,
-    parentId: null, nextBirthAt: world.elapsed + RULE.maturityAge,
+    id: world.nextId,
+    species: 'cargoMite',
+    x: host.x,
+    y: host.y,
+    vx: 0,
+    vy: 0,
+    body: RULE.bodyPigment,
+    reserve: RULE.initialReserve,
+    age: 0,
+    hue: host.hue,
+    starvedFor: 0,
+    mode: 'attached',
+    hostId: host.id,
+    targetHostId: null,
+    parentId: null,
+    nextBirthAt: world.elapsed + RULE.maturityAge,
   };
   host.cargo -= RULE.admissionPigment;
-  if (host.cargo <= 0) { host.cargo = 0; host.returning = false; }
+  if (host.cargo <= 0) {
+    host.cargo = 0;
+    host.returning = false;
+  }
   world.nextId++;
   world.cargoMites.push(mite);
   world.cargoMiteAdmissionAt = world.elapsed + RULE.admissionRest;
@@ -72,8 +95,12 @@ function chooseTarget(world: World, mite: CargoMite): void {
 function moveSeeking(world: World, mite: CargoMite, dt: number): void {
   if ((world.tick + mite.id) % 6 === 0) chooseTarget(world, mite);
   const host = hostFor(world, mite.targetHostId);
-  if (!host || host.cargo <= 0 || hostPopulation(world, host.id) >= RULE.hostCap
-    || Math.hypot(mite.x - host.x, mite.y - host.y) > RULE.seekReach) {
+  if (
+    !host ||
+    host.cargo <= 0 ||
+    hostPopulation(world, host.id) >= RULE.hostCap ||
+    Math.hypot(mite.x - host.x, mite.y - host.y) > RULE.seekReach
+  ) {
     mite.targetHostId = null;
     mite.vx = 0;
     mite.vy = 0;
@@ -93,36 +120,56 @@ function moveSeeking(world: World, mite: CargoMite, dt: number): void {
     return;
   }
   const speed = Math.min(RULE.speed, Math.max(0, distance - RULE.attachReach) / dt);
-  mite.vx = dx / distance * speed;
-  mite.vy = dy / distance * speed;
+  mite.vx = (dx / distance) * speed;
+  mite.vy = (dy / distance) * speed;
   mite.x += mite.vx * dt;
   mite.y += mite.vy * dt;
   confinePosition(mite, RULE.margin);
 }
 
 function feed(world: World, mite: CargoMite, host: Grazer, dt: number): void {
-  const intake = Math.min(host.cargo, dt * RULE.intakeRate,
-    Math.max(0, RULE.reserveCapacity - mite.reserve));
+  const intake = Math.min(host.cargo, dt * RULE.intakeRate, Math.max(0, RULE.reserveCapacity - mite.reserve));
   if (intake <= 0) return;
   mite.hue = blendHue(mite.hue, host.hue, mite.reserve, intake);
   host.cargo -= intake;
-  if (host.cargo <= 0) { host.cargo = 0; host.returning = false; }
+  if (host.cargo <= 0) {
+    host.cargo = 0;
+    host.returning = false;
+  }
   mite.reserve += intake;
   world.ecologyLedger.cargoMiteIntake += intake;
 }
 
 function birth(world: World, parent: CargoMite, host: Grazer): void {
-  if (parent.age < RULE.maturityAge || world.elapsed < parent.nextBirthAt
-    || parent.reserve < RULE.initialReserve || hostPopulation(world, host.id) >= RULE.hostCap
-    || world.cargoMites.length >= RULE.cap || world.elapsed > Number.MAX_SAFE_INTEGER - RULE.breedingRest) return;
-  tryEventFounding(world, current => {
-    if (hostPopulation(current, host.id) >= RULE.hostCap || parent.reserve < RULE.childCost
-      || !safeId(current)) return false;
+  if (
+    parent.age < RULE.maturityAge ||
+    world.elapsed < parent.nextBirthAt ||
+    parent.reserve < RULE.initialReserve ||
+    hostPopulation(world, host.id) >= RULE.hostCap ||
+    world.cargoMites.length >= RULE.cap ||
+    world.elapsed > Number.MAX_SAFE_INTEGER - RULE.breedingRest
+  )
+    return;
+  tryEventFounding(world, (current) => {
+    if (hostPopulation(current, host.id) >= RULE.hostCap || parent.reserve < RULE.childCost || !safeId(current))
+      return false;
     const child: CargoMite = {
-      id: current.nextId, species: 'cargoMite', x: host.x, y: host.y, vx: host.vx, vy: host.vy,
-      body: RULE.childBody, reserve: RULE.childReserve, age: 0, hue: parent.hue,
-      starvedFor: 0, mode: 'attached', hostId: host.id, targetHostId: null,
-      parentId: parent.id, nextBirthAt: current.elapsed + RULE.maturityAge,
+      id: current.nextId,
+      species: 'cargoMite',
+      x: host.x,
+      y: host.y,
+      vx: host.vx,
+      vy: host.vy,
+      body: RULE.childBody,
+      reserve: RULE.childReserve,
+      age: 0,
+      hue: parent.hue,
+      starvedFor: 0,
+      mode: 'attached',
+      hostId: host.id,
+      targetHostId: null,
+      parentId: parent.id,
+      nextBirthAt: current.elapsed + RULE.maturityAge,
     };
     parent.reserve -= RULE.childCost;
     parent.nextBirthAt = current.elapsed + RULE.breedingRest;
@@ -174,7 +221,10 @@ export function syncAttachedCargoMites(world: World): void {
   for (const mite of world.cargoMites) {
     if (mite.mode !== 'attached') continue;
     const host = hostFor(world, mite.hostId);
-    if (!host) { detach(mite); continue; }
+    if (!host) {
+      detach(mite);
+      continue;
+    }
     mite.x = host.x;
     mite.y = host.y;
     mite.vx = host.vx;

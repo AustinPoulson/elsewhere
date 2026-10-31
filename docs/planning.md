@@ -10,15 +10,15 @@ Current direction: [Direction card](https://trello.com/c/sIzx9Xn6/1-direction-bo
 
 Keep the existing Ideas, Completed, and Deferred/Canceled names. The requested workflow adds Direction, Ready, In Progress, and Blocked in this order:
 
-| List | Meaning |
-| --- | --- |
-| Direction | Current direction/weekly focus, plus the shared charter and run ownership/recovery record. |
-| Ideas | Structured future organism-type proposals that still need decisions, scoping, or dependencies; linked side-work proposals are explicitly marked. |
-| Ready | Complete contracts for genuinely new organism types, ordered by priority; execution waits for their stated dependencies. This is the todo queue, not a maintenance queue. |
-| In Progress | A claimed ticket with run, branch/worktree, PR, and current evidence. |
-| Blocked | Unfinished work with a specific dependency, unblock condition, and recovery state. |
-| Completed | All acceptance checks passed and the merged revision is verified live. |
-| Deferred/Canceled | Retired planner decisions with a reason and a condition for revival. |
+| List              | Meaning                                                                                                                                                                   |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Direction         | Current direction/weekly focus, plus the shared charter and run ownership/recovery record.                                                                                |
+| Ideas             | Structured future organism-type proposals that still need decisions, scoping, or dependencies; linked side-work proposals are explicitly marked.                          |
+| Ready             | Complete contracts for genuinely new organism types, ordered by priority; execution waits for their stated dependencies. This is the todo queue, not a maintenance queue. |
+| In Progress       | A claimed ticket with run, branch/worktree, PR, and current evidence.                                                                                                     |
+| Blocked           | Unfinished work with a specific dependency, unblock condition, and recovery state.                                                                                        |
+| Completed         | All acceptance checks passed and the merged revision is verified live.                                                                                                    |
+| Deferred/Canceled | Retired planner decisions with a reason and a condition for revival.                                                                                                      |
 
 Resolve all seven lists before execution; list creation/configuration is separate from this document. Move superseded or obsolete unclaimed proposals to Deferred/Canceled with a dated reason, linking duplicates to the surviving card. Recoverable archiving can retain that decision/history; permanent deletion is forbidden. Do not retire, archive, rescope, reorder, or replace claimed work; propose a separate follow-up or obtain its explicit handoff first.
 
@@ -107,4 +107,4 @@ Separate a stable typed organism catalog from bounded active populations. A cata
 
 Deliver feature-oriented vertical slices across those boundaries. Extract a narrow module when a concrete feature exposes duplicated or entangled responsibilities; do not require a speculative framework or large rewrite before adding life to the world. Avoid premature feature-flag infrastructure, unbounded histories/data, and global systems with implicit resource ownership. Every new feature states the resource and budget it consumes, the state it owns, and how saves survive its evolution.
 
-Both roles atomically acquire the common `C:\repos\MAGI\elsewhere\.artifacts\automation-lock` before mutations. It is the exclusion mechanism; Trello run/claim notes are only its visible mirror. Planning holds it for board changes, execution for claims and development/publication; release only the current run's lock, and clear stale ownership only after verifying the prior run is inactive. See [shared coordination](automation.md#shared-coordination) for the ownership metadata. The planner may inspect active work read-only without the lock but cannot rewrite a claimed ticket. Planning creates no production changes or deployment. Quiet runs need no empty report: report meaningful direction/queue changes, completed verified work, or a concrete blocker and required next step.
+Both roles atomically acquire the common `C:\repos\elsewhere\.artifacts\automation-lock` before mutations. It is the exclusion mechanism; Trello run/claim notes are only its visible mirror. Planning holds it for board changes, execution for claims and development/publication; release only the current run's lock, and clear stale ownership only after verifying the prior run is inactive. See [shared coordination](automation.md#shared-coordination) for the ownership metadata. The planner may inspect active work read-only without the lock but cannot rewrite a claimed ticket. Planning creates no production changes or deployment. Quiet runs need no empty report: report meaningful direction/queue changes, completed verified work, or a concrete blocker and required next step.

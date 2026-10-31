@@ -16,7 +16,10 @@ export const CALLED_RAIN_SECONDS = 30;
 export const RAIN_CALL_COOLDOWN = 60;
 
 export type RainCallResult = { status: 'called' | 'cooldown'; secondsRemaining: number };
-export interface EffectiveWeather extends Weather { called: boolean; callCooldown: number }
+export interface EffectiveWeather extends Weather {
+  called: boolean;
+  callCooldown: number;
+}
 
 function ease(value: number): number {
   const t = Math.min(1, Math.max(0, value));
@@ -29,9 +32,15 @@ export function getWeather(elapsed: number): Weather {
   const phase = elapsed % CYCLE_SECONDS;
   const raining = phase >= RAIN_START && phase < RAIN_END;
   return {
-    intensity: raining ? Math.min(ease((phase - RAIN_START) / FADE_SECONDS), ease((RAIN_END - phase) / FADE_SECONDS)) : 0,
+    intensity: raining
+      ? Math.min(ease((phase - RAIN_START) / FADE_SECONDS), ease((RAIN_END - phase) / FADE_SECONDS))
+      : 0,
     raining,
-    secondsUntilChange: raining ? RAIN_END - phase : phase < RAIN_START ? RAIN_START - phase : CYCLE_SECONDS - phase + RAIN_START,
+    secondsUntilChange: raining
+      ? RAIN_END - phase
+      : phase < RAIN_START
+        ? RAIN_START - phase
+        : CYCLE_SECONDS - phase + RAIN_START,
   };
 }
 

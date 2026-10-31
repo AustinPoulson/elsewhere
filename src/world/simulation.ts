@@ -1,6 +1,19 @@
 import {
-  FIXED_STEP, GRAZER_CAPACITY, LIMITS, NEST_CAPACITY, WORLD_HEIGHT, WORLD_WIDTH, isInPool, poolRadius,
-  type Grazer, type LightSource, type Organism, type Point, type Sediment, type World, type WorldStats,
+  FIXED_STEP,
+  GRAZER_CAPACITY,
+  LIMITS,
+  NEST_CAPACITY,
+  WORLD_HEIGHT,
+  WORLD_WIDTH,
+  isInPool,
+  poolRadius,
+  type Grazer,
+  type LightSource,
+  type Organism,
+  type Point,
+  type Sediment,
+  type World,
+  type WorldStats,
 } from './types';
 import { CALM_LIGHT_REACH, effectiveLightReach } from './weather';
 import { applyCurrentDrift } from './currents';
@@ -18,7 +31,10 @@ const TAU = Math.PI * 2;
 const ENERGY_FLOOR = 0.12;
 const LIGHT_ENERGY = 90;
 const SPRINGS = [
-  { x: 470, y: 390 }, { x: 825, y: 285 }, { x: 1040, y: 610 }, { x: 660, y: 730 },
+  { x: 470, y: 390 },
+  { x: 825, y: 285 },
+  { x: 1040, y: 610 },
+  { x: 660, y: 730 },
 ];
 
 // The PRNG state belongs to the world, so a saved pool resumes exactly.
@@ -53,7 +69,7 @@ function confinePoint(point: Point, margin: number): Point {
 // Independent of the shared PRNG: migration leaves the existing ecology intact.
 export function initializeGrazers(world: Pick<World, 'grazers' | 'nests' | 'seed' | 'nextId'>): void {
   if (world.grazers.length > 0 || world.nests.length > 0) return;
-  const seedOffset = (world.seed % 997) / 997 * 0.38;
+  const seedOffset = ((world.seed % 997) / 997) * 0.38;
   const nestAngles = [2.8, 4.5, -0.4, 1.2];
   for (let i = 0; i < 4; i++) {
     const spring = SPRINGS[i];
@@ -62,18 +78,31 @@ export function initializeGrazers(world: Pick<World, 'grazers' | 'nests' | 'seed
     const nest = {
       id: world.nextId++,
       ...confinePoint({ x: spring.x + Math.cos(angle) * 92, y: spring.y + Math.sin(angle) * 92 }, 18),
-      hue: 38 + i * 4, pigment: 0, age: 0,
+      hue: 38 + i * 4,
+      pigment: 0,
+      age: 0,
     };
-    const point = confinePoint({
-      x: spring.x + Math.cos(angle + Math.PI / 2) * 24,
-      y: spring.y + Math.sin(angle + Math.PI / 2) * 24,
-    }, size + 3);
+    const point = confinePoint(
+      {
+        x: spring.x + Math.cos(angle + Math.PI / 2) * 24,
+        y: spring.y + Math.sin(angle + Math.PI / 2) * 24,
+      },
+      size + 3,
+    );
     world.nests.push(nest);
     world.grazers.push({
-      id: world.nextId++, species: 'grazer', ...point,
-      vx: Math.cos(angle) * 9, vy: Math.sin(angle) * 9,
-      size, age: 0, phase: (angle + TAU) % TAU,
-      hue: nest.hue, cargo: 0, nestId: nest.id, returning: false,
+      id: world.nextId++,
+      species: 'grazer',
+      ...point,
+      vx: Math.cos(angle) * 9,
+      vy: Math.sin(angle) * 9,
+      size,
+      age: 0,
+      phase: (angle + TAU) % TAU,
+      hue: nest.hue,
+      cargo: 0,
+      nestId: nest.id,
+      returning: false,
     });
   }
 }
@@ -85,8 +114,7 @@ function appendSediment(world: World, point: Point, hue: number, strength: numbe
 }
 
 export type NestReleaseResult =
-  | { status: 'released'; amount: number }
-  | { status: 'missing' | 'empty' | 'full'; amount: 0 };
+  { status: 'released'; amount: number } | { status: 'missing' | 'empty' | 'full'; amount: 0 };
 
 export function releaseNestPigment(world: World, nestId: number): NestReleaseResult {
   const nest = world.nests.find((entry) => entry.id === nestId);
@@ -97,10 +125,10 @@ export function releaseNestPigment(world: World, nestId: number): NestReleaseRes
   }
 
   const amount = Math.min(3, nest.pigment);
-  const phase = ((nest.id % 4096) * 0.61803398875 + (world.tick % 360) * Math.PI / 180) % TAU;
+  const phase = ((nest.id % 4096) * 0.61803398875 + ((world.tick % 360) * Math.PI) / 180) % TAU;
   const grains: Sediment[] = Array.from({ length: 6 }, (_, index) => {
-    const angle = phase + index * TAU / 6;
-    const radius = 44 + ((nest.id % 15 + world.tick % 15 + index * 7) % 15);
+    const angle = phase + (index * TAU) / 6;
+    const radius = 44 + (((nest.id % 15) + (world.tick % 15) + index * 7) % 15);
     const point = confinePoint({ x: nest.x + Math.cos(angle) * radius, y: nest.y + Math.sin(angle) * radius }, 12);
     return { id: world.nextId + index, ...point, radius: 9, hue: nest.hue, strength: amount / 6, age: 0 };
   });
@@ -123,23 +151,63 @@ export function createWorld(seed = 20261006): World {
   if (!Number.isFinite(seed)) throw new RangeError('World seed must be finite.');
   const normalizedSeed = Math.trunc(seed) >>> 0;
   const world: World = {
-    version: 3, schemaRevision: 8, currents: [], weatherCall: { startedAt: null, nextAllowedAt: 0 },
-    skimmers: [], skimmerAdmissionAt: 0, skimmerCandidateAfterId: 0,
-    reedwells: [], reedwellAdmissionAt: 0, reedwellCandidateAfterId: 0,
-    rainbells: [], rainbellAdmissionAt: 0, rainbellCandidateAfterId: 0,
-    siltstitchers: [], siltstitcherAdmissionAt: 0, siltstitcherCandidateAfterId: 0,
-    glassLimpets: [], glassLimpetAdmissionAt: 0, glassLimpetCandidateAfterId: 0,
-    cargoMites: [], cargoMiteAdmissionAt: 0, cargoMiteCandidateAfterId: 0,
-    nextFoundingTick: 0, foundingTypeCursor: 0,
-    ecologyLedger: { mineralizedPigment: 0, maintenancePigment: 0, emittedLight: 0,
-      pigmentConverted: 0, feedingCreditLost: 0, daylightHarvested: 0, daylightUnharvested: 0,
-      reedwellEmittedLight: 0, reedwellDissipatedLight: 0, rainbellIntake: 0,
-      rainbellPumpingPigment: 0, rainbellMaintenancePigment: 0, siltstitcherNestReserve: 0,
-      siltstitcherNestCargo: 0, siltstitcherOutwardPigment: 0, siltstitcherMaintenancePigment: 0,
-      glassLimpetIntake: 0, glassLimpetMaintenancePigment: 0,
-      cargoMiteIntake: 0, cargoMiteMaintenancePigment: 0 },
-    seed: normalizedSeed, randomState: normalizedSeed, elapsed: 0, tick: 0,
-    nextId: 1, organisms: [], lights: [], sediment: [], grazers: [], nests: [], consumed: 0,
+    version: 3,
+    schemaRevision: 8,
+    currents: [],
+    weatherCall: { startedAt: null, nextAllowedAt: 0 },
+    skimmers: [],
+    skimmerAdmissionAt: 0,
+    skimmerCandidateAfterId: 0,
+    reedwells: [],
+    reedwellAdmissionAt: 0,
+    reedwellCandidateAfterId: 0,
+    rainbells: [],
+    rainbellAdmissionAt: 0,
+    rainbellCandidateAfterId: 0,
+    siltstitchers: [],
+    siltstitcherAdmissionAt: 0,
+    siltstitcherCandidateAfterId: 0,
+    glassLimpets: [],
+    glassLimpetAdmissionAt: 0,
+    glassLimpetCandidateAfterId: 0,
+    cargoMites: [],
+    cargoMiteAdmissionAt: 0,
+    cargoMiteCandidateAfterId: 0,
+    nextFoundingTick: 0,
+    foundingTypeCursor: 0,
+    ecologyLedger: {
+      mineralizedPigment: 0,
+      maintenancePigment: 0,
+      emittedLight: 0,
+      pigmentConverted: 0,
+      feedingCreditLost: 0,
+      daylightHarvested: 0,
+      daylightUnharvested: 0,
+      reedwellEmittedLight: 0,
+      reedwellDissipatedLight: 0,
+      rainbellIntake: 0,
+      rainbellPumpingPigment: 0,
+      rainbellMaintenancePigment: 0,
+      siltstitcherNestReserve: 0,
+      siltstitcherNestCargo: 0,
+      siltstitcherOutwardPigment: 0,
+      siltstitcherMaintenancePigment: 0,
+      glassLimpetIntake: 0,
+      glassLimpetMaintenancePigment: 0,
+      cargoMiteIntake: 0,
+      cargoMiteMaintenancePigment: 0,
+    },
+    seed: normalizedSeed,
+    randomState: normalizedSeed,
+    elapsed: 0,
+    tick: 0,
+    nextId: 1,
+    organisms: [],
+    lights: [],
+    sediment: [],
+    grazers: [],
+    nests: [],
+    consumed: 0,
   };
   const springs = SPRINGS;
   for (const spring of springs) addLight(world, spring.x, spring.y);
@@ -154,10 +222,18 @@ export function createWorld(seed = 20261006): World {
     const heading = random(world) * TAU;
     const size = 5 + random(world) * 4;
     const organism: Organism = {
-      id: world.nextId++, species: 'lucent', ...point,
-      vx: Math.cos(heading) * 27, vy: Math.sin(heading) * 27,
-      energy: 0.7 + random(world) * 0.7, age: 0, hue: hues[i % hues.length], size,
-      phase: random(world) * TAU, trail: [], pigmentCredit: 0,
+      id: world.nextId++,
+      species: 'lucent',
+      ...point,
+      vx: Math.cos(heading) * 27,
+      vy: Math.sin(heading) * 27,
+      energy: 0.7 + random(world) * 0.7,
+      age: 0,
+      hue: hues[i % hues.length],
+      size,
+      phase: random(world) * TAU,
+      trail: [],
+      pigmentCredit: 0,
     };
     // A short initial wake makes the first frame feel inhabited.
     for (let j = 6; j >= 0; j--) {
@@ -172,10 +248,16 @@ export function createWorld(seed = 20261006): World {
     const spring = springs[i % springs.length];
     const angle = random(world) * TAU;
     const radius = 26 + Math.sqrt(random(world)) * 100;
-    appendSediment(world, {
-      x: spring.x + Math.cos(angle) * radius,
-      y: spring.y + Math.sin(angle) * radius * 0.58,
-    }, hues[i % hues.length], 0.12 + random(world) * 0.18, 3 + random(world) * 5);
+    appendSediment(
+      world,
+      {
+        x: spring.x + Math.cos(angle) * radius,
+        y: spring.y + Math.sin(angle) * radius * 0.58,
+      },
+      hues[i % hues.length],
+      0.12 + random(world) * 0.18,
+      3 + random(world) * 5,
+    );
   }
   initializeGrazers(world);
   return world;
@@ -190,7 +272,10 @@ function targetLight(organism: Organism, lights: LightSource[]): LightSource | u
     if (distance > 440) continue;
     // Nearby light dominates, while a nearly spent source loses its attraction.
     const score = Math.sqrt(light.energy / light.initialEnergy) / (35 + distance);
-    if (score > best) { best = score; target = light; }
+    if (score > best) {
+      best = score;
+      target = light;
+    }
   }
   return target;
 }
@@ -217,8 +302,10 @@ function moveInPool(organism: Organism | Grazer, dt: number): void {
   organism.y = point.y;
 
   const epsilon = 0.2;
-  const normalX = boundaryValue(organism.x + epsilon, organism.y, margin) - boundaryValue(organism.x - epsilon, organism.y, margin);
-  const normalY = boundaryValue(organism.x, organism.y + epsilon, margin) - boundaryValue(organism.x, organism.y - epsilon, margin);
+  const normalX =
+    boundaryValue(organism.x + epsilon, organism.y, margin) - boundaryValue(organism.x - epsilon, organism.y, margin);
+  const normalY =
+    boundaryValue(organism.x, organism.y + epsilon, margin) - boundaryValue(organism.x, organism.y - epsilon, margin);
   const length = Math.hypot(normalX, normalY);
   const ux = normalX / length;
   const uy = normalY / length;
@@ -293,7 +380,10 @@ function targetSediment(grazer: Grazer, deposits: Sediment[]): Sediment | undefi
     const distance = Math.hypot(deposit.x - grazer.x, deposit.y - grazer.y);
     if (distance > 260) continue;
     const score = Math.sqrt(deposit.strength) / (18 + distance);
-    if (score > best) { best = score; target = deposit; }
+    if (score > best) {
+      best = score;
+      target = deposit;
+    }
   }
   return target;
 }
@@ -319,7 +409,10 @@ function updateGrazer(world: World, grazer: Grazer, dt: number): void {
         nest.pigment = Math.min(NEST_CAPACITY, nest.pigment + delivered);
         grazer.cargo = Math.max(0, grazer.cargo - delivered);
       }
-      if (grazer.cargo <= 1e-9) { grazer.cargo = 0; grazer.returning = false; }
+      if (grazer.cargo <= 1e-9) {
+        grazer.cargo = 0;
+        grazer.returning = false;
+      }
       speed = 0;
     }
   } else if (food) {
@@ -336,7 +429,10 @@ function updateGrazer(world: World, grazer: Grazer, dt: number): void {
     }
   } else {
     // Without food, slowly patrol the nest instead of vanishing or freezing.
-    target = confinePoint({ x: nest.x + Math.cos(grazer.phase) * 34, y: nest.y + Math.sin(grazer.phase) * 24 }, grazer.size + 3);
+    target = confinePoint(
+      { x: nest.x + Math.cos(grazer.phase) * 34, y: nest.y + Math.sin(grazer.phase) * 24 },
+      grazer.size + 3,
+    );
     speed = 8;
   }
 
@@ -344,8 +440,8 @@ function updateGrazer(world: World, grazer: Grazer, dt: number): void {
   const dy = target.y - grazer.y;
   const distance = Math.hypot(dx, dy);
   const approach = Math.min(1, distance / 18);
-  const desiredX = distance > 0.001 ? dx / distance * speed * approach : 0;
-  const desiredY = distance > 0.001 ? dy / distance * speed * approach : 0;
+  const desiredX = distance > 0.001 ? (dx / distance) * speed * approach : 0;
+  const desiredY = distance > 0.001 ? (dy / distance) * speed * approach : 0;
   const turn = 1 - Math.exp(-dt * 4);
   grazer.vx += (desiredX - grazer.vx) * turn;
   grazer.vy += (desiredY - grazer.vy) * turn;

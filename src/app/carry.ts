@@ -11,7 +11,9 @@ export class CarryController {
   private origin: World | null = null;
   private gesture: CarryState | null = null;
 
-  get state(): CarryState | null { return this.gesture ? { ...this.gesture } : null; }
+  get state(): CarryState | null {
+    return this.gesture ? { ...this.gesture } : null;
+  }
 
   begin(world: World, x: number, y: number, input: CarryState['input'] = 'pointer'): boolean {
     this.cancel();

@@ -5,7 +5,10 @@ export const LIMITS = { organisms: 42, lights: 32, sediment: 600, trail: 14, gra
 export const GRAZER_CAPACITY = 1.2;
 export const NEST_CAPACITY = 12;
 
-export interface Point { x: number; y: number }
+export interface Point {
+  x: number;
+  y: number;
+}
 export interface Current extends Point {
   id: number;
   dx: number;

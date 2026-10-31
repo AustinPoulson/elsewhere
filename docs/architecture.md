@@ -4,13 +4,13 @@ Elsewhere is a browser simulation and an art site. The first habitat uses a fixe
 
 ## Boundaries
 
-| Layer | Responsibility | Should not own |
-| --- | --- | --- |
-| World data and simulation | Entity state, seeded randomness, feeding, movement, pigment, limits, fixed time steps | DOM, Pixi objects, React state |
-| PixiJS renderer | Translate world state into water, terrain, organisms, trails, light, and pigment; map screen input into world coordinates | Ecological rules, persisted world format |
-| React interface | Tools, field guide, transport controls, save/import/export feedback, accessible controls | Per-frame entity animation |
-| Persistence | Validate versioned snapshots and store or recover a world | Running the simulation or rendering |
-| Vite/build | Produce static browser assets and adapt asset paths for Pages | A backend or hosted simulation |
+| Layer                     | Responsibility                                                                                                            | Should not own                           |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| World data and simulation | Entity state, seeded randomness, feeding, movement, pigment, limits, fixed time steps                                     | DOM, Pixi objects, React state           |
+| PixiJS renderer           | Translate world state into water, terrain, organisms, trails, light, and pigment; map screen input into world coordinates | Ecological rules, persisted world format |
+| React interface           | Tools, field guide, transport controls, save/import/export feedback, accessible controls                                  | Per-frame entity animation               |
+| Persistence               | Validate versioned snapshots and store or recover a world                                                                 | Running the simulation or rendering      |
+| Vite/build                | Produce static browser assets and adapt asset paths for Pages                                                             | A backend or hosted simulation           |
 
 The renderer owns the animation loop. It advances the simulation with a fixed `1/30` second step and renders from the current world. React receives small summaries for the interface instead of re-rendering every entity each frame. The clock allows at most five simulation steps per frame, clamps accumulated time, and discards hidden-tab catch-up.
 
@@ -40,25 +40,25 @@ One type definition describes the world and its entities. A seeded random state 
 
 The current explicit budgets are:
 
-| Collection | Maximum |
-| --- | ---: |
-| Organisms | 42 |
-| Active light sources | 32 |
-| Sediment marks | 600 |
-| Trail points per organism | 14 |
-| Pigment grazers | 8 |
-| Woven nests | 16 |
-| Active siltstitchers | 6 (within the shared 24 new-type bodies) |
-| Active glass limpets | 4 (within the shared 24 new-type bodies) |
-| All active new-type bodies | 24 (five type caps total 26) |
-| New-type renderer objects | 96 (four per body, at most 24 active) |
-| New-type short cues | 16 (siltstitchers and limpets add none) |
-| Normal founding source searches | 1 registered type per 6 ticks |
-| Successful new-body allocations | 1 per 6 ticks across types and event offers |
-| Rain ringlet slots (renderer only) | 48 |
-| Light floor patches (renderer only) | 32 |
-| Active currents | 3 |
-| Current arrows, including gesture preview (renderer only) | 12 |
+| Collection                                                |                                     Maximum |
+| --------------------------------------------------------- | ------------------------------------------: |
+| Organisms                                                 |                                          42 |
+| Active light sources                                      |                                          32 |
+| Sediment marks                                            |                                         600 |
+| Trail points per organism                                 |                                          14 |
+| Pigment grazers                                           |                                           8 |
+| Woven nests                                               |                                          16 |
+| Active siltstitchers                                      |    6 (within the shared 24 new-type bodies) |
+| Active glass limpets                                      |    4 (within the shared 24 new-type bodies) |
+| All active new-type bodies                                |                24 (five type caps total 26) |
+| New-type renderer objects                                 |       96 (four per body, at most 24 active) |
+| New-type short cues                                       |     16 (siltstitchers and limpets add none) |
+| Normal founding source searches                           |               1 registered type per 6 ticks |
+| Successful new-body allocations                           | 1 per 6 ticks across types and event offers |
+| Rain ringlet slots (renderer only)                        |                                          48 |
+| Light floor patches (renderer only)                       |                                          32 |
+| Active currents                                           |                                           3 |
+| Current arrows, including gesture preview (renderer only) |                                          12 |
 
 New behavior must respect a budget. Accumulated visual history must age, compact, or remain capped. A beautiful trail should not become an unbounded list of draw calls after a long visit. Existing simple rules and loops are easier to inspect than a general plugin or entity framework at this stage.
 
@@ -118,7 +118,7 @@ At age 480 seconds or after 60 continuous seconds without reserve, the body, res
 
 `world/species/glass-limpet.ts` owns a fixed capture feeder in the shoreline band at normalized coast distance 0.65–0.9. One rotating coarse grain at least 0.12 strong may establish it only if pigment within 32 units can pay exactly 0.3: shell body 0.2 and reserve 0.1. The root needs a 14-unit shore margin and 64-unit spacing from other limpets. Four per type and the shared 24-body ceiling bound presence. A saved candidate cursor advances on refusal without spending pigment, IDs or random draws. Neither opening nor migrated worlds gain a free shell.
 
-The shell intercepts an actual coarse grain only within 22 units and only while that grain's *current-derived sediment velocity* is at least 0.5 world units/second. That velocity uses the same three-field sum, combined speed clamp 16 and sediment scale 0.35 as physical drift. Uptake is at most 0.04 pigment/second: one quarter to reserve capped at 0.2 and three quarters to a separate catch basin capped at 0.8. Both capacities clip before the exact source debit. Upkeep dissipates at most 0.001 reserve/second. The shell never drifts; grains and grazers do. Its held catch is temporarily unavailable to downstream grazers. At age 480 seconds or after 60 continuous seconds with no reserve, body, reserve and catch return through the common bounded grain/underfilled-grain/mineralization path, where ordinary grazers can gather it. There is no reproduction, dormant state, larva or retained corpse in this lifecycle slice; a later shell requires another funded opening.
+The shell intercepts an actual coarse grain only within 22 units and only while that grain's _current-derived sediment velocity_ is at least 0.5 world units/second. That velocity uses the same three-field sum, combined speed clamp 16 and sediment scale 0.35 as physical drift. Uptake is at most 0.04 pigment/second: one quarter to reserve capped at 0.2 and three quarters to a separate catch basin capped at 0.8. Both capacities clip before the exact source debit. Upkeep dissipates at most 0.001 reserve/second. The shell never drifts; grains and grazers do. Its held catch is temporarily unavailable to downstream grazers. At age 480 seconds or after 60 continuous seconds with no reserve, body, reserve and catch return through the common bounded grain/underfilled-grain/mineralization path, where ordinary grazers can gather it. There is no reproduction, dormant state, larva or retained corpse in this lifecycle slice; a later shell requires another funded opening.
 
 `world/species/founding.ts` selects one of the five registered normal founding types on each six-tick phase, rotating fairly even when a type is absent, capped or refused. Each type, including the older skimmer, retains a bounded saved source-ID cursor so one crowded home cannot monopolize later habitat. Thus a larger catalog does not cause one full sediment search per type per phase. A saved global `nextFoundingTick` allows at most one successful new-body allocation per six ticks across normal founding and accepted off-phase event offers; the event API is present for future death-founded ecology, but no such new type is introduced here. Direct species helpers retain standalone admission for focused tests; production `stepWorld` uses only the shared scheduler. The new type has at most one 600-grain funding pass per selected poll, and its existing bodies search for a food target on staggered six-tick phases. Empty populations skip target maps. World3 revision6-to7 migration installs empty limpets, neutral cursors/budgets and zero new ledger counters without changing paid ecology, IDs, time or PRNG. Strict validation enforces global IDs, references, shoreline spacing, stores and aggregate bounds. `render/GlassLimpetRenderer.ts` owns four reusable objects/body with no cue history, keeping new-type rendering at most 96 objects and 16 short cues. Existing Observe covers pointer and keyboard inspection. [Expedition 012](expedition-012-glass-limpets.md) records play evidence and limits.
 
