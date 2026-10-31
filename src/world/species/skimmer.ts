@@ -3,11 +3,11 @@ import { LIMITS, type Nest, type Sediment, type Skimmer, type World } from '../t
 
 import { activeNewTypePopulation, NEW_TYPE_POPULATION_CAP, SKIMMER_CAP, SPECIES_CATALOG } from './catalog';
 import { blendHue, returnPigment, safeId } from './resources';
-export { NEW_TYPE_POPULATION_CAP, SKIMMER_CAP, SPECIES_CATALOG } from './catalog';
-export const SKIMMER_MAINTENANCE = 0.002;
-export const SKIMMER_INTAKE = 0.03;
-export const SKIMMER_EMISSION_PIGMENT = 0.9;
-export const SKIMMER_EMISSION_LIGHT = 1.35;
+
+const SKIMMER_MAINTENANCE = 0.002;
+const SKIMMER_INTAKE = 0.03;
+const SKIMMER_EMISSION_PIGMENT = 0.9;
+const SKIMMER_EMISSION_LIGHT = 1.35;
 const TAU = Math.PI * 2;
 const indexes = new WeakMap<World, Map<number, Sediment>>();
 
