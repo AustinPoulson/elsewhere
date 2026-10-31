@@ -232,8 +232,12 @@ export function createBody(): HTMLCanvasElement {
     const a = (vein / 7) * TAU;
     ctx.beginPath();
     ctx.moveTo(64, 58);
-    ctx.quadraticCurveTo(64 + Math.sin(a + 0.3) * 11, 60 + Math.cos(a + 0.3) * 16,
-      64 + Math.sin(a) * 28, 60 + Math.cos(a) * 35);
+    ctx.quadraticCurveTo(
+      64 + Math.sin(a + 0.3) * 11,
+      60 + Math.cos(a + 0.3) * 16,
+      64 + Math.sin(a) * 28,
+      60 + Math.cos(a) * 35,
+    );
     ctx.stroke();
   }
   ctx.fillStyle = 'rgba(255,255,241,.95)';

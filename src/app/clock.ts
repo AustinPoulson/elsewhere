@@ -14,5 +14,7 @@ export class SimulationClock {
     }
     return steps;
   }
-  reset(): void { this.accumulator = 0; }
+  reset(): void {
+    this.accumulator = 0;
+  }
 }

@@ -8,15 +8,23 @@ function run(world: World, steps: number): void {
 }
 
 function pigmentMass(world: World): number {
-  return world.sediment.reduce((total, grain) => total + grain.strength, 0)
-    + world.grazers.reduce((total, grazer) => total + grazer.cargo, 0)
-    + world.nests.reduce((total, nest) => total + nest.pigment, 0);
+  return (
+    world.sediment.reduce((total, grain) => total + grain.strength, 0) +
+    world.grazers.reduce((total, grazer) => total + grazer.cargo, 0) +
+    world.nests.reduce((total, nest) => total + nest.pigment, 0)
+  );
 }
 
 function withSedimentCount(count: number): World {
   const world = createWorld(71);
   world.sediment = Array.from({ length: count }, () => ({
-    id: world.nextId++, x: 720, y: 500, radius: 4, hue: 214, strength: 0.3, age: 0,
+    id: world.nextId++,
+    x: 720,
+    y: 500,
+    radius: 4,
+    hue: 214,
+    strength: 0.3,
+    age: 0,
   }));
   world.nests[0].pigment = 3;
   return world;
@@ -52,7 +60,7 @@ describe('nest pigment release', () => {
       ...before,
       nextId: before.nextId + 6,
       sediment: [...before.sediment, ...released],
-      nests: before.nests.map((entry) => entry.id === nest.id ? { ...entry, pigment: 4.5 } : entry),
+      nests: before.nests.map((entry) => (entry.id === nest.id ? { ...entry, pigment: 4.5 } : entry)),
     });
     expect(restoreWorld(serializeWorld(world))).toEqual(world);
   });
@@ -68,7 +76,7 @@ describe('nest pigment release', () => {
     world.sediment.forEach((grain) => expect(grain.strength).toBeCloseTo(0.03, 14));
 
     for (let i = 0; i < 12; i++) {
-      const angle = i * Math.PI / 6;
+      const angle = (i * Math.PI) / 6;
       const radius = poolRadius(angle) * 0.999999;
       Object.assign(nest, {
         x: WORLD_WIDTH / 2 + Math.cos(angle) * radius * (610 - 18),
@@ -83,9 +91,9 @@ describe('nest pigment release', () => {
         expect(grain.id).toBe(firstId + index);
       });
     }
-    const ids = [
-      ...world.organisms, ...world.lights, ...world.sediment, ...world.grazers, ...world.nests,
-    ].map((entry) => entry.id);
+    const ids = [...world.organisms, ...world.lights, ...world.sediment, ...world.grazers, ...world.nests].map(
+      (entry) => entry.id,
+    );
     expect(new Set(ids).size).toBe(ids.length);
     expect(restoreWorld(serializeWorld(world))).toEqual(world);
   });
@@ -210,13 +218,48 @@ describe('nest pigment release', () => {
     legacy.grazers = [];
     legacy.nests = [];
     run(legacy, 1020);
-    const { grazers: _grazers, nests: _nests, schemaRevision: _revision, weatherCall: _call, currents: _currents, skimmers: _skimmers, skimmerAdmissionAt: _admission, skimmerCandidateAfterId: _skimmerCandidate, ecologyLedger: _ledger, reedwells: _reedwells, reedwellAdmissionAt: _reedwellAdmission, reedwellCandidateAfterId: _reedwellCandidate, rainbells: _rainbells, rainbellAdmissionAt: _rainbellAdmission, rainbellCandidateAfterId: _rainbellCandidate, siltstitchers: _siltstitchers, siltstitcherAdmissionAt: _siltstitcherAdmission, siltstitcherCandidateAfterId: _siltstitcherCandidate, glassLimpets: _glassLimpets, glassLimpetAdmissionAt: _glassLimpetAdmissionAt, glassLimpetCandidateAfterId: _glassLimpetCandidateAfterId, nextFoundingTick: _nextFoundingTick, foundingTypeCursor: _foundingTypeCursor, cargoMites: _cargoMites, cargoMiteAdmissionAt: _cargoMiteAdmissionAt, cargoMiteCandidateAfterId: _cargoMiteCandidateAfterId, organisms, ...fields } = legacy;
-    const restored = restoreWorld(JSON.stringify({ ...fields, organisms: organisms.map(({ pigmentCredit: _credit, ...entry }) => entry), version: 1 }));
+    const {
+      grazers: _grazers,
+      nests: _nests,
+      schemaRevision: _revision,
+      weatherCall: _call,
+      currents: _currents,
+      skimmers: _skimmers,
+      skimmerAdmissionAt: _admission,
+      skimmerCandidateAfterId: _skimmerCandidate,
+      ecologyLedger: _ledger,
+      reedwells: _reedwells,
+      reedwellAdmissionAt: _reedwellAdmission,
+      reedwellCandidateAfterId: _reedwellCandidate,
+      rainbells: _rainbells,
+      rainbellAdmissionAt: _rainbellAdmission,
+      rainbellCandidateAfterId: _rainbellCandidate,
+      siltstitchers: _siltstitchers,
+      siltstitcherAdmissionAt: _siltstitcherAdmission,
+      siltstitcherCandidateAfterId: _siltstitcherCandidate,
+      glassLimpets: _glassLimpets,
+      glassLimpetAdmissionAt: _glassLimpetAdmissionAt,
+      glassLimpetCandidateAfterId: _glassLimpetCandidateAfterId,
+      nextFoundingTick: _nextFoundingTick,
+      foundingTypeCursor: _foundingTypeCursor,
+      cargoMites: _cargoMites,
+      cargoMiteAdmissionAt: _cargoMiteAdmissionAt,
+      cargoMiteCandidateAfterId: _cargoMiteCandidateAfterId,
+      organisms,
+      ...fields
+    } = legacy;
+    const restored = restoreWorld(
+      JSON.stringify({
+        ...fields,
+        organisms: organisms.map(({ pigmentCredit: _credit, ...entry }) => entry),
+        version: 1,
+      }),
+    );
     expect(restored).not.toBeNull();
     expect(restored!.elapsed).toBe(legacy.elapsed);
     expect(restored!.tick).toBe(legacy.tick);
     expect(restored!.randomState).toBe(legacy.randomState);
-    expect(restored!.organisms).toEqual(legacy.organisms.map(entry => ({ ...entry, pigmentCredit: 0 })));
+    expect(restored!.organisms).toEqual(legacy.organisms.map((entry) => ({ ...entry, pigmentCredit: 0 })));
     expect(restored!.lights).toEqual(legacy.lights);
     expect(restored!.sediment).toEqual(legacy.sediment);
     expect(restored!.consumed).toBe(legacy.consumed);

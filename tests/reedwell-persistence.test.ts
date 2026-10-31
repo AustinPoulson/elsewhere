@@ -4,37 +4,111 @@ import { restoreWorld, serializeWorld } from '../src/world/persistence';
 import { createWorld, stepWorld } from '../src/world/simulation';
 import type { Reedwell, World } from '../src/world/types';
 
-const reedwellLedgerKeys = ['daylightHarvested', 'daylightUnharvested', 'reedwellEmittedLight', 'reedwellDissipatedLight'];
+const reedwellLedgerKeys = [
+  'daylightHarvested',
+  'daylightUnharvested',
+  'reedwellEmittedLight',
+  'reedwellDissipatedLight',
+];
 const rainbellLedgerKeys = ['rainbellIntake', 'rainbellPumpingPigment', 'rainbellMaintenancePigment'];
-const siltstitcherLedgerKeys = ['siltstitcherNestReserve', 'siltstitcherNestCargo', 'siltstitcherOutwardPigment', 'siltstitcherMaintenancePigment'];
+const siltstitcherLedgerKeys = [
+  'siltstitcherNestReserve',
+  'siltstitcherNestCargo',
+  'siltstitcherOutwardPigment',
+  'siltstitcherMaintenancePigment',
+];
 const limpetLedgerKeys = ['glassLimpetIntake', 'glassLimpetMaintenancePigment'];
 const cargoMiteLedgerKeys = ['cargoMiteIntake', 'cargoMiteMaintenancePigment'];
 
 function inhabited(): World {
   const world = createWorld(91);
-  world.elapsed = 85; world.tick = 2550;
+  world.elapsed = 85;
+  world.tick = 2550;
   world.weatherCall = { startedAt: 75, nextAllowedAt: 135 };
   world.currents = [{ id: world.nextId++, x: 720, y: 500, dx: 1, dy: 0, startedAt: 84, duration: 8, radius: 110 }];
-  const plant: Reedwell = { id: world.nextId++, species: 'reedwell', body: .6,
-    x: 720, y: 500, hue: 187, age: 23.25, lightStore: 2.4,
-    lastEmissionAt: 80, emissionNextAllowedAt: 95 };
-  world.reedwells = [plant]; world.reedwellAdmissionAt = 120;
+  const plant: Reedwell = {
+    id: world.nextId++,
+    species: 'reedwell',
+    body: 0.6,
+    x: 720,
+    y: 500,
+    hue: 187,
+    age: 23.25,
+    lightStore: 2.4,
+    lastEmissionAt: 80,
+    emissionNextAllowedAt: 95,
+  };
+  world.reedwells = [plant];
+  world.reedwellAdmissionAt = 120;
   world.reedwellCandidateAfterId = world.sediment[0].id;
-  world.skimmers = [{ id: world.nextId++, species: 'skimmer', body: .2, size: 8,
-    x: world.nests[0].x, y: world.nests[0].y, vx: 1, vy: -1, hue: 199, age: 14,
-    reserve: .4, phase: .3, homeNestId: world.nests[0].id, targetSedimentId: world.sediment[0].id,
-    starvedFor: 0, lastEmissionAt: null, emissionNextAllowedAt: 0 }];
-  world.organisms[0].pigmentCredit = .31;
-  world.ecologyLedger = { ...world.ecologyLedger, mineralizedPigment: .2, maintenancePigment: .01, emittedLight: 1.35,
-    pigmentConverted: .9, feedingCreditLost: .03, daylightHarvested: 4.9, daylightUnharvested: .7,
-    reedwellEmittedLight: 1.5, reedwellDissipatedLight: 1 };
+  world.skimmers = [
+    {
+      id: world.nextId++,
+      species: 'skimmer',
+      body: 0.2,
+      size: 8,
+      x: world.nests[0].x,
+      y: world.nests[0].y,
+      vx: 1,
+      vy: -1,
+      hue: 199,
+      age: 14,
+      reserve: 0.4,
+      phase: 0.3,
+      homeNestId: world.nests[0].id,
+      targetSedimentId: world.sediment[0].id,
+      starvedFor: 0,
+      lastEmissionAt: null,
+      emissionNextAllowedAt: 0,
+    },
+  ];
+  world.organisms[0].pigmentCredit = 0.31;
+  world.ecologyLedger = {
+    ...world.ecologyLedger,
+    mineralizedPigment: 0.2,
+    maintenancePigment: 0.01,
+    emittedLight: 1.35,
+    pigmentConverted: 0.9,
+    feedingCreditLost: 0.03,
+    daylightHarvested: 4.9,
+    daylightUnharvested: 0.7,
+    reedwellEmittedLight: 1.5,
+    reedwellDissipatedLight: 1,
+  };
   return world;
 }
 
 function revision3(world: World): Record<string, any> {
-  const { reedwells: _plants, reedwellAdmissionAt: _admission, reedwellCandidateAfterId: _candidate, rainbells: _rainbells, rainbellAdmissionAt: _rainbellAdmission, rainbellCandidateAfterId: _rainbellCandidate, siltstitchers: _siltstitchers, siltstitcherAdmissionAt: _siltstitcherAdmission, siltstitcherCandidateAfterId: _siltstitcherCandidate, glassLimpets: _glassLimpets, glassLimpetAdmissionAt: _glassLimpetAdmissionAt, glassLimpetCandidateAfterId: _glassLimpetCandidateAfterId, nextFoundingTick: _nextFoundingTick, foundingTypeCursor: _foundingTypeCursor, cargoMites: _cargoMites, cargoMiteAdmissionAt: _cargoMiteAdmissionAt, cargoMiteCandidateAfterId: _cargoMiteCandidateAfterId, skimmerCandidateAfterId: _skimmerCandidate, ...previous } = structuredClone(world);
+  const {
+    reedwells: _plants,
+    reedwellAdmissionAt: _admission,
+    reedwellCandidateAfterId: _candidate,
+    rainbells: _rainbells,
+    rainbellAdmissionAt: _rainbellAdmission,
+    rainbellCandidateAfterId: _rainbellCandidate,
+    siltstitchers: _siltstitchers,
+    siltstitcherAdmissionAt: _siltstitcherAdmission,
+    siltstitcherCandidateAfterId: _siltstitcherCandidate,
+    glassLimpets: _glassLimpets,
+    glassLimpetAdmissionAt: _glassLimpetAdmissionAt,
+    glassLimpetCandidateAfterId: _glassLimpetCandidateAfterId,
+    nextFoundingTick: _nextFoundingTick,
+    foundingTypeCursor: _foundingTypeCursor,
+    cargoMites: _cargoMites,
+    cargoMiteAdmissionAt: _cargoMiteAdmissionAt,
+    cargoMiteCandidateAfterId: _cargoMiteCandidateAfterId,
+    skimmerCandidateAfterId: _skimmerCandidate,
+    ...previous
+  } = structuredClone(world);
   const result: Record<string, any> = { ...previous, schemaRevision: 3 };
-  for (const key of [...reedwellLedgerKeys, ...rainbellLedgerKeys, ...siltstitcherLedgerKeys, ...limpetLedgerKeys, ...cargoMiteLedgerKeys]) delete result.ecologyLedger[key];
+  for (const key of [
+    ...reedwellLedgerKeys,
+    ...rainbellLedgerKeys,
+    ...siltstitcherLedgerKeys,
+    ...limpetLedgerKeys,
+    ...cargoMiteLedgerKeys,
+  ])
+    delete result.ecologyLedger[key];
   return result;
 }
 
@@ -44,10 +118,27 @@ describe('reedwell snapshot revision', () => {
     const before = JSON.stringify(source);
     const restored = restoreWorld(before)!;
     expect(restored).not.toBeNull();
-    const { reedwells, reedwellAdmissionAt, reedwellCandidateAfterId, rainbells, rainbellAdmissionAt, rainbellCandidateAfterId, siltstitchers, siltstitcherAdmissionAt, siltstitcherCandidateAfterId,
-      glassLimpets: _glassLimpets, glassLimpetAdmissionAt: _glassLimpetAdmissionAt,
+    const {
+      reedwells,
+      reedwellAdmissionAt,
+      reedwellCandidateAfterId,
+      rainbells,
+      rainbellAdmissionAt,
+      rainbellCandidateAfterId,
+      siltstitchers,
+      siltstitcherAdmissionAt,
+      siltstitcherCandidateAfterId,
+      glassLimpets: _glassLimpets,
+      glassLimpetAdmissionAt: _glassLimpetAdmissionAt,
       glassLimpetCandidateAfterId: _glassLimpetCandidateAfterId,
-      nextFoundingTick: _nextFoundingTick, foundingTypeCursor: _foundingTypeCursor, cargoMites: _cargoMites, cargoMiteAdmissionAt: _cargoMiteAdmissionAt, cargoMiteCandidateAfterId: _cargoMiteCandidateAfterId, skimmerCandidateAfterId: _skimmerCandidate, ...oldFields } = restored;
+      nextFoundingTick: _nextFoundingTick,
+      foundingTypeCursor: _foundingTypeCursor,
+      cargoMites: _cargoMites,
+      cargoMiteAdmissionAt: _cargoMiteAdmissionAt,
+      cargoMiteCandidateAfterId: _cargoMiteCandidateAfterId,
+      skimmerCandidateAfterId: _skimmerCandidate,
+      ...oldFields
+    } = restored;
     expect(reedwells).toEqual([]);
     expect(reedwellAdmissionAt).toBe(source.elapsed);
     expect(reedwellCandidateAfterId).toBe(0);
@@ -58,7 +149,16 @@ describe('reedwell snapshot revision', () => {
     expect(siltstitcherAdmissionAt).toBe(source.elapsed);
     expect(siltstitcherCandidateAfterId).toBe(0);
     const oldLedger = { ...oldFields.ecologyLedger } as Record<string, number>;
-    for (const key of [...reedwellLedgerKeys, ...rainbellLedgerKeys, ...siltstitcherLedgerKeys, ...limpetLedgerKeys, ...cargoMiteLedgerKeys]) { expect(oldLedger[key]).toBe(0); delete oldLedger[key]; }
+    for (const key of [
+      ...reedwellLedgerKeys,
+      ...rainbellLedgerKeys,
+      ...siltstitcherLedgerKeys,
+      ...limpetLedgerKeys,
+      ...cargoMiteLedgerKeys,
+    ]) {
+      expect(oldLedger[key]).toBe(0);
+      delete oldLedger[key];
+    }
     expect({ ...oldFields, schemaRevision: 3, ecologyLedger: oldLedger }).toEqual(source);
     expect(JSON.stringify(source)).toBe(before);
     expect(restoreWorld(serializeWorld(restored))).toEqual(restored);
@@ -67,11 +167,23 @@ describe('reedwell snapshot revision', () => {
   it('keeps the immutable shower empty of new plants and retains its exact old resources', () => {
     const before = JSON.stringify(historicalStudy);
     const restored = restoreWorld(before)!;
-    expect(restored).toMatchObject({ schemaRevision: 8, reedwells: [], reedwellAdmissionAt: historicalStudy.elapsed, reedwellCandidateAfterId: 0,
-      nextId: historicalStudy.nextId, randomState: historicalStudy.randomState, elapsed: historicalStudy.elapsed,
-      tick: historicalStudy.tick, lights: historicalStudy.lights, sediment: historicalStudy.sediment,
-      grazers: historicalStudy.grazers, nests: historicalStudy.nests, consumed: historicalStudy.consumed });
-    for (const key of reedwellLedgerKeys) expect((restored.ecologyLedger as unknown as Record<string, number>)[key]).toBe(0);
+    expect(restored).toMatchObject({
+      schemaRevision: 8,
+      reedwells: [],
+      reedwellAdmissionAt: historicalStudy.elapsed,
+      reedwellCandidateAfterId: 0,
+      nextId: historicalStudy.nextId,
+      randomState: historicalStudy.randomState,
+      elapsed: historicalStudy.elapsed,
+      tick: historicalStudy.tick,
+      lights: historicalStudy.lights,
+      sediment: historicalStudy.sediment,
+      grazers: historicalStudy.grazers,
+      nests: historicalStudy.nests,
+      consumed: historicalStudy.consumed,
+    });
+    for (const key of reedwellLedgerKeys)
+      expect((restored.ecologyLedger as unknown as Record<string, number>)[key]).toBe(0);
     expect(JSON.stringify(historicalStudy)).toBe(before);
   });
 
@@ -81,14 +193,22 @@ describe('reedwell snapshot revision', () => {
       for (let tick = 0; tick < offset; tick++) stepWorld(world);
       const resumed = restoreWorld(serializeWorld(world))!;
       expect(resumed).toEqual(world);
-      for (let tick = 0; tick < 480; tick++) { stepWorld(world); stepWorld(resumed); }
+      for (let tick = 0; tick < 480; tick++) {
+        stepWorld(world);
+        stepWorld(resumed);
+      }
       expect(resumed).toEqual(world);
     }
   });
 
   it('accepts variable presence, a newborn un-emitted root and extinct populations without free replacement', () => {
     const world = inhabited();
-    Object.assign(world.reedwells[0], { age: 0, lightStore: 0, lastEmissionAt: null, emissionNextAllowedAt: world.elapsed });
+    Object.assign(world.reedwells[0], {
+      age: 0,
+      lightStore: 0,
+      lastEmissionAt: null,
+      emissionNextAllowedAt: world.elapsed,
+    });
     expect(restoreWorld(serializeWorld(world))).toEqual(world);
     world.reedwells = [];
     expect(restoreWorld(serializeWorld(world))).toEqual(world);
@@ -97,11 +217,14 @@ describe('reedwell snapshot revision', () => {
 
   it('persists a rotating admission cursor even after its source grain has disappeared', () => {
     const world = inhabited();
-    world.sediment = world.sediment.filter(grain => grain.id !== world.reedwellCandidateAfterId);
+    world.sediment = world.sediment.filter((grain) => grain.id !== world.reedwellCandidateAfterId);
     const resumed = restoreWorld(serializeWorld(world))!;
     expect(resumed).toEqual(world);
     expect(resumed.reedwellCandidateAfterId).toBeGreaterThan(0);
-    for (let tick = 0; tick < 180; tick++) { stepWorld(world); stepWorld(resumed); }
+    for (let tick = 0; tick < 180; tick++) {
+      stepWorld(world);
+      stepWorld(resumed);
+    }
     expect(resumed).toEqual(world);
     world.reedwellCandidateAfterId = 0;
     expect(restoreWorld(serializeWorld(world))).toEqual(world);
@@ -109,35 +232,142 @@ describe('reedwell snapshot revision', () => {
 
   it('rejects partial state, invalid resources, unsafe IDs, budgets and inconsistent emission/admission clocks', () => {
     const mutations: ((world: Record<string, any>) => void)[] = [
-      w => { delete w.reedwells; }, w => { w.reedwells = null; },
-      w => { delete w.reedwellAdmissionAt; }, w => { w.reedwellAdmissionAt = -1; },
-      w => { w.reedwellAdmissionAt = w.elapsed + 61; }, w => { w.reedwellAdmissionAt = Infinity; },
-      w => { delete w.reedwellCandidateAfterId; }, w => { w.reedwellCandidateAfterId = -1; },
-      w => { w.reedwellCandidateAfterId = .5; }, w => { w.reedwellCandidateAfterId = w.nextId; },
-      w => { w.reedwellCandidateAfterId = Number.MAX_SAFE_INTEGER + 1; },
-      w => { w.reedwells[0].id = 0; }, w => { w.reedwells[0].id = 1.5; },
-      w => { w.reedwells[0].id = w.currents[0].id; }, w => { w.reedwells[0].id = w.organisms[0].id; },
-      w => { w.reedwells[0].id = w.skimmers[0].id; },
-      w => { w.reedwells[0].id = w.nextId; }, w => { w.nextId = Number.MAX_SAFE_INTEGER + 1; },
-      w => { w.reedwells[0].species = 'skimmer'; }, w => { w.reedwells[0].body = .61; },
-      w => { w.reedwells[0].age = -1; }, w => { w.reedwells[0].age = 901; },
-      w => { w.reedwells[0].hue = 360; }, w => { w.reedwells[0].hue = -1; },
-      w => { w.reedwells[0].x = 0; }, w => { w.reedwells[0].y = NaN; },
-      w => { w.reedwells[0].lightStore = 3.00001; }, w => { w.reedwells[0].lightStore = -.00001; },
-      w => { w.reedwells[0].lightStore = Infinity; }, w => { delete w.reedwells[0].lightStore; },
-      w => { w.reedwells[0].lastEmissionAt = w.elapsed + 1; }, w => { w.reedwells[0].lastEmissionAt = -1; },
-      w => { w.reedwells[0].emissionNextAllowedAt = 96; }, w => { w.reedwells[0].emissionNextAllowedAt = -1; },
-      w => { w.reedwells[0].lastEmissionAt = null; w.reedwells[0].emissionNextAllowedAt = w.elapsed + .1; },
-      w => { delete w.reedwells[0].lastEmissionAt; }, w => { delete w.reedwells[0].emissionNextAllowedAt; },
-      w => { w.reedwells = Array.from({ length: 7 }, (_, index) => ({ ...w.reedwells[0], id: w.nextId + index })); w.nextId += 7; },
-      w => { w.schemaRevision = 9; },
+      (w) => {
+        delete w.reedwells;
+      },
+      (w) => {
+        w.reedwells = null;
+      },
+      (w) => {
+        delete w.reedwellAdmissionAt;
+      },
+      (w) => {
+        w.reedwellAdmissionAt = -1;
+      },
+      (w) => {
+        w.reedwellAdmissionAt = w.elapsed + 61;
+      },
+      (w) => {
+        w.reedwellAdmissionAt = Infinity;
+      },
+      (w) => {
+        delete w.reedwellCandidateAfterId;
+      },
+      (w) => {
+        w.reedwellCandidateAfterId = -1;
+      },
+      (w) => {
+        w.reedwellCandidateAfterId = 0.5;
+      },
+      (w) => {
+        w.reedwellCandidateAfterId = w.nextId;
+      },
+      (w) => {
+        w.reedwellCandidateAfterId = Number.MAX_SAFE_INTEGER + 1;
+      },
+      (w) => {
+        w.reedwells[0].id = 0;
+      },
+      (w) => {
+        w.reedwells[0].id = 1.5;
+      },
+      (w) => {
+        w.reedwells[0].id = w.currents[0].id;
+      },
+      (w) => {
+        w.reedwells[0].id = w.organisms[0].id;
+      },
+      (w) => {
+        w.reedwells[0].id = w.skimmers[0].id;
+      },
+      (w) => {
+        w.reedwells[0].id = w.nextId;
+      },
+      (w) => {
+        w.nextId = Number.MAX_SAFE_INTEGER + 1;
+      },
+      (w) => {
+        w.reedwells[0].species = 'skimmer';
+      },
+      (w) => {
+        w.reedwells[0].body = 0.61;
+      },
+      (w) => {
+        w.reedwells[0].age = -1;
+      },
+      (w) => {
+        w.reedwells[0].age = 901;
+      },
+      (w) => {
+        w.reedwells[0].hue = 360;
+      },
+      (w) => {
+        w.reedwells[0].hue = -1;
+      },
+      (w) => {
+        w.reedwells[0].x = 0;
+      },
+      (w) => {
+        w.reedwells[0].y = NaN;
+      },
+      (w) => {
+        w.reedwells[0].lightStore = 3.00001;
+      },
+      (w) => {
+        w.reedwells[0].lightStore = -0.00001;
+      },
+      (w) => {
+        w.reedwells[0].lightStore = Infinity;
+      },
+      (w) => {
+        delete w.reedwells[0].lightStore;
+      },
+      (w) => {
+        w.reedwells[0].lastEmissionAt = w.elapsed + 1;
+      },
+      (w) => {
+        w.reedwells[0].lastEmissionAt = -1;
+      },
+      (w) => {
+        w.reedwells[0].emissionNextAllowedAt = 96;
+      },
+      (w) => {
+        w.reedwells[0].emissionNextAllowedAt = -1;
+      },
+      (w) => {
+        w.reedwells[0].lastEmissionAt = null;
+        w.reedwells[0].emissionNextAllowedAt = w.elapsed + 0.1;
+      },
+      (w) => {
+        delete w.reedwells[0].lastEmissionAt;
+      },
+      (w) => {
+        delete w.reedwells[0].emissionNextAllowedAt;
+      },
+      (w) => {
+        w.reedwells = Array.from({ length: 7 }, (_, index) => ({ ...w.reedwells[0], id: w.nextId + index }));
+        w.nextId += 7;
+      },
+      (w) => {
+        w.schemaRevision = 9;
+      },
     ];
     for (const key of reedwellLedgerKeys) {
-      mutations.push(w => { delete w.ecologyLedger[key]; }, w => { w.ecologyLedger[key] = -1; },
-        w => { w.ecologyLedger[key] = Infinity; });
+      mutations.push(
+        (w) => {
+          delete w.ecologyLedger[key];
+        },
+        (w) => {
+          w.ecologyLedger[key] = -1;
+        },
+        (w) => {
+          w.ecologyLedger[key] = Infinity;
+        },
+      );
     }
     for (const mutate of mutations) {
-      const world = inhabited(); mutate(world);
+      const world = inhabited();
+      mutate(world);
       expect(restoreWorld(serializeWorld(world))).toBeNull();
     }
   });
@@ -153,11 +383,23 @@ describe('reedwell snapshot revision', () => {
     for (const version of [1, 2, 3]) {
       const world = revision3(inhabited());
       world.version = version;
-      if (version !== 3) { delete world.schemaRevision; delete world.weatherCall; delete world.currents; }
-      else world.schemaRevision = 2;
-      delete world.skimmers; delete world.skimmerAdmissionAt; delete world.skimmerCandidateAfterId; delete world.ecologyLedger;
-      world.organisms.forEach((entry: Record<string, unknown>) => { delete entry.pigmentCredit; });
-      for (const [key, value] of [['reedwells', []], ['reedwellAdmissionAt', 0], ['reedwellCandidateAfterId', 0]]) {
+      if (version !== 3) {
+        delete world.schemaRevision;
+        delete world.weatherCall;
+        delete world.currents;
+      } else world.schemaRevision = 2;
+      delete world.skimmers;
+      delete world.skimmerAdmissionAt;
+      delete world.skimmerCandidateAfterId;
+      delete world.ecologyLedger;
+      world.organisms.forEach((entry: Record<string, unknown>) => {
+        delete entry.pigmentCredit;
+      });
+      for (const [key, value] of [
+        ['reedwells', []],
+        ['reedwellAdmissionAt', 0],
+        ['reedwellCandidateAfterId', 0],
+      ]) {
         expect(restoreWorld(JSON.stringify({ ...world, [key as string]: value }))).toBeNull();
       }
     }

@@ -6,7 +6,35 @@ import { callRain, effectiveLightReach, effectiveWeather, getWeather } from '../
 import { FIXED_STEP, type World } from '../src/world/types';
 
 function ecology(world: World) {
-  const { version: _version, schemaRevision: _revision, weatherCall: _call, currents: _currents, skimmers: _skimmers, skimmerAdmissionAt: _admission, skimmerCandidateAfterId: _skimmerCandidate, ecologyLedger: _ledger, reedwells: _reedwells, reedwellAdmissionAt: _reedwellAdmission, reedwellCandidateAfterId: _reedwellCandidate, rainbells: _rainbells, rainbellAdmissionAt: _rainbellAdmission, rainbellCandidateAfterId: _rainbellCandidate, siltstitchers: _siltstitchers, siltstitcherAdmissionAt: _siltstitcherAdmission, siltstitcherCandidateAfterId: _siltstitcherCandidate, glassLimpets: _glassLimpets, glassLimpetAdmissionAt: _glassLimpetAdmissionAt, glassLimpetCandidateAfterId: _glassLimpetCandidateAfterId, nextFoundingTick: _nextFoundingTick, foundingTypeCursor: _foundingTypeCursor, cargoMites: _cargoMites, cargoMiteAdmissionAt: _cargoMiteAdmissionAt, cargoMiteCandidateAfterId: _cargoMiteCandidateAfterId, organisms, ...rest } = world;
+  const {
+    version: _version,
+    schemaRevision: _revision,
+    weatherCall: _call,
+    currents: _currents,
+    skimmers: _skimmers,
+    skimmerAdmissionAt: _admission,
+    skimmerCandidateAfterId: _skimmerCandidate,
+    ecologyLedger: _ledger,
+    reedwells: _reedwells,
+    reedwellAdmissionAt: _reedwellAdmission,
+    reedwellCandidateAfterId: _reedwellCandidate,
+    rainbells: _rainbells,
+    rainbellAdmissionAt: _rainbellAdmission,
+    rainbellCandidateAfterId: _rainbellCandidate,
+    siltstitchers: _siltstitchers,
+    siltstitcherAdmissionAt: _siltstitcherAdmission,
+    siltstitcherCandidateAfterId: _siltstitcherCandidate,
+    glassLimpets: _glassLimpets,
+    glassLimpetAdmissionAt: _glassLimpetAdmissionAt,
+    glassLimpetCandidateAfterId: _glassLimpetCandidateAfterId,
+    nextFoundingTick: _nextFoundingTick,
+    foundingTypeCursor: _foundingTypeCursor,
+    cargoMites: _cargoMites,
+    cargoMiteAdmissionAt: _cargoMiteAdmissionAt,
+    cargoMiteCandidateAfterId: _cargoMiteCandidateAfterId,
+    organisms,
+    ...rest
+  } = world;
   return { ...rest, organisms: organisms.map(({ pigmentCredit: _credit, ...entry }) => entry) };
 }
 
@@ -36,7 +64,16 @@ describe('visitor-called rain', () => {
     const world = createWorld();
     world.elapsed = 90;
     callRain(world);
-    for (const [age, intensity] of [[0, 0], [1.5, .15625], [3, .5], [6, 1], [24, 1], [27, .5], [28.5, .15625], [30, 0]]) {
+    for (const [age, intensity] of [
+      [0, 0],
+      [1.5, 0.15625],
+      [3, 0.5],
+      [6, 1],
+      [24, 1],
+      [27, 0.5],
+      [28.5, 0.15625],
+      [30, 0],
+    ]) {
       world.elapsed = 90 + age;
       expect(effectiveWeather(world).intensity).toBeCloseTo(intensity, 12);
       expect(effectiveLightReach(world)).toBeCloseTo(64 + intensity * 48, 12);
@@ -47,7 +84,7 @@ describe('visitor-called rain', () => {
     expect(effectiveWeather(world).secondsUntilChange).toBe(30);
     world.elapsed = 30;
     expect(effectiveWeather(world).secondsUntilChange).toBe(24);
-    for (let age = 0; age <= 60; age += .25) {
+    for (let age = 0; age <= 60; age += 0.25) {
       world.elapsed = 24 + age;
       const called = age < 30 ? Math.min(smooth(age / 6), smooth((30 - age) / 6)) : 0;
       expect(effectiveWeather(world).intensity).toBe(Math.max(getWeather(world.elapsed).intensity, called));
@@ -59,22 +96,29 @@ describe('visitor-called rain', () => {
     const calm = createWorld(42);
     calm.elapsed = 90;
     calm.organisms = [calm.organisms[0]];
-    calm.lights = []; calm.sediment = []; calm.grazers = []; calm.nests = [];
-    Object.assign(calm.organisms[0], { x: 630, y: 500, vx: 0, vy: 0, energy: .5, trail: [] });
+    calm.lights = [];
+    calm.sediment = [];
+    calm.grazers = [];
+    calm.nests = [];
+    Object.assign(calm.organisms[0], { x: 630, y: 500, vx: 0, vy: 0, energy: 0.5, trail: [] });
     addLight(calm, 720, 500);
     const rain = structuredClone(calm);
     callRain(rain);
     // Compare the same ecology and natural calm at the called shower's peak.
     calm.elapsed = rain.elapsed = 96;
-    stepWorld(calm); stepWorld(rain);
+    stepWorld(calm);
+    stepWorld(rain);
     expect(calm.consumed).toBe(0);
     expect(rain.consumed).toBeGreaterThan(0);
-    expect(90 - rain.lights[0].energy).toBeCloseTo(rain.consumed + FIXED_STEP * .045, 10);
-    expect(rain.organisms[0].energy - .5).toBeCloseTo(rain.consumed * .065 - FIXED_STEP * .008, 10);
+    expect(90 - rain.lights[0].energy).toBeCloseTo(rain.consumed + FIXED_STEP * 0.045, 10);
+    expect(rain.organisms[0].energy - 0.5).toBeCloseTo(rain.consumed * 0.065 - FIXED_STEP * 0.008, 10);
   });
 });
 
-function smooth(value: number) { const t = Math.max(0, Math.min(1, value)); return t * t * (3 - 2 * t); }
+function smooth(value: number) {
+  const t = Math.max(0, Math.min(1, value));
+  return t * t * (3 - 2 * t);
+}
 
 describe('versioned weather calls', () => {
   it('restores a running shower and cooldown exactly, with deterministic continuation and no reload bypass', () => {
@@ -84,9 +128,15 @@ describe('versioned weather calls', () => {
     for (let i = 0; i < 270; i++) stepWorld(world);
     const restored = restoreWorld(serializeWorld(world))!;
     expect(restored).toEqual(world);
-    expect(callRain(restored)).toEqual({ status: 'cooldown', secondsRemaining: world.weatherCall.nextAllowedAt - world.elapsed });
+    expect(callRain(restored)).toEqual({
+      status: 'cooldown',
+      secondsRemaining: world.weatherCall.nextAllowedAt - world.elapsed,
+    });
     expect(effectiveWeather(restored)).toEqual(effectiveWeather(world));
-    for (let i = 0; i < 1900; i++) { stepWorld(world); stepWorld(restored); }
+    for (let i = 0; i < 1900; i++) {
+      stepWorld(world);
+      stepWorld(restored);
+    }
     expect(restored).toEqual(world);
     expect(callRain(restored).status).toBe('called');
   });
@@ -96,24 +146,50 @@ describe('versioned weather calls', () => {
     const migrated = restoreWorld(old)!;
     const { version: _version, ...original } = fixture;
     expect(ecology(migrated)).toEqual(original);
-    expect(migrated).toMatchObject({ version: 3, schemaRevision: 8, weatherCall: { startedAt: null, nextAllowedAt: 0 } });
+    expect(migrated).toMatchObject({
+      version: 3,
+      schemaRevision: 8,
+      weatherCall: { startedAt: null, nextAllowedAt: 0 },
+    });
     expect(JSON.stringify(fixture)).toBe(old);
     expect(restoreWorld(serializeWorld(migrated))).toEqual(migrated);
   });
 
   it('rejects missing or inconsistent current fields, future revisions and malformed fields even in legacy saves', () => {
     const mutations: ((world: Record<string, unknown>) => void)[] = [
-      world => { delete world.weatherCall; },
-      world => { delete world.schemaRevision; },
-      world => { world.schemaRevision = 9; },
-      world => { world.weatherCall = null; },
-      world => { world.weatherCall = { startedAt: null, nextAllowedAt: 60 }; },
-      world => { world.weatherCall = { startedAt: 91, nextAllowedAt: 151 }; },
-      world => { world.weatherCall = { startedAt: -1, nextAllowedAt: 59 }; },
-      world => { world.weatherCall = { startedAt: 90, nextAllowedAt: 90 }; },
-      world => { world.weatherCall = { startedAt: 90, nextAllowedAt: 151 }; },
-      world => { world.weatherCall = { startedAt: 90, nextAllowedAt: Infinity }; },
-      world => { world.weatherCall = { startedAt: Number.MAX_SAFE_INTEGER, nextAllowedAt: Number.MAX_SAFE_INTEGER }; },
+      (world) => {
+        delete world.weatherCall;
+      },
+      (world) => {
+        delete world.schemaRevision;
+      },
+      (world) => {
+        world.schemaRevision = 9;
+      },
+      (world) => {
+        world.weatherCall = null;
+      },
+      (world) => {
+        world.weatherCall = { startedAt: null, nextAllowedAt: 60 };
+      },
+      (world) => {
+        world.weatherCall = { startedAt: 91, nextAllowedAt: 151 };
+      },
+      (world) => {
+        world.weatherCall = { startedAt: -1, nextAllowedAt: 59 };
+      },
+      (world) => {
+        world.weatherCall = { startedAt: 90, nextAllowedAt: 90 };
+      },
+      (world) => {
+        world.weatherCall = { startedAt: 90, nextAllowedAt: 151 };
+      },
+      (world) => {
+        world.weatherCall = { startedAt: 90, nextAllowedAt: Infinity };
+      },
+      (world) => {
+        world.weatherCall = { startedAt: Number.MAX_SAFE_INTEGER, nextAllowedAt: Number.MAX_SAFE_INTEGER };
+      },
     ];
     for (const mutate of mutations) {
       const world = { ...createWorld(), elapsed: 90 } as Record<string, unknown>;

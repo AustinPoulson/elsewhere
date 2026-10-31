@@ -15,7 +15,11 @@ function currentVelocity(world: World, body: Point, scale: number, out: Point): 
     vy += current.dy * speed;
   }
   const magnitude = Math.hypot(vx, vy);
-  if (magnitude === 0) { out.x = 0; out.y = 0; return out; }
+  if (magnitude === 0) {
+    out.x = 0;
+    out.y = 0;
+    return out;
+  }
   const bounded = Math.min(1, MAX_CURRENT_SPEED / magnitude) * scale;
   out.x = vx * bounded;
   out.y = vy * bounded;
@@ -38,7 +42,8 @@ function drift(world: World, body: Point, dt: number, scale: number, margin: num
 
 export function applyCurrentDrift(world: World, dt: number): void {
   let write = 0;
-  for (const current of world.currents) if (currentStrength(current, world.elapsed) > 0) world.currents[write++] = current;
+  for (const current of world.currents)
+    if (currentStrength(current, world.elapsed) > 0) world.currents[write++] = current;
   world.currents.length = write;
   if (write === 0) return;
   for (const body of world.organisms) drift(world, body, dt, 1, body.size + 3);

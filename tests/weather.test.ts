@@ -49,7 +49,9 @@ describe('derived rain', () => {
 
   it('stays continuous and bounded at the weather boundaries and rejects invalid time', () => {
     for (const boundary of [30, 36, 62, 68, 180, 210]) {
-      expect(Math.abs(getWeather(boundary - 1e-6).intensity - getWeather(boundary + 1e-6).intensity)).toBeLessThan(1e-10);
+      expect(Math.abs(getWeather(boundary - 1e-6).intensity - getWeather(boundary + 1e-6).intensity)).toBeLessThan(
+        1e-10,
+      );
     }
     for (let elapsed = 0; elapsed < 720; elapsed += 0.5) {
       const weather = getWeather(elapsed);
@@ -129,23 +131,39 @@ describe('rain diffuses existing light', () => {
       sawRain ||= weather.intensity > 0.9;
       sawCalm ||= !weather.raining;
       for (const organism of world.organisms) {
-        if (!isInPool(organism.x, organism.y, organism.size + 3)
-          || !Number.isFinite(organism.vx + organism.vy + organism.energy)
-          || organism.energy < 0.12 || organism.energy > 2 || organism.trail.length > LIMITS.trail) {
+        if (
+          !isInPool(organism.x, organism.y, organism.size + 3) ||
+          !Number.isFinite(organism.vx + organism.vy + organism.energy) ||
+          organism.energy < 0.12 ||
+          organism.energy > 2 ||
+          organism.trail.length > LIMITS.trail
+        ) {
           throw new Error(`Invalid lucent at rain tick ${i}`);
         }
       }
       for (const grazer of world.grazers) {
-        if (!isInPool(grazer.x, grazer.y, grazer.size + 3)
-          || !Number.isFinite(grazer.vx + grazer.vy + grazer.cargo)
-          || grazer.cargo < 0 || grazer.cargo > GRAZER_CAPACITY) throw new Error(`Invalid grazer at rain tick ${i}`);
+        if (
+          !isInPool(grazer.x, grazer.y, grazer.size + 3) ||
+          !Number.isFinite(grazer.vx + grazer.vy + grazer.cargo) ||
+          grazer.cargo < 0 ||
+          grazer.cargo > GRAZER_CAPACITY
+        )
+          throw new Error(`Invalid grazer at rain tick ${i}`);
       }
-      if (world.lights.length > LIMITS.lights || world.sediment.length > LIMITS.sediment
-        || world.organisms.length > LIMITS.organisms || world.grazers.length > LIMITS.grazers
-        || world.nests.length > LIMITS.nests
-        || world.lights.some((light) => !Number.isFinite(light.energy) || light.energy < 0 || light.energy > light.initialEnergy)
-        || world.sediment.some((deposit) => !Number.isFinite(deposit.strength) || deposit.strength < 0 || deposit.strength > 1)
-        || world.nests.some((nest) => !Number.isFinite(nest.pigment) || nest.pigment < 0 || nest.pigment > NEST_CAPACITY)) {
+      if (
+        world.lights.length > LIMITS.lights ||
+        world.sediment.length > LIMITS.sediment ||
+        world.organisms.length > LIMITS.organisms ||
+        world.grazers.length > LIMITS.grazers ||
+        world.nests.length > LIMITS.nests ||
+        world.lights.some(
+          (light) => !Number.isFinite(light.energy) || light.energy < 0 || light.energy > light.initialEnergy,
+        ) ||
+        world.sediment.some(
+          (deposit) => !Number.isFinite(deposit.strength) || deposit.strength < 0 || deposit.strength > 1,
+        ) ||
+        world.nests.some((nest) => !Number.isFinite(nest.pigment) || nest.pigment < 0 || nest.pigment > NEST_CAPACITY)
+      ) {
         throw new Error(`Invalid resource collection at rain tick ${i}`);
       }
     }
@@ -180,15 +198,48 @@ describe('weather and existing snapshots', () => {
     legacy.grazers = [];
     legacy.nests = [];
     run(legacy, 30 * 45);
-    const { grazers: _grazers, nests: _nests, schemaRevision: _revision, weatherCall: _call, currents: _currents, skimmers: _skimmers, skimmerAdmissionAt: _admission, skimmerCandidateAfterId: _skimmerCandidate, ecologyLedger: _ledger, reedwells: _reedwells, reedwellAdmissionAt: _reedwellAdmission, reedwellCandidateAfterId: _reedwellCandidate, rainbells: _rainbells, rainbellAdmissionAt: _rainbellAdmission, rainbellCandidateAfterId: _rainbellCandidate, siltstitchers: _siltstitchers, siltstitcherAdmissionAt: _siltstitcherAdmission, siltstitcherCandidateAfterId: _siltstitcherCandidate, glassLimpets: _glassLimpets, glassLimpetAdmissionAt: _glassLimpetAdmissionAt, glassLimpetCandidateAfterId: _glassLimpetCandidateAfterId, nextFoundingTick: _nextFoundingTick, foundingTypeCursor: _foundingTypeCursor, cargoMites: _cargoMites, cargoMiteAdmissionAt: _cargoMiteAdmissionAt, cargoMiteCandidateAfterId: _cargoMiteCandidateAfterId, organisms, ...fields } = legacy;
-    const snapshot = JSON.stringify({ ...fields, organisms: organisms.map(({ pigmentCredit: _credit, ...entry }) => entry), version: 1 });
+    const {
+      grazers: _grazers,
+      nests: _nests,
+      schemaRevision: _revision,
+      weatherCall: _call,
+      currents: _currents,
+      skimmers: _skimmers,
+      skimmerAdmissionAt: _admission,
+      skimmerCandidateAfterId: _skimmerCandidate,
+      ecologyLedger: _ledger,
+      reedwells: _reedwells,
+      reedwellAdmissionAt: _reedwellAdmission,
+      reedwellCandidateAfterId: _reedwellCandidate,
+      rainbells: _rainbells,
+      rainbellAdmissionAt: _rainbellAdmission,
+      rainbellCandidateAfterId: _rainbellCandidate,
+      siltstitchers: _siltstitchers,
+      siltstitcherAdmissionAt: _siltstitcherAdmission,
+      siltstitcherCandidateAfterId: _siltstitcherCandidate,
+      glassLimpets: _glassLimpets,
+      glassLimpetAdmissionAt: _glassLimpetAdmissionAt,
+      glassLimpetCandidateAfterId: _glassLimpetCandidateAfterId,
+      nextFoundingTick: _nextFoundingTick,
+      foundingTypeCursor: _foundingTypeCursor,
+      cargoMites: _cargoMites,
+      cargoMiteAdmissionAt: _cargoMiteAdmissionAt,
+      cargoMiteCandidateAfterId: _cargoMiteCandidateAfterId,
+      organisms,
+      ...fields
+    } = legacy;
+    const snapshot = JSON.stringify({
+      ...fields,
+      organisms: organisms.map(({ pigmentCredit: _credit, ...entry }) => entry),
+      version: 1,
+    });
     const restored = restoreWorld(snapshot);
     expect(restored).not.toBeNull();
     expect(restored!.version).toBe(3);
     expect(restored!.elapsed).toBe(legacy.elapsed);
     expect(restored!.tick).toBe(legacy.tick);
     expect(restored!.randomState).toBe(legacy.randomState);
-    expect(restored!.organisms).toEqual(legacy.organisms.map(entry => ({ ...entry, pigmentCredit: 0 })));
+    expect(restored!.organisms).toEqual(legacy.organisms.map((entry) => ({ ...entry, pigmentCredit: 0 })));
     expect(restored!.lights).toEqual(legacy.lights);
     expect(restored!.sediment).toEqual(legacy.sediment);
     expect(restored!.consumed).toBe(legacy.consumed);

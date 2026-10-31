@@ -9,7 +9,14 @@ import fixture from '../src/app/shower-study.json';
 
 function storage() {
   const entries = new Map<string, string>();
-  return { entries, writes: 0, setItem(key: string, value: string) { this.writes++; entries.set(key, value); } };
+  return {
+    entries,
+    writes: 0,
+    setItem(key: string, value: string) {
+      this.writes++;
+      entries.set(key, value);
+    },
+  };
 }
 const controls = { paused: false, tool: 'light', selectedId: 3, cursor: { x: 700, y: 500 } };
 
@@ -18,8 +25,38 @@ describe('safe shower study', () => {
     const expected = restoreWorld(JSON.stringify(fixture));
     expect(expected).not.toBeNull();
     const { version: _oldVersion, ...historicalEcology } = fixture;
-    const { version: _version, schemaRevision: _revision, weatherCall: _call, currents: _currents, skimmers: _skimmers, skimmerAdmissionAt: _admission, skimmerCandidateAfterId: _skimmerCandidate, ecologyLedger: _ledger, reedwells: _reedwells, reedwellAdmissionAt: _reedwellAdmission, reedwellCandidateAfterId: _reedwellCandidate, rainbells: _rainbells, rainbellAdmissionAt: _rainbellAdmission, rainbellCandidateAfterId: _rainbellCandidate, siltstitchers: _siltstitchers, siltstitcherAdmissionAt: _siltstitcherAdmission, siltstitcherCandidateAfterId: _siltstitcherCandidate, glassLimpets: _glassLimpets, glassLimpetAdmissionAt: _glassLimpetAdmissionAt, glassLimpetCandidateAfterId: _glassLimpetCandidateAfterId, nextFoundingTick: _nextFoundingTick, foundingTypeCursor: _foundingTypeCursor, cargoMites: _cargoMites, cargoMiteAdmissionAt: _cargoMiteAdmissionAt, cargoMiteCandidateAfterId: _cargoMiteCandidateAfterId, organisms, ...normalizedEcology } = expected!;
-    expect({ ...normalizedEcology, organisms: organisms.map(({ pigmentCredit: _credit, ...entry }) => entry) }).toEqual(historicalEcology);
+    const {
+      version: _version,
+      schemaRevision: _revision,
+      weatherCall: _call,
+      currents: _currents,
+      skimmers: _skimmers,
+      skimmerAdmissionAt: _admission,
+      skimmerCandidateAfterId: _skimmerCandidate,
+      ecologyLedger: _ledger,
+      reedwells: _reedwells,
+      reedwellAdmissionAt: _reedwellAdmission,
+      reedwellCandidateAfterId: _reedwellCandidate,
+      rainbells: _rainbells,
+      rainbellAdmissionAt: _rainbellAdmission,
+      rainbellCandidateAfterId: _rainbellCandidate,
+      siltstitchers: _siltstitchers,
+      siltstitcherAdmissionAt: _siltstitcherAdmission,
+      siltstitcherCandidateAfterId: _siltstitcherCandidate,
+      glassLimpets: _glassLimpets,
+      glassLimpetAdmissionAt: _glassLimpetAdmissionAt,
+      glassLimpetCandidateAfterId: _glassLimpetCandidateAfterId,
+      nextFoundingTick: _nextFoundingTick,
+      foundingTypeCursor: _foundingTypeCursor,
+      cargoMites: _cargoMites,
+      cargoMiteAdmissionAt: _cargoMiteAdmissionAt,
+      cargoMiteCandidateAfterId: _cargoMiteCandidateAfterId,
+      organisms,
+      ...normalizedEcology
+    } = expected!;
+    expect({ ...normalizedEcology, organisms: organisms.map(({ pigmentCredit: _credit, ...entry }) => entry) }).toEqual(
+      historicalEcology,
+    );
     expect(expected!.seed).toBe(SHOWER_STUDY.seed);
     expect(expected!.tick).toBe(SHOWER_STUDY.steps);
     expect(expected!.elapsed).toBeCloseTo(SHOWER_STUDY.seconds, 10);
@@ -28,12 +65,17 @@ describe('safe shower study', () => {
     expect(study.version).toBe(3);
     expect(getWeather(study.elapsed).raining).toBe(true);
     expect(study.sediment.length).toBeLessThanOrEqual(LIMITS.sediment - 6);
-    const nest = study.nests.find(n => n.pigment >= 3)!;
+    const nest = study.nests.find((n) => n.pigment >= 3)!;
     const count = study.sediment.length;
-    const total = study.sediment.reduce((sum, grain) => sum + grain.strength, 0) + study.nests.reduce((sum, n) => sum + n.pigment, 0);
+    const total =
+      study.sediment.reduce((sum, grain) => sum + grain.strength, 0) +
+      study.nests.reduce((sum, n) => sum + n.pigment, 0);
     expect(releaseNestPigment(study, nest.id)).toEqual({ status: 'released', amount: 3 });
     expect(study.sediment).toHaveLength(count + 6);
-    expect(study.sediment.reduce((sum, grain) => sum + grain.strength, 0) + study.nests.reduce((sum, n) => sum + n.pigment, 0)).toBeCloseTo(total, 10);
+    expect(
+      study.sediment.reduce((sum, grain) => sum + grain.strength, 0) +
+        study.nests.reduce((sum, n) => sum + n.pigment, 0),
+    ).toBeCloseTo(total, 10);
     expect(restoreWorld(serializeWorld(study))).toEqual(study);
     expect(createShowerStudy()).toEqual(expected);
   });
@@ -86,7 +128,12 @@ describe('safe shower study', () => {
   it('survives denied storage in memory without attempting study writes', () => {
     const personal = createWorld(73);
     let attempts = 0;
-    const denied: SaveStorage = { setItem() { attempts++; throw new Error('Quota or privacy policy'); } };
+    const denied: SaveStorage = {
+      setItem() {
+        attempts++;
+        throw new Error('Quota or privacy policy');
+      },
+    };
     const session = new WorldSession(personal);
     expect(session.enterStudy(controls, denied)).toBe('unavailable');
     expect(session.preview).toBe(true);
@@ -122,11 +169,33 @@ describe('safe shower study', () => {
   it('keeps valid v1 migration and v2 import/export while malformed imports leave the current world intact', () => {
     const session = new WorldSession(createWorld(22));
     const legacy = JSON.parse(serializeWorld(createWorld(44)));
-    legacy.version = 1; delete legacy.grazers; delete legacy.nests; delete legacy.weatherCall; delete legacy.schemaRevision; delete legacy.currents;
-    delete legacy.skimmers; delete legacy.skimmerAdmissionAt; delete legacy.skimmerCandidateAfterId; delete legacy.ecologyLedger; delete legacy.reedwells; delete legacy.reedwellAdmissionAt; delete legacy.reedwellCandidateAfterId; delete legacy.rainbells; delete legacy.rainbellAdmissionAt; delete legacy.rainbellCandidateAfterId; delete legacy.siltstitchers; delete legacy.siltstitcherAdmissionAt; delete legacy.siltstitcherCandidateAfterId;
-    delete legacy.glassLimpets; delete legacy.glassLimpetAdmissionAt; delete legacy.glassLimpetCandidateAfterId;
-    delete legacy.cargoMites; delete legacy.cargoMiteAdmissionAt; delete legacy.cargoMiteCandidateAfterId;
-    delete legacy.nextFoundingTick; delete legacy.foundingTypeCursor;
+    legacy.version = 1;
+    delete legacy.grazers;
+    delete legacy.nests;
+    delete legacy.weatherCall;
+    delete legacy.schemaRevision;
+    delete legacy.currents;
+    delete legacy.skimmers;
+    delete legacy.skimmerAdmissionAt;
+    delete legacy.skimmerCandidateAfterId;
+    delete legacy.ecologyLedger;
+    delete legacy.reedwells;
+    delete legacy.reedwellAdmissionAt;
+    delete legacy.reedwellCandidateAfterId;
+    delete legacy.rainbells;
+    delete legacy.rainbellAdmissionAt;
+    delete legacy.rainbellCandidateAfterId;
+    delete legacy.siltstitchers;
+    delete legacy.siltstitcherAdmissionAt;
+    delete legacy.siltstitcherCandidateAfterId;
+    delete legacy.glassLimpets;
+    delete legacy.glassLimpetAdmissionAt;
+    delete legacy.glassLimpetCandidateAfterId;
+    delete legacy.cargoMites;
+    delete legacy.cargoMiteAdmissionAt;
+    delete legacy.cargoMiteCandidateAfterId;
+    delete legacy.nextFoundingTick;
+    delete legacy.foundingTypeCursor;
     for (const entry of legacy.organisms) delete entry.pigmentCredit;
     expect(session.importSnapshot(JSON.stringify(legacy), session.importToken())).toBe('imported');
     expect(session.world.version).toBe(3);

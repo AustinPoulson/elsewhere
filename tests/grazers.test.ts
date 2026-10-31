@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { addLight, createWorld, getStats, initializeGrazers, stepWorld } from '../src/world/simulation';
 import { restoreWorld, serializeWorld } from '../src/world/persistence';
 import {
-  GRAZER_CAPACITY, LIMITS, NEST_CAPACITY, WORLD_HEIGHT, WORLD_WIDTH, isInPool, poolRadius,
+  GRAZER_CAPACITY,
+  LIMITS,
+  NEST_CAPACITY,
+  WORLD_HEIGHT,
+  WORLD_WIDTH,
+  isInPool,
+  poolRadius,
   type World,
 } from '../src/world/types';
 
@@ -31,14 +37,49 @@ function addPigment(world: World, x: number, y: number, strength = 0.9, hue = 21
 }
 
 function pigmentMass(world: World): number {
-  return world.sediment.reduce((total, deposit) => total + deposit.strength, 0)
-    + world.grazers.reduce((total, grazer) => total + grazer.cargo, 0)
-    + world.nests.reduce((total, nest) => total + nest.pigment, 0);
+  return (
+    world.sediment.reduce((total, deposit) => total + deposit.strength, 0) +
+    world.grazers.reduce((total, grazer) => total + grazer.cargo, 0) +
+    world.nests.reduce((total, nest) => total + nest.pigment, 0)
+  );
 }
 
 function legacyPayload(world: World): string {
-  const { grazers: _grazers, nests: _nests, schemaRevision: _revision, weatherCall: _call, currents: _currents, skimmers: _skimmers, skimmerAdmissionAt: _admission, skimmerCandidateAfterId: _skimmerCandidate, ecologyLedger: _ledger, reedwells: _reedwells, reedwellAdmissionAt: _reedwellAdmission, reedwellCandidateAfterId: _reedwellCandidate, rainbells: _rainbells, rainbellAdmissionAt: _rainbellAdmission, rainbellCandidateAfterId: _rainbellCandidate, siltstitchers: _siltstitchers, siltstitcherAdmissionAt: _siltstitcherAdmission, siltstitcherCandidateAfterId: _siltstitcherCandidate, glassLimpets: _glassLimpets, glassLimpetAdmissionAt: _glassLimpetAdmissionAt, glassLimpetCandidateAfterId: _glassLimpetCandidateAfterId, nextFoundingTick: _nextFoundingTick, foundingTypeCursor: _foundingTypeCursor, cargoMites: _cargoMites, cargoMiteAdmissionAt: _cargoMiteAdmissionAt, cargoMiteCandidateAfterId: _cargoMiteCandidateAfterId, organisms, ...legacy } = world;
-  return JSON.stringify({ ...legacy, organisms: organisms.map(({ pigmentCredit: _credit, ...entry }) => entry), version: 1 });
+  const {
+    grazers: _grazers,
+    nests: _nests,
+    schemaRevision: _revision,
+    weatherCall: _call,
+    currents: _currents,
+    skimmers: _skimmers,
+    skimmerAdmissionAt: _admission,
+    skimmerCandidateAfterId: _skimmerCandidate,
+    ecologyLedger: _ledger,
+    reedwells: _reedwells,
+    reedwellAdmissionAt: _reedwellAdmission,
+    reedwellCandidateAfterId: _reedwellCandidate,
+    rainbells: _rainbells,
+    rainbellAdmissionAt: _rainbellAdmission,
+    rainbellCandidateAfterId: _rainbellCandidate,
+    siltstitchers: _siltstitchers,
+    siltstitcherAdmissionAt: _siltstitcherAdmission,
+    siltstitcherCandidateAfterId: _siltstitcherCandidate,
+    glassLimpets: _glassLimpets,
+    glassLimpetAdmissionAt: _glassLimpetAdmissionAt,
+    glassLimpetCandidateAfterId: _glassLimpetCandidateAfterId,
+    nextFoundingTick: _nextFoundingTick,
+    foundingTypeCursor: _foundingTypeCursor,
+    cargoMites: _cargoMites,
+    cargoMiteAdmissionAt: _cargoMiteAdmissionAt,
+    cargoMiteCandidateAfterId: _cargoMiteCandidateAfterId,
+    organisms,
+    ...legacy
+  } = world;
+  return JSON.stringify({
+    ...legacy,
+    organisms: organisms.map(({ pigmentCredit: _credit, ...entry }) => entry),
+    version: 1,
+  });
 }
 
 describe('pigment grazers', () => {
@@ -46,8 +87,12 @@ describe('pigment grazers', () => {
     for (const seed of [0, 1, 71, 0xffffffff]) {
       const world = createWorld(seed);
       const original = {
-        randomState: world.randomState, elapsed: world.elapsed, tick: world.tick,
-        organisms: world.organisms, lights: world.lights, sediment: world.sediment,
+        randomState: world.randomState,
+        elapsed: world.elapsed,
+        tick: world.tick,
+        organisms: world.organisms,
+        lights: world.lights,
+        sediment: world.sediment,
       };
       world.grazers = [];
       world.nests = [];
@@ -162,7 +207,8 @@ describe('pigment grazers', () => {
     Object.assign(grazer, {
       x: WORLD_WIDTH / 2 + Math.cos(angle) * radius * (610 - margin),
       y: WORLD_HEIGHT / 2 + Math.sin(angle) * radius * (400 - margin),
-      vx: Math.cos(angle) * 80, vy: Math.sin(angle) * 80,
+      vx: Math.cos(angle) * 80,
+      vy: Math.sin(angle) * 80,
     });
     for (let i = 0; i < 30 * 600; i++) {
       if (i % 120 === 0) {
@@ -174,14 +220,27 @@ describe('pigment grazers', () => {
       stepWorld(world);
       // Check every tick, keeping assertion overhead out of this long-run budget.
       for (const current of world.grazers) {
-        if (!isInPool(current.x, current.y, current.size + 3)
-          || !Number.isFinite(current.vx + current.vy + current.cargo + current.age)
-          || current.cargo < 0 || current.cargo > GRAZER_CAPACITY) throw new Error(`Invalid grazer at tick ${i}`);
+        if (
+          !isInPool(current.x, current.y, current.size + 3) ||
+          !Number.isFinite(current.vx + current.vy + current.cargo + current.age) ||
+          current.cargo < 0 ||
+          current.cargo > GRAZER_CAPACITY
+        )
+          throw new Error(`Invalid grazer at tick ${i}`);
       }
-      if (world.nests.some((nest) => !isInPool(nest.x, nest.y, 18)
-        || !Number.isFinite(nest.pigment) || nest.pigment < 0 || nest.pigment > NEST_CAPACITY)
-        || world.sediment.length > LIMITS.sediment || world.lights.length > LIMITS.lights
-        || world.grazers.length > LIMITS.grazers || world.nests.length > LIMITS.nests) {
+      if (
+        world.nests.some(
+          (nest) =>
+            !isInPool(nest.x, nest.y, 18) ||
+            !Number.isFinite(nest.pigment) ||
+            nest.pigment < 0 ||
+            nest.pigment > NEST_CAPACITY,
+        ) ||
+        world.sediment.length > LIMITS.sediment ||
+        world.lights.length > LIMITS.lights ||
+        world.grazers.length > LIMITS.grazers ||
+        world.nests.length > LIMITS.nests
+      ) {
         throw new Error(`Invalid ecology at tick ${i}`);
       }
     }
@@ -208,7 +267,7 @@ describe('v2 grazer snapshots', () => {
       expect(migrated!.elapsed).toBe(legacy.elapsed);
       expect(migrated!.tick).toBe(legacy.tick);
       expect(migrated!.randomState).toBe(legacy.randomState);
-      expect(migrated!.organisms).toEqual(legacy.organisms.map(entry => ({ ...entry, pigmentCredit: 0 })));
+      expect(migrated!.organisms).toEqual(legacy.organisms.map((entry) => ({ ...entry, pigmentCredit: 0 })));
       expect(migrated!.lights).toEqual(legacy.lights);
       expect(migrated!.sediment).toEqual(legacy.sediment);
       expect(migrated!.consumed).toBe(legacy.consumed);
@@ -229,26 +288,66 @@ describe('v2 grazer snapshots', () => {
 
   it('rejects corrupted entities, broken nest references, caps, and unsafe v1 migration IDs', () => {
     const mutations: ((world: World) => void)[] = [
-      (world) => { delete (world as unknown as { grazers?: unknown }).grazers; },
-      (world) => { delete (world as unknown as { nests?: unknown }).nests; },
-      (world) => { world.grazers[0].cargo = -0.1; },
-      (world) => { world.grazers[0].cargo = GRAZER_CAPACITY + 0.1; },
-      (world) => { world.grazers[0].cargo = NaN; },
-      (world) => { world.grazers[0].cargo = GRAZER_CAPACITY; },
-      (world) => { world.grazers[0].returning = true; },
-      (world) => { world.grazers[0].nestId = world.organisms[0].id; },
-      (world) => { world.grazers[0].id = world.nests[0].id; },
-      (world) => { world.grazers[0].x = 0; },
-      (world) => { world.grazers[0].phase = Infinity; },
-      (world) => { world.grazers[0].size = 100; },
-      (world) => { (world.grazers[0] as unknown as { returning: unknown }).returning = 'yes'; },
-      (world) => { (world.grazers[0] as unknown as { species: string }).species = 'lucent'; },
-      (world) => { world.nests[0].pigment = NEST_CAPACITY + 0.1; },
-      (world) => { world.nests[0].pigment = -0.1; },
-      (world) => { world.nests[0].hue = 360; },
-      (world) => { world.nests[0].x = 0; },
-      (world) => { world.grazers.push(...Array.from({ length: LIMITS.grazers }, () => world.grazers[0])); },
-      (world) => { world.nests.push(...Array.from({ length: LIMITS.nests }, () => world.nests[0])); },
+      (world) => {
+        delete (world as unknown as { grazers?: unknown }).grazers;
+      },
+      (world) => {
+        delete (world as unknown as { nests?: unknown }).nests;
+      },
+      (world) => {
+        world.grazers[0].cargo = -0.1;
+      },
+      (world) => {
+        world.grazers[0].cargo = GRAZER_CAPACITY + 0.1;
+      },
+      (world) => {
+        world.grazers[0].cargo = NaN;
+      },
+      (world) => {
+        world.grazers[0].cargo = GRAZER_CAPACITY;
+      },
+      (world) => {
+        world.grazers[0].returning = true;
+      },
+      (world) => {
+        world.grazers[0].nestId = world.organisms[0].id;
+      },
+      (world) => {
+        world.grazers[0].id = world.nests[0].id;
+      },
+      (world) => {
+        world.grazers[0].x = 0;
+      },
+      (world) => {
+        world.grazers[0].phase = Infinity;
+      },
+      (world) => {
+        world.grazers[0].size = 100;
+      },
+      (world) => {
+        (world.grazers[0] as unknown as { returning: unknown }).returning = 'yes';
+      },
+      (world) => {
+        (world.grazers[0] as unknown as { species: string }).species = 'lucent';
+      },
+      (world) => {
+        world.nests[0].pigment = NEST_CAPACITY + 0.1;
+      },
+      (world) => {
+        world.nests[0].pigment = -0.1;
+      },
+      (world) => {
+        world.nests[0].hue = 360;
+      },
+      (world) => {
+        world.nests[0].x = 0;
+      },
+      (world) => {
+        world.grazers.push(...Array.from({ length: LIMITS.grazers }, () => world.grazers[0]));
+      },
+      (world) => {
+        world.nests.push(...Array.from({ length: LIMITS.nests }, () => world.nests[0]));
+      },
     ];
     for (const mutate of mutations) {
       const world = createWorld();

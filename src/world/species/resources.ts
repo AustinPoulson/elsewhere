@@ -18,8 +18,7 @@ export function returnPigment(world: World, point: Point, hue: number, pigment: 
   let amount = pigment;
   if (amount > 0 && world.sediment.length < LIMITS.sediment && safeId(world)) {
     const returned = Math.min(1, amount);
-    world.sediment.push({ id: world.nextId++, x: point.x, y: point.y, radius: 6,
-      hue, strength: returned, age: 0 });
+    world.sediment.push({ id: world.nextId++, x: point.x, y: point.y, radius: 6, hue, strength: returned, age: 0 });
     amount -= returned;
   } else if (amount > 0) {
     let nearest: Sediment | undefined;
