@@ -1451,7 +1451,7 @@ export function App() {
                                 : selected.species === 'glassLimpet'
                                   ? 'Only real current-borne coarse food that reaches this shell fills its reserve and basin. Its body and catch return to the pool at the end of its finite life.'
                                   : selected.species === 'cargoMite'
-                                    ? 'A grazer’s carried color feeds this mite instead of reaching the nest. A grown parent pays color from its own reserve for a young mite, whose appetite and frame may drift a little from its parent. Both return remaining color when their short lives end.'
+                                    ? 'A grazer’s carried color feeds this mite instead of reaching the nest. A grown parent pays color from its own reserve for a young mite, whose appetite and frame may drift a little from its parent. A stouter frame holds more of that color but does not travel as far. Both return remaining color when their short lives end.'
                                     : "Leave light nearby and watch this one's path change."}
                     </p>
                   </>

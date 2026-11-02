@@ -21,7 +21,8 @@ import {
   type World,
 } from './types';
 import { initializeGrazers } from './simulation';
-import { baselineTraits, TRAIT_MAX, TRAIT_MIN } from './traits';
+import { cargoMiteReserveCapacity } from './species/cargo-mite';
+import { baselineTraits, traitMobility, TRAIT_MAX, TRAIT_MIN } from './traits';
 import { RAIN_CALL_COOLDOWN } from './weather';
 import { CURRENT_DURATION, CURRENT_RADIUS, MAX_CURRENTS, currentStrength } from './actions/current';
 import {
@@ -335,6 +336,11 @@ function glassLimpet(value: unknown, nextId: number, withTraits = false): boolea
 
 function cargoMite(value: unknown, elapsed: number, nextId: number, withTraits = false): boolean {
   const policy = SPECIES_CATALOG.cargoMite;
+  if (withTraits && !traits(record(value) ? value.traits : undefined)) return false;
+  const reserveCap = withTraits
+    ? cargoMiteReserveCapacity((value as { traits: Traits }).traits)
+    : policy.reserveCapacity;
+  const seekSpeed = withTraits ? policy.speed * traitMobility((value as { traits: Traits }).traits) : policy.speed;
   const birthAt = elapsed - (record(value) && typeof value.age === 'number' ? value.age : 0);
   if (
     !point(value, 0) ||
@@ -347,13 +353,12 @@ function cargoMite(value: unknown, elapsed: number, nextId: number, withTraits =
     !range(value.vy, -80, 80) ||
     !range(value.hue, 0, 360) ||
     value.hue >= 360 ||
-    !range(value.reserve, 0, policy.reserveCapacity) ||
+    !range(value.reserve, 0, reserveCap) ||
     !range(value.starvedFor, 0, policy.starvationLimit) ||
     (value.parentId !== null && !integer(value.parentId, 1, (value.id as number) - 1)) ||
     !range(value.nextBirthAt, 0, Math.min(MAX_NUMBER, elapsed + policy.breedingRest)) ||
     value.nextBirthAt < birthAt + policy.maturityAge - 1e-6 ||
-    (value.age < policy.maturityAge - 1e-6 && Math.abs(value.nextBirthAt - (birthAt + policy.maturityAge)) > 1e-6) ||
-    (withTraits && !traits(value.traits))
+    (value.age < policy.maturityAge - 1e-6 && Math.abs(value.nextBirthAt - (birthAt + policy.maturityAge)) > 1e-6)
   )
     return false;
   if (value.mode === 'attached') return integer(value.hostId, 1, nextId - 1) && value.targetHostId === null;
@@ -361,7 +366,7 @@ function cargoMite(value: unknown, elapsed: number, nextId: number, withTraits =
     value.mode === 'seeking' &&
     point(value, policy.margin) &&
     value.hostId === null &&
-    Math.hypot(value.vx, value.vy) <= policy.speed + 1e-9 &&
+    Math.hypot(value.vx, value.vy) <= seekSpeed + 1e-9 &&
     (value.targetHostId === null || integer(value.targetHostId, 1, nextId - 1))
   );
 }

@@ -1,8 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { createWorld } from '../src/world/simulation';
-import { admitCargoMite, updateCargoMites } from '../src/world/species/cargo-mite';
+import {
+  admitCargoMite,
+  cargoMiteReserveCapacity,
+  cargoMiteSeekReach,
+  updateCargoMites,
+} from '../src/world/species/cargo-mite';
 import { SPECIES_CATALOG } from '../src/world/species/catalog';
-import { baselineTraits, clampTrait, mutateTraits, TRAIT_MAX, TRAIT_MIN } from '../src/world/traits';
+import { baselineTraits, clampTrait, mutateTraits, traitMobility, TRAIT_MAX, TRAIT_MIN } from '../src/world/traits';
 import type { Grazer, World } from '../src/world/types';
 
 function habitat(): { world: World; host: Grazer } {
@@ -106,6 +111,40 @@ describe('heritable traits', () => {
     expect(keen.world.ecologyLedger.cargoMiteMaintenancePigment).toBeGreaterThan(
       spare.world.ecologyLedger.cargoMiteMaintenancePigment,
     );
+  });
+
+  it('lets a stouter mite hold more host pigment while reaching and traveling less far', () => {
+    const stout = habitat();
+    const slight = habitat();
+    expect(admitCargoMite(stout.world)).toBe(true);
+    expect(admitCargoMite(slight.world)).toBe(true);
+    const heavy = stout.world.cargoMites[0];
+    const light = slight.world.cargoMites[0];
+    heavy.traits = { drive: 1, bulk: TRAIT_MAX };
+    light.traits = { drive: 1, bulk: TRAIT_MIN };
+    heavy.reserve = 0.1;
+    light.reserve = 0.1;
+    stout.host.cargo = 1.2;
+    slight.host.cargo = 1.2;
+    heavy.age = 10;
+    light.age = 10;
+    expect(cargoMiteSeekReach(heavy.traits)).toBeLessThan(cargoMiteSeekReach(light.traits));
+    expect(traitMobility(heavy.traits)).toBeLessThan(traitMobility(light.traits));
+    expect(cargoMiteReserveCapacity(heavy.traits)).toBeGreaterThan(cargoMiteReserveCapacity(light.traits));
+    for (let step = 0; step < 80; step++) {
+      updateCargoMites(stout.world, 1);
+      updateCargoMites(slight.world, 1);
+    }
+    expect(heavy.reserve).toBeGreaterThan(light.reserve);
+    expect(heavy.reserve).toBeCloseTo(
+      cargoMiteReserveCapacity(heavy.traits) - SPECIES_CATALOG.cargoMite.maintenanceRate,
+      8,
+    );
+    expect(light.reserve).toBeCloseTo(
+      cargoMiteReserveCapacity(light.traits) - SPECIES_CATALOG.cargoMite.maintenanceRate,
+      8,
+    );
+    expect(stout.world.ecologyLedger.cargoMiteIntake).toBeGreaterThan(slight.world.ecologyLedger.cargoMiteIntake);
   });
 
   it('keeps lucent opening traits at baseline so new worlds do not gift variation', () => {

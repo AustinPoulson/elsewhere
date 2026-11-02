@@ -1,11 +1,19 @@
 import { confinePosition } from '../geometry';
-import type { CargoMite, Grazer, World } from '../types';
+import type { CargoMite, Grazer, Traits, World } from '../types';
 import { baselineTraits, mutateTraits, traitMobility } from '../traits';
 import { activeNewTypePopulation, NEW_TYPE_POPULATION_CAP, SPECIES_CATALOG } from './catalog';
 import { tryEventFounding } from './founding';
 import { blendHue, returnPigment, safeId } from './resources';
 
 const RULE = SPECIES_CATALOG.cargoMite;
+
+export function cargoMiteReserveCapacity(traits: Pick<Traits, 'bulk'>): number {
+  return RULE.reserveCapacity * traits.bulk;
+}
+
+export function cargoMiteSeekReach(traits: Pick<Traits, 'bulk'>): number {
+  return RULE.seekReach * (1.15 - 0.15 * traits.bulk);
+}
 
 function hostFor(world: World, id: number | null): Grazer | undefined {
   return id === null ? undefined : world.grazers.find((host) => host.id === id);
@@ -82,7 +90,7 @@ export function admitCargoMite(world: World): boolean {
 
 function chooseTarget(world: World, mite: CargoMite): void {
   let nearest: Grazer | undefined;
-  const reach = RULE.seekReach * (1.15 - 0.15 * mite.traits.bulk);
+  const reach = cargoMiteSeekReach(mite.traits);
   let best = reach;
   for (const host of world.grazers) {
     if (host.cargo <= 0 || hostPopulation(world, host.id) >= RULE.hostCap) continue;
@@ -103,7 +111,7 @@ function moveSeeking(world: World, mite: CargoMite, dt: number): void {
     !host ||
     host.cargo <= 0 ||
     hostPopulation(world, host.id) >= RULE.hostCap ||
-    Math.hypot(mite.x - host.x, mite.y - host.y) > RULE.seekReach * (1.15 - 0.15 * mite.traits.bulk)
+    Math.hypot(mite.x - host.x, mite.y - host.y) > cargoMiteSeekReach(mite.traits)
   ) {
     mite.targetHostId = null;
     mite.vx = 0;
@@ -135,7 +143,7 @@ function feed(world: World, mite: CargoMite, host: Grazer, dt: number): void {
   const intake = Math.min(
     host.cargo,
     dt * RULE.intakeRate * mite.traits.drive,
-    Math.max(0, RULE.reserveCapacity - mite.reserve),
+    Math.max(0, cargoMiteReserveCapacity(mite.traits) - mite.reserve),
   );
   if (intake <= 0) return;
   mite.hue = blendHue(mite.hue, host.hue, mite.reserve, intake);

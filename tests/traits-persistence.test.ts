@@ -85,6 +85,38 @@ describe('heritable trait snapshot revision', () => {
     expect(resumed).toEqual(world);
   });
 
+  it('keeps a stout mite larger paid reserve and rejects overflow on a slighter frame', () => {
+    const world = createWorld(28);
+    world.elapsed = 80;
+    world.tick = 2400;
+    const host = world.grazers[0];
+    host.cargo = 0.7;
+    host.returning = true;
+    world.cargoMites.push({
+      id: world.nextId++,
+      species: 'cargoMite',
+      x: host.x,
+      y: host.y,
+      vx: host.vx,
+      vy: host.vy,
+      body: 0.1,
+      reserve: 0.62,
+      age: 40,
+      hue: host.hue,
+      starvedFor: 0,
+      mode: 'attached',
+      hostId: host.id,
+      targetHostId: null,
+      parentId: null,
+      nextBirthAt: world.elapsed + 20,
+      traits: { drive: 1, bulk: 1.3 },
+    });
+    expect(restoreWorld(serializeWorld(world))).toEqual(world);
+    const overfull = structuredClone(world) as Record<string, any>;
+    overfull.cargoMites[0].traits = { drive: 1, bulk: 0.7 };
+    expect(restoreWorld(JSON.stringify(overfull))).toBeNull();
+  });
+
   it('rejects missing traits, out-of-range values, future revisions and hybrid ambient ledgers', () => {
     const edits: ((world: Record<string, any>) => void)[] = [
       (w) => {
