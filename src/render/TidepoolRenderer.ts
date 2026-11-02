@@ -20,6 +20,8 @@ import { SiltstitcherRenderer } from './SiltstitcherRenderer';
 import { GlassLimpetRenderer } from './GlassLimpetRenderer';
 import { CargoMiteRenderer } from './CargoMiteRenderer';
 import { cargoMiteDisplayPoint } from './cargoMiteDisplay';
+import { daylight } from '../world/environment/daylight';
+import { appearanceGlow, appearanceScale } from '../world/traits';
 
 interface SpriteVisual {
   sprite: Sprite;
@@ -279,7 +281,7 @@ export class TidepoolRenderer {
     const weather = effectiveWeather(world);
     const lightReach = effectiveLightReach(world);
     const lightReachScale = lightReach / CALM_LIGHT_REACH;
-    this.drawWater(time);
+    this.drawWater(time, daylight(world));
     // The first held ringlets acknowledge a paused call; feeding reach still uses actual intensity.
     this.drawRain(world.elapsed, weather.called ? Math.max(0.12, weather.intensity) : weather.intensity);
     this.trails.clear();
@@ -392,7 +394,7 @@ export class TidepoolRenderer {
       visual.glow.tint = color;
       visual.glow.width = size * 15 * breath;
       visual.glow.height = size * 15 * breath;
-      visual.glow.alpha = 0.13 + Math.min(1, organism.energy / 2) * 0.1;
+      visual.glow.alpha = (0.13 + Math.min(1, organism.energy / 2) * 0.1) * appearanceGlow(organism.traits);
       visual.body.tint = color;
       visual.body.width = size * 5 * breath;
       visual.body.height = (size * 5) / breath;
@@ -413,7 +415,7 @@ export class TidepoolRenderer {
       const sin = Math.sin(direction);
       for (let tendril = 0; tendril < 6; tendril++) {
         const spread = (tendril - 2.5) * size * 0.34;
-        const length = size * (2.0 + Math.sin(phase + tendril * 2) * 0.4);
+        const length = size * (2.0 + Math.sin(phase + tendril * 2) * 0.4) * appearanceScale(organism.traits);
         const localY = size * 0.75;
         const x = organism.x + spread * cos - localY * sin;
         const y = organism.y + spread * sin + localY * cos;
@@ -745,9 +747,10 @@ export class TidepoolRenderer {
       visual.body.tint = color;
       visual.body.alpha = 0.68 + charge * 0.32;
       visual.glow.tint = color;
-      visual.glow.width = 34 + charge * 24;
+      visual.glow.width = (34 + charge * 24) * appearanceScale(skimmer.traits);
       visual.glow.height = visual.glow.width;
-      visual.glow.alpha = 0.08 + charge * 0.18;
+      visual.glow.alpha = (0.08 + charge * 0.18) * appearanceGlow(skimmer.traits);
+      visual.node.scale.set(appearanceScale(skimmer.traits));
       const emissionAge = skimmer.lastEmissionAt === null ? -1 : world.elapsed - skimmer.lastEmissionAt;
       visual.emission.clear();
       if (emissionAge >= 0 && emissionAge < 3) {
@@ -824,11 +827,11 @@ export class TidepoolRenderer {
       visual.node.position.set(grazer.x, grazer.y);
       visual.node.rotation = Math.atan2(grazer.vy, grazer.vx);
       // A broader shell silhouette stays distinguishable from lucents at portrait scale.
-      visual.node.scale.set(grazer.size * 1.3);
+      visual.node.scale.set(grazer.size * 1.3 * appearanceScale(grazer.traits));
       visual.glow.tint = 0xb89a62;
       visual.glow.width = 7.5;
       visual.glow.height = 6;
-      visual.glow.alpha = 0.13;
+      visual.glow.alpha = 0.13 * appearanceGlow(grazer.traits);
       const phase = this.reducedMotion ? grazer.id * 2.4 : grazer.phase;
       const limbs = visual.limbs.clear();
       for (let leg = 0; leg < 3; leg++) {
@@ -885,8 +888,9 @@ export class TidepoolRenderer {
     }
   }
 
-  private drawWater(time: number): void {
+  private drawWater(time: number, daylightIntensity = 0): void {
     this.caustics.clear();
+    const glow = 0.028 + daylightIntensity * 0.04;
     for (let ribbon = 0; ribbon < 13; ribbon++) {
       const x = 210 + ((ribbon * 173) % 1000);
       const y = 190 + ((ribbon * 127) % 640);
@@ -896,7 +900,11 @@ export class TidepoolRenderer {
         const wave = Math.sin(time * 0.16 + ribbon + segment * 0.42);
         this.caustics.lineTo(x + offset, y - offset * 0.24 + wave * 7);
       }
-      this.caustics.stroke({ color: 0x7bb79c, width: 0.6, alpha: 0.045 + Math.sin(time * 0.3 + ribbon) * 0.015 });
+      this.caustics.stroke({
+        color: 0x7bb79c,
+        width: 0.6,
+        alpha: glow + Math.sin(time * 0.3 + ribbon) * 0.015,
+      });
     }
   }
 

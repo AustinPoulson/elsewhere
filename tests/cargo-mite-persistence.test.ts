@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { restoreWorld, serializeWorld } from '../src/world/persistence';
 import { createWorld, stepWorld } from '../src/world/simulation';
+import { baselineTraits } from '../src/world/traits';
 import { isInPool, type World } from '../src/world/types';
 
 function previousRevision(world: World): Record<string, any> {
@@ -11,6 +12,7 @@ function previousRevision(world: World): Record<string, any> {
   delete previous.cargoMiteCandidateAfterId;
   delete previous.ecologyLedger.cargoMiteIntake;
   delete previous.ecologyLedger.cargoMiteMaintenancePigment;
+  delete previous.ecologyLedger.ambientHarvested;
   return previous;
 }
 
@@ -38,6 +40,7 @@ function hosted(): World {
     targetHostId: null,
     parentId: null,
     nextBirthAt: 80,
+    traits: baselineTraits(),
   });
   world.cargoMiteAdmissionAt = 110;
   world.cargoMiteCandidateAfterId = host.id;
@@ -55,7 +58,7 @@ describe('cargo mite snapshot revision', () => {
     const migrated = restoreWorld(source)!;
     expect(migrated).not.toBeNull();
     expect(migrated).toMatchObject({
-      schemaRevision: 8,
+      schemaRevision: 9,
       cargoMites: [],
       cargoMiteAdmissionAt: old.elapsed,
       cargoMiteCandidateAfterId: 0,

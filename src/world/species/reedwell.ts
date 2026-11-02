@@ -1,5 +1,6 @@
 import { daylight } from '../environment/daylight';
 import { LIMITS, isInPool, type Reedwell, type Sediment, type World } from '../types';
+import { baselineTraits } from '../traits';
 import { effectiveWeather } from '../weather';
 import { activeNewTypePopulation, NEW_TYPE_POPULATION_CAP, REEDWELL_CAP, SPECIES_CATALOG } from './catalog';
 import { blendHue, returnPigment, safeId } from './resources';
@@ -10,7 +11,7 @@ const RULE = SPECIES_CATALOG.reedwell;
 function updateOne(world: World, reedwell: Reedwell, dt: number, intensity: number): void {
   reedwell.age += dt;
   if (reedwell.age >= RULE.lifespan) return;
-  const offered = RULE.harvestRate * intensity * dt;
+  const offered = RULE.harvestRate * intensity * dt * reedwell.traits.drive;
   const harvested = Math.min(offered, Math.max(0, RULE.lightCapacity - reedwell.lightStore));
   reedwell.lightStore += harvested;
   world.ecologyLedger.daylightHarvested += harvested;
@@ -104,6 +105,7 @@ export function admitReedwell(world: World): boolean {
     lightStore: 0,
     emissionNextAllowedAt: world.elapsed,
     lastEmissionAt: null,
+    traits: baselineTraits(),
   });
   world.reedwellAdmissionAt = world.elapsed + RULE.admissionRest;
   return true;

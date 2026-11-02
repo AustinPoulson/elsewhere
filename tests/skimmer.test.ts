@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { addLight, createWorld, stepWorld } from '../src/world/simulation';
 import { restoreWorld, serializeWorld } from '../src/world/persistence';
 import { admitSkimmer, updateSkimmers } from '../src/world/species/skimmer';
+import { baselineTraits } from '../src/world/traits';
 import { FIXED_STEP, LIMITS, isInPool, type Skimmer, type World } from '../src/world/types';
 import { confinePosition } from '../src/world/geometry';
 import { applyCurrent } from '../src/world/actions/current';
@@ -120,6 +121,7 @@ describe('autonomous prism skimmer', () => {
       starvedFor: 0,
       emissionNextAllowedAt: 0,
       lastEmissionAt: null,
+      traits: baselineTraits(),
     });
     world.tick = 6;
     const id = world.nextId;

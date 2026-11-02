@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import historicalStudy from '../src/app/shower-study.json';
 import { restoreWorld, serializeWorld } from '../src/world/persistence';
 import { createWorld, stepWorld } from '../src/world/simulation';
+import { baselineTraits } from '../src/world/traits';
 import type { World } from '../src/world/types';
 
 const limpetLedgerKeys = ['glassLimpetIntake', 'glassLimpetMaintenancePigment'] as const;
@@ -22,7 +23,8 @@ function revision6(world: World): Record<string, any> {
   ])
     delete old[key];
   for (const key of limpetLedgerKeys) delete old.ecologyLedger[key];
-  for (const key of ['cargoMiteIntake', 'cargoMiteMaintenancePigment']) delete old.ecologyLedger[key];
+  for (const key of ['cargoMiteIntake', 'cargoMiteMaintenancePigment', 'ambientHarvested'])
+    delete old.ecologyLedger[key];
   return old;
 }
 
@@ -44,6 +46,7 @@ function inhabited(): World {
     hue: 189,
     starvedFor: 0,
     targetSedimentId: grain.id,
+    traits: baselineTraits(),
   });
   world.glassLimpetAdmissionAt = 170;
   world.glassLimpetCandidateAfterId = 4;
@@ -65,7 +68,7 @@ describe('glass limpet snapshot revision', () => {
     const migrated = restoreWorld(serialized)!;
     expect(migrated).not.toBeNull();
     expect(migrated).toMatchObject({
-      schemaRevision: 8,
+      schemaRevision: 9,
       glassLimpets: [],
       cargoMites: [],
       glassLimpetAdmissionAt: source.elapsed,

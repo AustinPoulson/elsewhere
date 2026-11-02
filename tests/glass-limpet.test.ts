@@ -4,6 +4,7 @@ import { sedimentCurrentVelocity } from '../src/world/currents';
 import { createWorld } from '../src/world/simulation';
 import { admitGlassLimpet, updateGlassLimpets } from '../src/world/species/glass-limpet';
 import { activeNewTypePopulation, SPECIES_CATALOG } from '../src/world/species/catalog';
+import { baselineTraits } from '../src/world/traits';
 import { LIMITS, type GlassLimpet, type World } from '../src/world/types';
 
 function habitat(): World {
@@ -176,6 +177,7 @@ describe('glass limpet current capture', () => {
       starvedFor: 0,
       emissionNextAllowedAt: 0,
       lastEmissionAt: null,
+      traits: baselineTraits(),
     }));
     expect(admitGlassLimpet(full)).toBe(false);
     expect(food.strength).toBe(0.3);

@@ -156,6 +156,7 @@ describe('nest pigment release', () => {
 
   it('lets the existing grazer gather released grains and carry their color back to the nest', () => {
     const world = createWorld(74);
+    world.elapsed = 120;
     world.organisms = [world.organisms[0]];
     world.lights = [];
     world.sediment = [];
@@ -171,10 +172,12 @@ describe('nest pigment release', () => {
     let sawLoaded = false;
     let sawDelivered = false;
     for (let i = 0; i < 30 * 90; i++) {
-      // Isolate the existing grazer/release contract; mixed-species transfer is
-      // exercised separately in skimmer integration checks.
       world.skimmerAdmissionAt = world.elapsed + 60;
       world.siltstitcherAdmissionAt = world.elapsed + 60;
+      world.reedwellAdmissionAt = world.elapsed + 60;
+      world.rainbellAdmissionAt = world.elapsed + 60;
+      world.glassLimpetAdmissionAt = world.elapsed + 60;
+      world.cargoMiteAdmissionAt = world.elapsed + 60;
       stepWorld(world);
       const mass = pigmentMass(world);
       expect(mass).toBeLessThanOrEqual(previousMass + 1e-10);
@@ -251,7 +254,7 @@ describe('nest pigment release', () => {
     const restored = restoreWorld(
       JSON.stringify({
         ...fields,
-        organisms: organisms.map(({ pigmentCredit: _credit, ...entry }) => entry),
+        organisms: organisms.map(({ pigmentCredit: _credit, traits: _traits, ...entry }) => entry),
         version: 1,
       }),
     );

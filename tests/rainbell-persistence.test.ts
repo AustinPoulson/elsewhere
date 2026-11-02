@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import historicalStudy from '../src/app/shower-study.json';
 import { restoreWorld, serializeWorld } from '../src/world/persistence';
+import { baselineTraits } from '../src/world/traits';
 import { createWorld, stepWorld } from '../src/world/simulation';
 import type { World } from '../src/world/types';
 
@@ -41,6 +42,7 @@ function inhabited(): World {
       starvedFor: 0,
       lastEmissionAt: null,
       emissionNextAllowedAt: 0,
+      traits: baselineTraits(),
     },
   ];
   world.reedwells = [
@@ -55,6 +57,7 @@ function inhabited(): World {
       lightStore: 0.8,
       lastEmissionAt: 90,
       emissionNextAllowedAt: 105,
+      traits: baselineTraits(),
     },
   ];
   world.reedwellCandidateAfterId = world.sediment[0].id;
@@ -73,6 +76,7 @@ function inhabited(): World {
       pumpTargetSedimentId: world.sediment[1].id,
       lastPulseAt: 90,
       pulseNextAllowedAt: 105,
+      traits: baselineTraits(),
     },
   ];
   world.rainbellAdmissionAt = 130;
@@ -116,7 +120,13 @@ function revision4(world: World): Record<string, any> {
     ...previous
   } = structuredClone(world);
   const result: Record<string, any> = { ...previous, schemaRevision: 4 };
-  for (const key of [...rainbellLedgerKeys, ...siltstitcherLedgerKeys, ...limpetLedgerKeys, ...cargoMiteLedgerKeys])
+  for (const key of [
+    ...rainbellLedgerKeys,
+    ...siltstitcherLedgerKeys,
+    ...limpetLedgerKeys,
+    ...cargoMiteLedgerKeys,
+    'ambientHarvested',
+  ])
     delete result.ecologyLedger[key];
   return result;
 }
@@ -180,7 +190,7 @@ describe('rainbell snapshot revision', () => {
       skimmerCandidateAfterId: _skimmerCandidate,
       ...oldFields
     } = restored;
-    expect(restored.schemaRevision).toBe(8);
+    expect(restored.schemaRevision).toBe(9);
     expect(rainbells).toEqual([]);
     expect(rainbellAdmissionAt).toBe(source.elapsed);
     expect(rainbellCandidateAfterId).toBe(0);
@@ -188,7 +198,13 @@ describe('rainbell snapshot revision', () => {
     expect(siltstitcherAdmissionAt).toBe(source.elapsed);
     expect(siltstitcherCandidateAfterId).toBe(0);
     const oldLedger = { ...oldFields.ecologyLedger } as Record<string, number>;
-    for (const key of [...rainbellLedgerKeys, ...siltstitcherLedgerKeys, ...limpetLedgerKeys, ...cargoMiteLedgerKeys]) {
+    for (const key of [
+      ...rainbellLedgerKeys,
+      ...siltstitcherLedgerKeys,
+      ...limpetLedgerKeys,
+      ...cargoMiteLedgerKeys,
+      'ambientHarvested',
+    ]) {
       expect(oldLedger[key]).toBe(0);
       delete oldLedger[key];
     }
@@ -210,7 +226,7 @@ describe('rainbell snapshot revision', () => {
       const before = JSON.stringify(source);
       const restored = restoreWorld(before)!;
       expect(restored).toMatchObject({
-        schemaRevision: 8,
+        schemaRevision: 9,
         rainbells: [],
         rainbellAdmissionAt: source.elapsed,
         rainbellCandidateAfterId: 0,
@@ -384,7 +400,7 @@ describe('rainbell snapshot revision', () => {
         w.nextId += 5;
       },
       (w) => {
-        w.schemaRevision = 9;
+        w.schemaRevision = 10;
       },
     ];
     for (const target of ['feedTargetSedimentId', 'pumpTargetSedimentId']) {

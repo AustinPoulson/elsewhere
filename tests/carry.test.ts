@@ -66,7 +66,7 @@ describe('carry a living light', () => {
       cargoMiteCandidateAfterId: undefined,
       nextFoundingTick: undefined,
       foundingTypeCursor: undefined,
-      organisms: original.organisms.map(({ pigmentCredit: _credit, ...entry }) => entry),
+      organisms: original.organisms.map(({ pigmentCredit: _credit, traits: _traits, ...entry }) => entry),
     };
     const world = restoreWorld(JSON.stringify(legacy))!;
     expect(world).not.toBeNull();

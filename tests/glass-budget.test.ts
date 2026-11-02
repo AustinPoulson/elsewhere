@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { restoreWorld, serializeWorld } from '../src/world/persistence';
 import { createWorld, stepWorld } from '../src/world/simulation';
 import { activeNewTypePopulation, NEW_TYPE_POPULATION_CAP } from '../src/world/species/catalog';
+import { baselineTraits } from '../src/world/traits';
 import { FIXED_STEP, LIMITS, type World } from '../src/world/types';
 
 // Synthetic capacity fixture: it tests workload and deterministic restore, not
@@ -79,6 +80,7 @@ function mixedMaximum(): World {
       starvedFor: 0,
       emissionNextAllowedAt: 0,
       lastEmissionAt: null,
+      traits: baselineTraits(),
     });
     world.reedwells.push({
       id: freshId(),
@@ -91,6 +93,7 @@ function mixedMaximum(): World {
       lightStore: 0,
       emissionNextAllowedAt: 0,
       lastEmissionAt: null,
+      traits: baselineTraits(),
     });
     if (i < 4)
       world.siltstitchers.push({
@@ -110,6 +113,7 @@ function mixedMaximum(): World {
         mode: 'home',
         destination: null,
         blockedFor: 0,
+        traits: baselineTraits(),
       });
   }
   for (let i = 0; i < 4; i++) {
@@ -127,6 +131,7 @@ function mixedMaximum(): World {
       pumpTargetSedimentId: null,
       pulseNextAllowedAt: 0,
       lastPulseAt: null,
+      traits: baselineTraits(),
     });
   }
   for (const x of [290, 1150]) {
@@ -142,6 +147,7 @@ function mixedMaximum(): World {
       hue: 180,
       starvedFor: 0,
       targetSedimentId: null,
+      traits: baselineTraits(),
     });
   }
   for (let i = 0; i < 2; i++) {
@@ -163,6 +169,7 @@ function mixedMaximum(): World {
       targetHostId: null,
       parentId: null,
       nextBirthAt: 30,
+      traits: baselineTraits(),
     });
   }
   for (const x of [320, 720, 1120]) {

@@ -9,6 +9,10 @@ export interface Point {
   x: number;
   y: number;
 }
+export interface Traits {
+  drive: number;
+  bulk: number;
+}
 export interface Current extends Point {
   id: number;
   dx: number;
@@ -29,6 +33,7 @@ export interface Organism extends Point {
   phase: number;
   trail: Point[];
   pigmentCredit: number;
+  traits: Traits;
 }
 export interface Skimmer extends Point {
   id: number;
@@ -46,6 +51,7 @@ export interface Skimmer extends Point {
   starvedFor: number;
   emissionNextAllowedAt: number;
   lastEmissionAt: number | null;
+  traits: Traits;
 }
 export interface Reedwell extends Point {
   id: number;
@@ -56,6 +62,7 @@ export interface Reedwell extends Point {
   lightStore: number;
   emissionNextAllowedAt: number;
   lastEmissionAt: number | null;
+  traits: Traits;
 }
 export interface Rainbell extends Point {
   id: number;
@@ -69,6 +76,7 @@ export interface Rainbell extends Point {
   pumpTargetSedimentId: number | null;
   pulseNextAllowedAt: number;
   lastPulseAt: number | null;
+  traits: Traits;
 }
 export interface Siltstitcher extends Point {
   id: number;
@@ -85,6 +93,7 @@ export interface Siltstitcher extends Point {
   mode: 'home' | 'outbound' | 'blocked' | 'returning';
   destination: Point | null;
   blockedFor: number;
+  traits: Traits;
 }
 export interface GlassLimpet extends Point {
   id: number;
@@ -96,6 +105,7 @@ export interface GlassLimpet extends Point {
   hue: number;
   starvedFor: number;
   targetSedimentId: number | null;
+  traits: Traits;
 }
 export interface CargoMite extends Point {
   id: number;
@@ -112,6 +122,7 @@ export interface CargoMite extends Point {
   targetHostId: number | null;
   parentId: number | null;
   nextBirthAt: number;
+  traits: Traits;
 }
 export interface EcologyLedger {
   mineralizedPigment: number;
@@ -134,6 +145,7 @@ export interface EcologyLedger {
   glassLimpetMaintenancePigment: number;
   cargoMiteIntake: number;
   cargoMiteMaintenancePigment: number;
+  ambientHarvested: number;
 }
 export interface LightSource extends Point {
   id: number;
@@ -160,6 +172,7 @@ export interface Grazer extends Point {
   cargo: number;
   nestId: number;
   returning: boolean;
+  traits: Traits;
 }
 export interface Nest extends Point {
   id: number;
@@ -169,7 +182,7 @@ export interface Nest extends Point {
 }
 export interface World {
   version: 3;
-  schemaRevision: 8;
+  schemaRevision: 9;
   skimmers: Skimmer[];
   skimmerAdmissionAt: number;
   skimmerCandidateAfterId: number;

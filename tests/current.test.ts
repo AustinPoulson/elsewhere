@@ -200,7 +200,7 @@ describe('current save revisions', () => {
     } = world;
     const previous = {
       ...rest,
-      organisms: organisms.map(({ pigmentCredit: _credit, ...entry }) => entry),
+      organisms: organisms.map(({ pigmentCredit: _credit, traits: _traits, ...entry }) => entry),
       schemaRevision: 1,
       elapsed: 12,
       weatherCall: { startedAt: 10, nextAllowedAt: 70 },
@@ -210,7 +210,7 @@ describe('current save revisions', () => {
     expect(migrated).toEqual({
       ...world,
       elapsed: 12,
-      schemaRevision: 8,
+      schemaRevision: 9,
       skimmerAdmissionAt: 12,
       reedwellAdmissionAt: 12,
       rainbellAdmissionAt: 12,
@@ -233,7 +233,7 @@ describe('current save revisions', () => {
         w.currents = null;
       },
       (w) => {
-        w.schemaRevision = 9;
+        w.schemaRevision = 10;
       },
       (w) => {
         w.currents[0].x = 0;

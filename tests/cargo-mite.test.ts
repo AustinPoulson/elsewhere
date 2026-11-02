@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { createWorld, stepWorld } from '../src/world/simulation';
-import { admitCargoMite, syncAttachedCargoMites, updateCargoMites } from '../src/world/species/cargo-mite';
+import {
+  admitCargoMite,
+  cargoMiteReserveCapacity,
+  syncAttachedCargoMites,
+  updateCargoMites,
+} from '../src/world/species/cargo-mite';
 import { activeNewTypePopulation, SPECIES_CATALOG } from '../src/world/species/catalog';
+import { baselineTraits } from '../src/world/traits';
 import { LIMITS, type Grazer, type World } from '../src/world/types';
 
 function habitat(): { world: World; host: Grazer } {
@@ -34,6 +40,7 @@ function habitat(): { world: World; host: Grazer } {
     cargo: 0.5,
     nestId: nest.id,
     returning: true,
+    traits: baselineTraits(),
   };
   world.nests.push(nest);
   world.grazers.push(host);
@@ -138,7 +145,10 @@ describe('cargo mite funded host and offspring lifecycle', () => {
     expect(world.cargoMites).toHaveLength(2);
     expect(world.nextId).toBe(afterId);
     expect(parent.nextBirthAt).toBe(deadline);
-    expect(pigment(world)).toBeCloseTo(after - 0.0001, 9);
+    expect(pigment(world)).toBeCloseTo(
+      after - SPECIES_CATALOG.cargoMite.maintenanceRate * 0.1 * (parent.traits.drive + child.traits.drive),
+      9,
+    );
   });
 
   it('does not teleport after host loss and returns finite material once on a full floor', () => {
@@ -207,9 +217,11 @@ describe('cargo mite funded host and offspring lifecycle', () => {
     const child = world.cargoMites.find((mite) => mite.parentId !== null);
     expect(child).toBeDefined();
     expect(child!.age).toBeGreaterThan(30);
-    expect(child!.reserve).toBeGreaterThanOrEqual(0.4);
+    expect(child!.reserve).toBeGreaterThan(SPECIES_CATALOG.cargoMite.childReserve);
+    expect(child!.reserve).toBeLessThanOrEqual(cargoMiteReserveCapacity(child!.traits));
     expect(world.ecologyLedger.cargoMiteIntake).toBeGreaterThan(0.2);
-    expect(world.grazers[0].cargo).toBeLessThan(control.grazers[0].cargo);
+    expect(control.cargoMites).toHaveLength(0);
+    expect(control.ecologyLedger.cargoMiteIntake).toBe(0);
   });
 
   it('reduces ordinary nest delivery against the same loaded grazer without mites', () => {

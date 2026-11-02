@@ -1,5 +1,6 @@
 import { Container, Graphics, Sprite, type Texture } from 'pixi.js';
 import type { World } from '../world/types';
+import { appearanceGlow, appearanceScale } from '../world/traits';
 
 interface RainbellVisual {
   node: Container;
@@ -38,11 +39,11 @@ export class RainbellRenderer {
       const contracting = !reducedMotion && pulseAge >= 0 && pulseAge < 3;
       const opening = contracting ? 0.72 + 0.28 * Math.min(1, pulseAge / 1.2) : 1;
       const growth = 0.6 + 0.4 * Math.min(1, bell.age / 5);
-      visual.node.scale.set(growth);
+      visual.node.scale.set(growth * appearanceScale(bell.traits));
       visual.glow.tint = 0xa9b9dc;
       visual.glow.width = 98;
       visual.glow.height = 80;
-      visual.glow.alpha = 0.09 + bell.reserve * 0.12;
+      visual.glow.alpha = (0.09 + bell.reserve * 0.12) * appearanceGlow(bell.traits);
       const mantle = visual.mantle.clear();
       mantle
         .ellipse(0, 0, 23 * opening, 17 * opening)

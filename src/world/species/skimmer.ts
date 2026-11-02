@@ -1,5 +1,6 @@
 import { confinePosition } from '../geometry';
 import { LIMITS, type Nest, type Sediment, type Skimmer, type World } from '../types';
+import { baselineTraits, traitMobility } from '../traits';
 
 import { activeNewTypePopulation, NEW_TYPE_POPULATION_CAP, SKIMMER_CAP, SPECIES_CATALOG } from './catalog';
 import { blendHue, returnPigment, safeId } from './resources';
@@ -40,21 +41,25 @@ function updateOne(world: World, skimmer: Skimmer, dt: number, index: Map<number
   const dx = targetX - skimmer.x;
   const dy = targetY - skimmer.y;
   const distance = Math.hypot(dx, dy);
-  const speed = Math.min(10, distance / dt);
+  const speed = Math.min(10 * traitMobility(skimmer.traits), distance / dt);
   skimmer.vx = distance > 0.001 ? (dx / distance) * speed : 0;
   skimmer.vy = distance > 0.001 ? (dy / distance) * speed : 0;
   skimmer.x += skimmer.vx * dt;
   skimmer.y += skimmer.vy * dt;
   confinePosition(skimmer, 11);
   if (edible && Math.hypot(edible.x - skimmer.x, edible.y - skimmer.y) <= 16 + edible.radius) {
-    const gathered = Math.min(edible.strength, Math.max(0, 1 - skimmer.reserve), dt * SKIMMER_INTAKE);
+    const gathered = Math.min(
+      edible.strength,
+      Math.max(0, 1 - skimmer.reserve),
+      dt * SKIMMER_INTAKE * skimmer.traits.drive,
+    );
     if (gathered > 0) {
       skimmer.hue = blendHue(skimmer.hue, edible.hue, skimmer.reserve, gathered);
       edible.strength -= gathered;
       skimmer.reserve += gathered;
     }
   }
-  const maintenance = Math.min(skimmer.reserve, dt * SKIMMER_MAINTENANCE);
+  const maintenance = Math.min(skimmer.reserve, dt * SKIMMER_MAINTENANCE * skimmer.traits.drive);
   skimmer.reserve -= maintenance;
   world.ecologyLedger.maintenancePigment += maintenance;
   skimmer.starvedFor = skimmer.reserve <= 0 ? skimmer.starvedFor + dt : 0;
@@ -120,6 +125,7 @@ export function admitSkimmer(world: World): boolean {
     starvedFor: 0,
     emissionNextAllowedAt: world.elapsed,
     lastEmissionAt: null,
+    traits: baselineTraits(),
   };
   confinePosition(body, 11);
   if (

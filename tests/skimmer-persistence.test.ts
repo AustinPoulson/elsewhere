@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import historicalStudy from '../src/app/shower-study.json';
 import { restoreWorld, serializeWorld } from '../src/world/persistence';
 import { createWorld, stepWorld } from '../src/world/simulation';
+import { baselineTraits } from '../src/world/traits';
 import type { Skimmer, World } from '../src/world/types';
 
 function legacy(world: World, version: 1 | 2 | 3, revision = 2) {
@@ -33,7 +34,7 @@ function legacy(world: World, version: 1 | 2 | 3, revision = 2) {
   const result: Record<string, any> = {
     ...old,
     version,
-    organisms: organisms.map(({ pigmentCredit: _credit, ...entry }) => entry),
+    organisms: organisms.map(({ pigmentCredit: _credit, traits: _traits, ...entry }) => entry),
   };
   if (version !== 3) {
     delete result.schemaRevision;
@@ -75,6 +76,7 @@ function inhabited(): World {
     starvedFor: 0,
     emissionNextAllowedAt: 0,
     lastEmissionAt: null,
+    traits: baselineTraits(),
   };
   world.skimmers = [skimmer];
   world.skimmerAdmissionAt = 60;
@@ -106,7 +108,7 @@ describe('prism snapshot revision', () => {
       expect(restored).not.toBeNull();
       expect(restored).toMatchObject({
         version: 3,
-        schemaRevision: 8,
+        schemaRevision: 9,
         skimmers: [],
         skimmerAdmissionAt: 123,
         elapsed: 123,
@@ -117,7 +119,9 @@ describe('prism snapshot revision', () => {
         sediment: source.sediment,
         consumed: source.consumed,
       });
-      expect(restored.organisms).toEqual(source.organisms.map((entry: object) => ({ ...entry, pigmentCredit: 0 })));
+      expect(restored.organisms).toEqual(
+        source.organisms.map((entry: object) => ({ ...entry, pigmentCredit: 0, traits: baselineTraits() })),
+      );
       expect(Object.values(restored.ecologyLedger).every((value) => value === 0)).toBe(true);
       expect(restored.nextId).toBe(source.nextId + (version === 1 ? 8 : 0));
       expect(JSON.stringify(source)).toBe(before);
@@ -293,7 +297,7 @@ describe('prism snapshot revision', () => {
         w.nextId += 7;
       },
       (w) => {
-        w.schemaRevision = 9;
+        w.schemaRevision = 10;
       },
     ];
     for (const change of changes) {

@@ -12,6 +12,7 @@ import { addLight, createWorld, getStats, releaseNestPigment, stepWorld } from '
 import { restoreWorld, serializeWorld } from './world/persistence';
 import { callRain, effectiveWeather } from './world/weather';
 import { getDaylight } from './world/environment/daylight';
+import { describeBulk, describeDrive } from './world/traits';
 import { MAX_CURRENTS } from './world/actions/current';
 import { isInPool, LIMITS, WORLD_HEIGHT, WORLD_WIDTH } from './world/types';
 import type { Point, Tool, World } from './world/types';
@@ -1252,6 +1253,14 @@ export function App() {
                         <dt>Time in the pool</dt>
                         <dd>{timeLabel(selected.age)}</dd>
                       </div>
+                      <div>
+                        <dt>Appetite</dt>
+                        <dd>{describeDrive(selected.traits.drive)}</dd>
+                      </div>
+                      <div>
+                        <dt>Frame</dt>
+                        <dd>{describeBulk(selected.traits.bulk)}</dd>
+                      </div>
                       {selected.species === 'grazer' ? (
                         <>
                           <div>
@@ -1442,7 +1451,7 @@ export function App() {
                                 : selected.species === 'glassLimpet'
                                   ? 'Only real current-borne coarse food that reaches this shell fills its reserve and basin. Its body and catch return to the pool at the end of its finite life.'
                                   : selected.species === 'cargoMite'
-                                    ? 'A grazer’s carried color feeds this mite instead of reaching the nest. A grown parent can pay color from its own reserve for a young mite; both return remaining color when their short lives end.'
+                                    ? 'A grazer’s carried color feeds this mite instead of reaching the nest. A grown parent pays color from its own reserve for a young mite, whose appetite and frame may drift a little from its parent. A stouter frame holds more of that color but does not travel as far. Both return remaining color when their short lives end.'
                                     : "Leave light nearby and watch this one's path change."}
                     </p>
                   </>
