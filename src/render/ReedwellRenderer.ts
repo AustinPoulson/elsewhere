@@ -1,5 +1,6 @@
 import { Container, Graphics, Sprite, type Texture } from 'pixi.js';
 import type { World } from '../world/types';
+import { appearanceGlow, appearanceScale } from '../world/traits';
 
 interface ReedwellVisual {
   node: Container;
@@ -38,11 +39,11 @@ export class ReedwellRenderer {
       const charge = plant.lightStore / 3;
       const sway = reducedMotion ? 0 : Math.sin(world.elapsed * 0.8 + plant.id) * 0.06;
       visual.node.rotation = (plant.id % 7) * 0.3 + sway;
-      visual.node.scale.set(growth);
+      visual.node.scale.set(growth * appearanceScale(plant.traits));
       visual.glow.tint = 0xb7d98d;
       visual.glow.width = 84 + charge * 28;
       visual.glow.height = visual.glow.width;
-      visual.glow.alpha = 0.1 + charge * 0.14;
+      visual.glow.alpha = (0.1 + charge * 0.14) * appearanceGlow(plant.traits);
       const leaves = visual.leaves.clear();
       for (let blade = 0; blade < 5; blade++) {
         const angle = (blade * Math.PI * 2) / 5;

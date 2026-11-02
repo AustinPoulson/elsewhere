@@ -1,5 +1,6 @@
 import { Container, Graphics, Sprite, type Texture } from 'pixi.js';
 import type { World } from '../world/types';
+import { appearanceGlow, appearanceScale } from '../world/traits';
 import { cargoMiteDisplayPoint } from './cargoMiteDisplay';
 
 interface MiteVisual {
@@ -60,12 +61,12 @@ export class CargoMiteRenderer {
         visual.node.rotation = Math.atan2(mite.vy, mite.vx) + Math.PI / 2;
       }
       const juvenile = mite.age < 30;
-      visual.node.scale.set(juvenile ? 0.77 : 1);
+      visual.node.scale.set((juvenile ? 0.77 : 1) * appearanceScale(mite.traits));
       const reserve = Math.min(1, Math.max(0, mite.reserve / 0.5));
       visual.glow.tint = 0xe6c990;
       visual.glow.width = 30 + reserve * 12;
       visual.glow.height = 34 + reserve * 12;
-      visual.glow.alpha = 0.07 + reserve * 0.11;
+      visual.glow.alpha = (0.07 + reserve * 0.11) * appearanceGlow(mite.traits);
       visual.body.alpha = mite.mode === 'seeking' ? 0.85 : 1;
     }
     for (const [id, visual] of this.visuals) {

@@ -8,7 +8,7 @@ Eventually: several pools linked by slow currents, and the world keeps living wh
 
 - [x] **Headless fast-forward harness** — Run the simulation without a renderer for many simulated days and report what happened. Enables testing population dynamics and resource flow without waiting in real time. _Success: `npm run harness -- --days 30 --seed 1` completes in under a minute and prints population curves, births, deaths, extinctions, and resource totals._
 
-- [ ] **Heritable traits with small mutations** — Offspring inherit parent traits with small random variations; reproduction costs real parent reserves. _Success: offspring visibly differ from parents; resource cost is reflected in parent reserve depletion._
+- [x] **Heritable traits with small mutations** — Offspring inherit parent traits with small random variations; reproduction costs real parent reserves. A faint ambient daylight cycle lets lucents convert sky light into pigment so some lineages can persist without visitor input. _Success: offspring visibly differ from parents; resource cost is reflected in parent reserve depletion; 30-day harness runs without visitor light keep at least one advanced lineage alive and bounded._
 
 - [ ] **A second resource and body-eating consumer** — Introduce decomposition or predation of real bodies; a new resource derived from death. _Success: dead organisms become food for a consumer; resource accounting remains balanced._
 
@@ -42,23 +42,19 @@ _This section records surprising population dynamics, extinctions, or runaway re
 
 ### 30-day simulation findings (seeds 1 and 42)
 
-**Resource depletion drives extinction:** Without visitor-added light, the initial four light sources deplete within a few world minutes. Once light is gone, pigment production stops. Advanced species (skimmers, siltstitchers, glass limpets, cargo mites) emerge briefly from the initial nest reserves but go extinct within 20 minutes of world time.
+**Faint ambient daylight keeps pigment moving:** Lucents now harvest a shared 360-second day/night sine into feeding credit (rate 0.09 energy-equivalent per lucent per second at full day, deposited through the ordinary pigment pipeline). Visitor and spring lights remain the only source of lucent energy. Over 30 complete days both seeds harvested 7425 ambient units. Nested pigment ended near 1.9 rather than collapsing to ~0.02, and loose pigment stayed under 0.5 — bounded, not a flood.
 
-**Base populations are stable:** Lucents (24) and grazers (4) persist indefinitely at their initial counts. Their energy floor (0.12) prevents starvation, and their population is fixed. The ecosystem enters a stable but dormant state.
+**Some lineages now persist without a visitor:** Skimmers and cargo mites survived the full 30 days on both seeds (seed 1: 3 skimmers, 3 mites; seed 42: 4 skimmers, 1 mite). They turnover rather than freeze: seed 1 had 80 skimmer births / 77 deaths and 76 mite births / 73 deaths, all under catalog caps.
 
-**Seed-dependent emergence:** Seed 42 saw all six advanced species appear (including reedwells and rainbells), while seed 1 never supported reedwells or rainbells. Daylight harvesting occurred only in seed 42 (42.76 harvested, 42.00 emitted).
+**Extinction is still allowed, and still seed-shaped:** Siltstitchers and glass limpets last much longer than the old ~10-minute crash (seed 1: siltstitchers 102m, limpets 178m; seed 42: siltstitchers 53m, limpets 165m) but still go extinct. Reedwells and rainbells remain boom-bust: seed 1 never founded them; seed 42 lost rainbells at ~10m and reedwells at ~16m, almost unchanged from the dormant-world run. They still need rain, currents, and concentrated light, which ambient pigment does not replace.
 
-**Extinction timeline:** Advanced species went extinct roughly in order of their resource cost:
+**Trait drift is small and paid:** Founders stay at drive/bulk 1 so opening worlds do not gift variation. Only cargo-mite births mutate (±0.08, clamped to [0.7, 1.3]), and the child reserve comes out of the parent. After 30 days seed 1's mites averaged drive 1.003 / bulk 0.992; seed 42's survivor sat at drive 1.042 / bulk 0.991. Lucents and grazers remained at baseline. Drive raises intake and maintenance together; bulk raises light-to-pigment yield and size while cutting mobility.
 
-- Cargo mites: ~5-6 min (high grazer dependency)
-- Glass limpets: ~7-11 min (need current-borne food)
-- Siltstitchers: ~11 min (need nest surplus)
-- Rainbells: ~10 min (need rain and currents)
-- Reedwells: ~15 min (need daylight, which isn't simulated continuously)
-- Skimmers: ~19-21 min (most resilient of the advanced species)
+**Visitor light is still the stronger pulse:** Ambient harvest is faint photosynthesis, not a substitute for dropping light. `npm run harness -- --visitor-light` places one spring light each world day; a 2-day comparison on seed 1 consumed more concentrated light with the flag on than with it off.
 
 **Implications for upcoming work:**
 
-1. The "catching up on time away" feature must handle a world that may have depleted and gone dormant
-2. Heritable traits need something to select for—currently there's no pressure once resources are exhausted
-3. External energy input (daylight, rain) is crucial for sustaining advanced life; the harness could optionally simulate periodic visitor light to test sustained dynamics
+1. Catching up on time away can now resume a world that is still cycling pigment and mite/skimmer lineages, not only a dormant lucent-and-grazer floor
+2. Selection has something to bite on while cargo mites reproduce; other species still need their own birth rules before their traits can drift
+3. Reedwells and rainbells still go extinct without more specific weather/light conditions — a later physics change, not a population gift
+4. A body-eating consumer will have real deaths to feed on (skimmer and mite turnover is already dozens per 30 days)

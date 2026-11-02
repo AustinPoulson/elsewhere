@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { cargoMiteDisplayPoint } from './cargoMiteDisplay';
 import { confinePosition } from '../world/geometry';
 import { createWorld } from '../world/simulation';
+import { baselineTraits } from '../world/traits';
 import { isInPool } from '../world/types';
 
 describe('attached cargo mite display', () => {
@@ -30,6 +31,7 @@ describe('attached cargo mite display', () => {
       targetHostId: null,
       parentId: null,
       nextBirthAt: 30,
+      traits: baselineTraits(),
     });
     const point = cargoMiteDisplayPoint(world, world.cargoMites[0]);
     expect(isInPool(point.x, point.y, 2)).toBe(true);

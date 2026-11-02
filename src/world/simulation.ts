@@ -26,24 +26,22 @@ import { updateSiltstitchers } from './species/siltstitcher';
 import { updateGlassLimpets } from './species/glass-limpet';
 import { syncAttachedCargoMites, updateCargoMites } from './species/cargo-mite';
 import { runNormalFounding } from './species/founding';
+import { nextRandom } from './rng';
+import { baselineTraits, traitMobility } from './traits';
+import { ambientOffer } from './environment/daylight';
 
 const TAU = Math.PI * 2;
 const ENERGY_FLOOR = 0.12;
 const LIGHT_ENERGY = 90;
-const SPRINGS = [
+export const SPRINGS = [
   { x: 470, y: 390 },
   { x: 825, y: 285 },
   { x: 1040, y: 610 },
   { x: 660, y: 730 },
 ];
 
-// The PRNG state belongs to the world, so a saved pool resumes exactly.
 function random(world: World): number {
-  world.randomState = (world.randomState + 0x6d2b79f5) >>> 0;
-  let value = world.randomState;
-  value = Math.imul(value ^ (value >>> 15), value | 1);
-  value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
-  return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+  return nextRandom(world);
 }
 
 function clamp(value: number, low: number, high: number): number {
@@ -103,6 +101,7 @@ export function initializeGrazers(world: Pick<World, 'grazers' | 'nests' | 'seed
       cargo: 0,
       nestId: nest.id,
       returning: false,
+      traits: baselineTraits(),
     });
   }
 }
@@ -152,7 +151,7 @@ export function createWorld(seed = 20261006): World {
   const normalizedSeed = Math.trunc(seed) >>> 0;
   const world: World = {
     version: 3,
-    schemaRevision: 8,
+    schemaRevision: 9,
     currents: [],
     weatherCall: { startedAt: null, nextAllowedAt: 0 },
     skimmers: [],
@@ -196,6 +195,7 @@ export function createWorld(seed = 20261006): World {
       glassLimpetMaintenancePigment: 0,
       cargoMiteIntake: 0,
       cargoMiteMaintenancePigment: 0,
+      ambientHarvested: 0,
     },
     seed: normalizedSeed,
     randomState: normalizedSeed,
@@ -234,6 +234,7 @@ export function createWorld(seed = 20261006): World {
       phase: random(world) * TAU,
       trail: [],
       pigmentCredit: 0,
+      traits: baselineTraits(),
     };
     // A short initial wake makes the first frame feel inhabited.
     for (let j = 6; j >= 0; j--) {
@@ -319,9 +320,14 @@ function moveInPool(organism: Organism | Grazer, dt: number): void {
 function updateLucent(world: World, organism: Organism, dt: number, lightReach: number): void {
   organism.age += dt;
   organism.phase = (organism.phase + dt * 0.42) % TAU;
-  organism.energy = Math.max(ENERGY_FLOOR, organism.energy - dt * 0.008);
+  organism.energy = Math.max(ENERGY_FLOOR, organism.energy - dt * 0.008 * organism.traits.drive);
+  const ambient = ambientOffer(world, dt);
+  if (ambient > 0) {
+    world.ecologyLedger.ambientHarvested += ambient;
+    accrueFeedingPigment(world, organism, ambient * organism.traits.bulk);
+  }
   const target = targetLight(organism, world.lights);
-  const speed = 18 + organism.energy * 15;
+  const speed = (18 + organism.energy * 15) * traitMobility(organism.traits);
   let desiredX: number;
   let desiredY: number;
   if (target) {
@@ -339,20 +345,21 @@ function updateLucent(world: World, organism: Organism, dt: number, lightReach: 
     desiredY = (uy * approach + ux * orbit) * speed;
 
     if (distance < lightReach) {
-      const eaten = Math.min(target.energy, dt * (0.7 + Math.max(0, 1.2 - organism.energy) * 0.45));
+      const eaten = Math.min(
+        target.energy,
+        dt * (0.7 + Math.max(0, 1.2 - organism.energy) * 0.45) * organism.traits.drive,
+      );
       target.energy -= eaten;
       world.consumed += eaten;
       organism.energy = Math.min(2, organism.energy + eaten * 0.065);
-      accrueFeedingPigment(world, organism, eaten);
-      if (eaten > 0 && (world.tick + organism.id) % 36 === 0) {
-        depositFeedingPigment(world, organism);
-      }
+      accrueFeedingPigment(world, organism, eaten * organism.traits.bulk);
     }
   } else {
     const heading = Math.atan2(organism.vy, organism.vx) + Math.sin(organism.phase) * dt * 0.9;
     desiredX = Math.cos(heading) * speed;
     desiredY = Math.sin(heading) * speed;
   }
+  if ((world.tick + organism.id) % 36 === 0) depositFeedingPigment(world, organism);
   const turn = 1 - Math.exp(-dt * (target ? 2.3 : 0.8));
   organism.vx += (desiredX - organism.vx) * turn;
   organism.vy += (desiredY - organism.vy) * turn;
@@ -400,7 +407,7 @@ function updateGrazer(world: World, grazer: Grazer, dt: number): void {
   let speed: number;
   if (grazer.returning) {
     target = nest;
-    speed = 16;
+    speed = 16 * traitMobility(grazer.traits);
     if (Math.hypot(nest.x - grazer.x, nest.y - grazer.y) < 18) {
       // A full nest keeps the remaining cargo; pigment is never conjured or dropped.
       const delivered = Math.min(grazer.cargo, Math.max(0, NEST_CAPACITY - nest.pigment));
@@ -417,7 +424,7 @@ function updateGrazer(world: World, grazer: Grazer, dt: number): void {
     }
   } else if (food) {
     target = food;
-    speed = 12.5;
+    speed = 12.5 * traitMobility(grazer.traits);
     if (Math.hypot(food.x - grazer.x, food.y - grazer.y) < grazer.size + food.radius + 5) {
       const gathered = Math.min(food.strength, GRAZER_CAPACITY - grazer.cargo, dt * 0.38);
       if (gathered > 0) {
@@ -433,7 +440,7 @@ function updateGrazer(world: World, grazer: Grazer, dt: number): void {
       { x: nest.x + Math.cos(grazer.phase) * 34, y: nest.y + Math.sin(grazer.phase) * 24 },
       grazer.size + 3,
     );
-    speed = 8;
+    speed = 8 * traitMobility(grazer.traits);
   }
 
   const dx = target.x - grazer.x;

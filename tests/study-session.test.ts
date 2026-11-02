@@ -52,11 +52,14 @@ describe('safe shower study', () => {
       cargoMiteAdmissionAt: _cargoMiteAdmissionAt,
       cargoMiteCandidateAfterId: _cargoMiteCandidateAfterId,
       organisms,
+      grazers,
       ...normalizedEcology
     } = expected!;
-    expect({ ...normalizedEcology, organisms: organisms.map(({ pigmentCredit: _credit, ...entry }) => entry) }).toEqual(
-      historicalEcology,
-    );
+    expect({
+      ...normalizedEcology,
+      grazers: grazers.map(({ traits: _traits, ...entry }) => entry),
+      organisms: organisms.map(({ pigmentCredit: _credit, traits: _traits, ...entry }) => entry),
+    }).toEqual(historicalEcology);
     expect(expected!.seed).toBe(SHOWER_STUDY.seed);
     expect(expected!.tick).toBe(SHOWER_STUDY.steps);
     expect(expected!.elapsed).toBeCloseTo(SHOWER_STUDY.seconds, 10);

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import historicalStudy from '../src/app/shower-study.json';
 import { restoreWorld, serializeWorld } from '../src/world/persistence';
+import { baselineTraits } from '../src/world/traits';
 import { createWorld, stepWorld } from '../src/world/simulation';
 import type { Reedwell, World } from '../src/world/types';
 
@@ -37,6 +38,7 @@ function inhabited(): World {
     lightStore: 2.4,
     lastEmissionAt: 80,
     emissionNextAllowedAt: 95,
+    traits: baselineTraits(),
   };
   world.reedwells = [plant];
   world.reedwellAdmissionAt = 120;
@@ -60,6 +62,7 @@ function inhabited(): World {
       starvedFor: 0,
       lastEmissionAt: null,
       emissionNextAllowedAt: 0,
+      traits: baselineTraits(),
     },
   ];
   world.organisms[0].pigmentCredit = 0.31;
@@ -107,6 +110,7 @@ function revision3(world: World): Record<string, any> {
     ...siltstitcherLedgerKeys,
     ...limpetLedgerKeys,
     ...cargoMiteLedgerKeys,
+    'ambientHarvested',
   ])
     delete result.ecologyLedger[key];
   return result;
@@ -155,6 +159,7 @@ describe('reedwell snapshot revision', () => {
       ...siltstitcherLedgerKeys,
       ...limpetLedgerKeys,
       ...cargoMiteLedgerKeys,
+      'ambientHarvested',
     ]) {
       expect(oldLedger[key]).toBe(0);
       delete oldLedger[key];
@@ -168,7 +173,7 @@ describe('reedwell snapshot revision', () => {
     const before = JSON.stringify(historicalStudy);
     const restored = restoreWorld(before)!;
     expect(restored).toMatchObject({
-      schemaRevision: 8,
+      schemaRevision: 9,
       reedwells: [],
       reedwellAdmissionAt: historicalStudy.elapsed,
       reedwellCandidateAfterId: 0,
@@ -349,7 +354,7 @@ describe('reedwell snapshot revision', () => {
         w.nextId += 7;
       },
       (w) => {
-        w.schemaRevision = 9;
+        w.schemaRevision = 10;
       },
     ];
     for (const key of reedwellLedgerKeys) {

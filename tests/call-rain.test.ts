@@ -33,9 +33,14 @@ function ecology(world: World) {
     cargoMiteAdmissionAt: _cargoMiteAdmissionAt,
     cargoMiteCandidateAfterId: _cargoMiteCandidateAfterId,
     organisms,
+    grazers,
     ...rest
   } = world;
-  return { ...rest, organisms: organisms.map(({ pigmentCredit: _credit, ...entry }) => entry) };
+  return {
+    ...rest,
+    grazers: grazers.map(({ traits: _traits, ...entry }) => entry),
+    organisms: organisms.map(({ pigmentCredit: _credit, traits: _traits, ...entry }) => entry),
+  };
 }
 
 describe('visitor-called rain', () => {
@@ -148,7 +153,7 @@ describe('versioned weather calls', () => {
     expect(ecology(migrated)).toEqual(original);
     expect(migrated).toMatchObject({
       version: 3,
-      schemaRevision: 8,
+      schemaRevision: 9,
       weatherCall: { startedAt: null, nextAllowedAt: 0 },
     });
     expect(JSON.stringify(fixture)).toBe(old);
@@ -164,7 +169,7 @@ describe('versioned weather calls', () => {
         delete world.schemaRevision;
       },
       (world) => {
-        world.schemaRevision = 9;
+        world.schemaRevision = 10;
       },
       (world) => {
         world.weatherCall = null;

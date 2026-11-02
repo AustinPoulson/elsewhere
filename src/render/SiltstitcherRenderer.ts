@@ -1,5 +1,6 @@
 import { Container, Graphics, Sprite, type Texture } from 'pixi.js';
 import type { World } from '../world/types';
+import { appearanceGlow, appearanceScale } from '../world/traits';
 
 interface CarrierVisual {
   node: Container;
@@ -64,10 +65,11 @@ export class SiltstitcherRenderer {
         visual.node.rotation = Math.atan2(carrier.vy, carrier.vx) + Math.PI / 2;
       }
       const load = Math.min(1, Math.max(0, carrier.cargo / 0.3));
+      visual.node.scale.set(appearanceScale(carrier.traits));
       visual.glow.tint = 0xd4c597;
       visual.glow.width = 42 + load * 18;
       visual.glow.height = 42 + load * 18;
-      visual.glow.alpha = 0.065 + load * 0.11;
+      visual.glow.alpha = (0.065 + load * 0.11) * appearanceGlow(carrier.traits);
       visual.bundle.clear();
       if (load > 0) {
         visual.bundle

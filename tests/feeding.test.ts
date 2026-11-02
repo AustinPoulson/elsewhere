@@ -11,6 +11,7 @@ describe('paid feeding deposits', () => {
     world.grazers = [];
     world.nests = [];
     world.sediment = [];
+    world.elapsed = 180;
     world.lights = [{ id: world.nextId++, x: 720, y: 500, energy: 0.00001, initialEnergy: 1.35, age: 0 }];
     Object.assign(creature, { x: 720, y: 500, vx: 0, vy: 0, pigmentCredit: 0 });
     world.tick = 35 - (creature.id % 36);

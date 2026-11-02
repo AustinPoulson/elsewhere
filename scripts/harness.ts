@@ -1,7 +1,7 @@
 #!/usr/bin/env npx tsx
-import { createWorld, stepWorld, getStats } from '../src/world/simulation';
+import { addLight, createWorld, getStats, SPRINGS, stepWorld } from '../src/world/simulation';
 import { restoreWorld } from '../src/world/persistence';
-import { FIXED_STEP, type World } from '../src/world/types';
+import { FIXED_STEP, type Traits, type World } from '../src/world/types';
 import * as fs from 'node:fs';
 
 const DAY_SECONDS = 360;
@@ -18,26 +18,47 @@ interface PopulationSample {
   cargoMites: number;
 }
 
+interface TraitMeans {
+  count: number;
+  drive: number;
+  bulk: number;
+}
+
+interface TraitSample {
+  worldTime: number;
+  lucents: TraitMeans | null;
+  grazers: TraitMeans | null;
+  skimmers: TraitMeans | null;
+  reedwells: TraitMeans | null;
+  rainbells: TraitMeans | null;
+  siltstitchers: TraitMeans | null;
+  glassLimpets: TraitMeans | null;
+  cargoMites: TraitMeans | null;
+}
+
 interface SpeciesEvents {
   births: number;
   deaths: number;
   extinctAt: number | null;
 }
 
-interface HarnessReport {
+export interface HarnessReport {
   seed: number;
   simulatedDays: number;
   worldSeconds: number;
   totalSteps: number;
   wallTimeMs: number;
   stepsPerSecond: number;
+  visitorLight: boolean;
   populations: PopulationSample[];
+  traitDrift: TraitSample[];
   events: Record<string, SpeciesEvents>;
   resources: {
     lightEnergy: number;
     loosePigment: number;
     nestedPigment: number;
     totalConsumed: number;
+    ambientHarvested: number;
   };
   ledger: World['ecologyLedger'];
   conservationCheck: {
@@ -47,40 +68,63 @@ interface HarnessReport {
   };
 }
 
-function parseArgs(): { days: number; seed: number; json?: string; load?: string } {
-  const args = process.argv.slice(2);
+export interface HarnessConfig {
+  days: number;
+  seed: number;
+  json?: string;
+  load?: string;
+  visitorLight: boolean;
+}
+
+function traitMeans(list: { traits: Traits }[]): TraitMeans | null {
+  if (list.length === 0) return null;
+  let drive = 0;
+  let bulk = 0;
+  for (const entry of list) {
+    drive += entry.traits.drive;
+    bulk += entry.traits.bulk;
+  }
+  return { count: list.length, drive: drive / list.length, bulk: bulk / list.length };
+}
+
+export function parseHarnessArgs(argv: string[]): HarnessConfig {
   let days = 30;
   let seed = Date.now() >>> 0;
   let json: string | undefined;
   let load: string | undefined;
+  let visitorLight = false;
 
-  for (let i = 0; i < args.length; i++) {
-    if (args[i] === '--days' && args[i + 1]) {
-      days = parseInt(args[++i], 10);
-    } else if (args[i] === '--seed' && args[i + 1]) {
-      seed = parseInt(args[++i], 10) >>> 0;
-    } else if (args[i] === '--json' && args[i + 1]) {
-      json = args[++i];
-    } else if (args[i] === '--load' && args[i + 1]) {
-      load = args[++i];
-    } else if (args[i] === '--help' || args[i] === '-h') {
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === '--days' && argv[i + 1]) {
+      days = parseInt(argv[++i], 10);
+    } else if (argv[i] === '--seed' && argv[i + 1]) {
+      seed = parseInt(argv[++i], 10) >>> 0;
+    } else if (argv[i] === '--json' && argv[i + 1]) {
+      json = argv[++i];
+    } else if (argv[i] === '--load' && argv[i + 1]) {
+      load = argv[++i];
+    } else if (argv[i] === '--visitor-light') {
+      visitorLight = true;
+    } else if (argv[i] === '--help' || argv[i] === '-h') {
       console.log(`
 Elsewhere Headless Simulation Harness
 
 Usage: npm run harness -- [options]
 
 Options:
-  --days <n>      Number of world days to simulate (default: 30)
-                  One world day = 360 world seconds (one day/night cycle)
-  --seed <n>      Random seed for world creation (default: current timestamp)
-  --load <file>   Load world from a save JSON file instead of creating fresh
-  --json <file>   Output machine-readable JSON to file
-  --help, -h      Show this help
+  --days <n>         Number of world days to simulate (default: 30)
+                     One world day = 360 world seconds (one day/night cycle)
+  --seed <n>         Random seed for world creation (default: current timestamp)
+  --load <file>      Load world from a save JSON file instead of creating fresh
+  --json <file>      Output machine-readable JSON to file
+  --visitor-light    Place one visitor light at a rotating spring each world day
+  --help, -h         Show this help
 
 Examples:
   npm run harness -- --days 30 --seed 1
   npm run harness -- --days 10 --seed 42 --json results.json
   npm run harness -- --load mysave.json --days 5
+  npm run harness -- --days 30 --seed 1 --visitor-light
 `);
       process.exit(0);
     }
@@ -95,7 +139,7 @@ Examples:
     process.exit(1);
   }
 
-  return { days, seed, json, load };
+  return { days, seed, json, load, visitorLight };
 }
 
 function createOrLoadWorld(seed: number, loadPath?: string): World {
@@ -112,7 +156,7 @@ function createOrLoadWorld(seed: number, loadPath?: string): World {
   return createWorld(seed);
 }
 
-function runHarness(config: { days: number; seed: number; load?: string }): HarnessReport {
+export function runHarness(config: HarnessConfig): HarnessReport {
   const world = createOrLoadWorld(config.seed, config.load);
   const actualSeed = world.seed;
   const targetSeconds = config.days * DAY_SECONDS;
@@ -120,6 +164,7 @@ function runHarness(config: { days: number; seed: number; load?: string }): Harn
   const sampleInterval = Math.max(1, Math.floor(targetSteps / 100));
 
   const populations: PopulationSample[] = [];
+  const traitDrift: TraitSample[] = [];
   const events: Record<string, SpeciesEvents> = {
     lucents: { births: 0, deaths: 0, extinctAt: null },
     grazers: { births: 0, deaths: 0, extinctAt: null },
@@ -141,6 +186,7 @@ function runHarness(config: { days: number; seed: number; load?: string }): Harn
     glassLimpets: world.glassLimpets.length,
     cargoMites: world.cargoMites.length,
   };
+  let lastVisitorDay = Math.floor(world.elapsed / DAY_SECONDS);
 
   function samplePopulation(): PopulationSample {
     return {
@@ -153,6 +199,20 @@ function runHarness(config: { days: number; seed: number; load?: string }): Harn
       siltstitchers: world.siltstitchers.length,
       glassLimpets: world.glassLimpets.length,
       cargoMites: world.cargoMites.length,
+    };
+  }
+
+  function sampleTraits(): TraitSample {
+    return {
+      worldTime: world.elapsed,
+      lucents: traitMeans(world.organisms),
+      grazers: traitMeans(world.grazers),
+      skimmers: traitMeans(world.skimmers),
+      reedwells: traitMeans(world.reedwells),
+      rainbells: traitMeans(world.rainbells),
+      siltstitchers: traitMeans(world.siltstitchers),
+      glassLimpets: traitMeans(world.glassLimpets),
+      cargoMites: traitMeans(world.cargoMites),
     };
   }
 
@@ -187,19 +247,30 @@ function runHarness(config: { days: number; seed: number; load?: string }): Harn
   }
 
   populations.push(samplePopulation());
+  traitDrift.push(sampleTraits());
 
   const startTime = performance.now();
 
   for (let step = 0; step < targetSteps; step++) {
     stepWorld(world);
     updateEvents();
+    if (config.visitorLight) {
+      const day = Math.floor(world.elapsed / DAY_SECONDS);
+      if (day > lastVisitorDay) {
+        const spring = SPRINGS[day % SPRINGS.length];
+        addLight(world, spring.x, spring.y);
+        lastVisitorDay = day;
+      }
+    }
 
     if (step % sampleInterval === 0) {
       populations.push(samplePopulation());
+      traitDrift.push(sampleTraits());
     }
   }
 
   populations.push(samplePopulation());
+  traitDrift.push(sampleTraits());
 
   const endTime = performance.now();
   const wallTimeMs = endTime - startTime;
@@ -213,23 +284,26 @@ function runHarness(config: { days: number; seed: number; load?: string }): Harn
     totalSteps: targetSteps,
     wallTimeMs,
     stepsPerSecond: targetSteps / (wallTimeMs / 1000),
+    visitorLight: config.visitorLight,
     populations,
+    traitDrift,
     events,
     resources: {
       lightEnergy: stats.light,
       loosePigment: stats.pigment,
       nestedPigment: stats.nestPigment,
       totalConsumed: world.consumed,
+      ambientHarvested: world.ecologyLedger.ambientHarvested,
     },
     ledger: { ...world.ecologyLedger },
     conservationCheck: {
-      inputLight: world.consumed + stats.light,
+      inputLight: world.consumed + stats.light + world.ecologyLedger.ambientHarvested,
       outputPigment:
         stats.pigment +
         stats.nestPigment +
         world.ecologyLedger.mineralizedPigment +
         world.ecologyLedger.maintenancePigment,
-      note: 'Light consumed becomes pigment through feeding; values should correlate but not match exactly due to energy floor and decay.',
+      note: 'Daylight enters as ambient harvest and reedwell light; visitor lights remain a separate pulse. Values correlate rather than match because of the energy floor, fade, and night.',
     },
   };
 }
@@ -240,7 +314,12 @@ function formatTime(seconds: number): string {
   return `${mins}m ${secs}s`;
 }
 
-function printReport(report: HarnessReport): void {
+function formatMeans(sample: TraitMeans | null): string {
+  if (!sample) return '—';
+  return `n=${sample.count} drive ${sample.drive.toFixed(3)} bulk ${sample.bulk.toFixed(3)}`;
+}
+
+export function printReport(report: HarnessReport): void {
   console.log('\n' + '═'.repeat(60));
   console.log('  ELSEWHERE HEADLESS SIMULATION REPORT');
   console.log('═'.repeat(60));
@@ -248,6 +327,7 @@ function printReport(report: HarnessReport): void {
   console.log(`\n📊 Run Configuration`);
   console.log(`   Seed: ${report.seed}`);
   console.log(`   Simulated: ${report.simulatedDays} world days (${formatTime(report.worldSeconds)})`);
+  console.log(`   Visitor light: ${report.visitorLight ? 'on (one spring light / day)' : 'off'}`);
   console.log(`   Steps: ${report.totalSteps.toLocaleString()}`);
   console.log(`   Wall time: ${(report.wallTimeMs / 1000).toFixed(2)}s`);
   console.log(`   Performance: ${Math.round(report.stepsPerSecond).toLocaleString()} steps/sec`);
@@ -280,6 +360,26 @@ function printReport(report: HarnessReport): void {
     );
   }
 
+  console.log(`\n🧬 Trait Drift`);
+  const firstTraits = report.traitDrift[0];
+  const lastTraits = report.traitDrift[report.traitDrift.length - 1];
+  const traitSpecies = [
+    'lucents',
+    'grazers',
+    'skimmers',
+    'reedwells',
+    'rainbells',
+    'siltstitchers',
+    'glassLimpets',
+    'cargoMites',
+  ] as const;
+  for (const species of traitSpecies) {
+    const start = firstTraits[species];
+    const end = lastTraits[species];
+    if (!start && !end) continue;
+    console.log(`   ${species.padEnd(14)}: ${formatMeans(start)} → ${formatMeans(end)}`);
+  }
+
   console.log(`\n🔄 Births & Deaths`);
   for (const [species, ev] of Object.entries(report.events)) {
     if (ev.births > 0 || ev.deaths > 0) {
@@ -304,6 +404,7 @@ function printReport(report: HarnessReport): void {
   console.log(`   Loose pigment: ${report.resources.loosePigment.toFixed(2)}`);
   console.log(`   Nested pigment: ${report.resources.nestedPigment.toFixed(2)}`);
   console.log(`   Total light consumed: ${report.resources.totalConsumed.toFixed(2)}`);
+  console.log(`   Ambient daylight harvested: ${report.resources.ambientHarvested.toFixed(2)}`);
 
   console.log(`\n📒 Ecology Ledger`);
   console.log(`   Mineralized pigment: ${report.ledger.mineralizedPigment.toFixed(2)}`);
@@ -313,24 +414,32 @@ function printReport(report: HarnessReport): void {
   console.log(`   Daylight harvested: ${report.ledger.daylightHarvested.toFixed(2)}`);
   console.log(`   Reedwell emitted light: ${report.ledger.reedwellEmittedLight.toFixed(2)}`);
   console.log(`   Rainbell intake: ${report.ledger.rainbellIntake.toFixed(2)}`);
+  console.log(`   Ambient harvested: ${report.ledger.ambientHarvested.toFixed(2)}`);
 
   console.log(`\n⚖️  Conservation Check`);
-  console.log(`   Input (consumed + remaining light): ${report.conservationCheck.inputLight.toFixed(2)}`);
+  console.log(`   Input (consumed + remaining + ambient): ${report.conservationCheck.inputLight.toFixed(2)}`);
   console.log(`   Output (pigment pools + ledger): ${report.conservationCheck.outputPigment.toFixed(2)}`);
   console.log(`   Note: ${report.conservationCheck.note}`);
 
   console.log('\n' + '═'.repeat(60) + '\n');
 }
 
-const config = parseArgs();
-console.log(
-  `Starting headless simulation: ${config.days} world days, seed ${config.seed}${config.load ? ` (loading from ${config.load})` : ''}`,
-);
+function invokedAsCli(): boolean {
+  const entry = process.argv[1] ?? '';
+  return entry.endsWith('harness.ts') || entry.endsWith('harness');
+}
 
-const report = runHarness(config);
-printReport(report);
+if (invokedAsCli()) {
+  const config = parseHarnessArgs(process.argv.slice(2));
+  console.log(
+    `Starting headless simulation: ${config.days} world days, seed ${config.seed}${config.load ? ` (loading from ${config.load})` : ''}${config.visitorLight ? ', visitor light on' : ''}`,
+  );
 
-if (config.json) {
-  fs.writeFileSync(config.json, JSON.stringify(report, null, 2));
-  console.log(`JSON report written to: ${config.json}`);
+  const report = runHarness(config);
+  printReport(report);
+
+  if (config.json) {
+    fs.writeFileSync(config.json, JSON.stringify(report, null, 2));
+    console.log(`JSON report written to: ${config.json}`);
+  }
 }

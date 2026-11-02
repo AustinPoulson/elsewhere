@@ -1,5 +1,6 @@
 import { applyCurrent } from '../actions/current';
 import { isInPool, type Rainbell, type Sediment, type World } from '../types';
+import { baselineTraits } from '../traits';
 import { effectiveWeather } from '../weather';
 import { activeNewTypePopulation, NEW_TYPE_POPULATION_CAP, RAINBELL_CAP, SPECIES_CATALOG } from './catalog';
 import { blendHue, returnPigment, safeId } from './resources';
@@ -43,7 +44,11 @@ function updateOne(world: World, bell: Rainbell, dt: number, index: Map<number, 
   if ((world.tick + bell.id) % 6 === 0) search(world, bell);
   const feed = bell.feedTargetSedimentId === null ? undefined : index.get(bell.feedTargetSedimentId);
   if (feed && feed.strength > 0 && Math.hypot(feed.x - bell.x, feed.y - bell.y) <= RULE.feedReach) {
-    const intake = Math.min(feed.strength, Math.max(0, RULE.reserveCapacity - bell.reserve), dt * RULE.intakeRate);
+    const intake = Math.min(
+      feed.strength,
+      Math.max(0, RULE.reserveCapacity - bell.reserve),
+      dt * RULE.intakeRate * bell.traits.drive,
+    );
     if (intake > 0) {
       bell.hue = blendHue(bell.hue, feed.hue, bell.reserve, intake);
       bell.reserve += intake;
@@ -51,7 +56,7 @@ function updateOne(world: World, bell: Rainbell, dt: number, index: Map<number, 
       world.ecologyLedger.rainbellIntake += intake;
     }
   } else bell.feedTargetSedimentId = null;
-  const maintenance = Math.min(bell.reserve, dt * RULE.maintenanceRate);
+  const maintenance = Math.min(bell.reserve, dt * RULE.maintenanceRate * bell.traits.drive);
   bell.reserve -= maintenance;
   world.ecologyLedger.rainbellMaintenancePigment += maintenance;
   bell.starvedFor = bell.reserve <= 0 ? bell.starvedFor + dt : 0;
@@ -142,6 +147,7 @@ export function admitRainbell(world: World): boolean {
     pumpTargetSedimentId: null,
     pulseNextAllowedAt: world.elapsed,
     lastPulseAt: null,
+    traits: baselineTraits(),
   });
   world.rainbellAdmissionAt = world.elapsed + RULE.admissionRest;
   return true;

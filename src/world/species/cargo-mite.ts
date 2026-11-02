@@ -1,5 +1,6 @@
 import { confinePosition } from '../geometry';
 import type { CargoMite, Grazer, World } from '../types';
+import { baselineTraits, mutateTraits, traitMobility } from '../traits';
 import { activeNewTypePopulation, NEW_TYPE_POPULATION_CAP, SPECIES_CATALOG } from './catalog';
 import { tryEventFounding } from './founding';
 import { blendHue, returnPigment, safeId } from './resources';
@@ -66,6 +67,7 @@ export function admitCargoMite(world: World): boolean {
     targetHostId: null,
     parentId: null,
     nextBirthAt: world.elapsed + RULE.maturityAge,
+    traits: baselineTraits(),
   };
   host.cargo -= RULE.admissionPigment;
   if (host.cargo <= 0) {
@@ -80,10 +82,12 @@ export function admitCargoMite(world: World): boolean {
 
 function chooseTarget(world: World, mite: CargoMite): void {
   let nearest: Grazer | undefined;
-  let best: number = RULE.seekReach;
+  const reach = RULE.seekReach * (1.15 - 0.15 * mite.traits.bulk);
+  let best = reach;
   for (const host of world.grazers) {
     if (host.cargo <= 0 || hostPopulation(world, host.id) >= RULE.hostCap) continue;
     const distance = Math.hypot(mite.x - host.x, mite.y - host.y);
+    if (distance > reach) continue;
     if (distance < best || (distance === best && (!nearest || host.id < nearest.id))) {
       best = distance;
       nearest = host;
@@ -99,7 +103,7 @@ function moveSeeking(world: World, mite: CargoMite, dt: number): void {
     !host ||
     host.cargo <= 0 ||
     hostPopulation(world, host.id) >= RULE.hostCap ||
-    Math.hypot(mite.x - host.x, mite.y - host.y) > RULE.seekReach
+    Math.hypot(mite.x - host.x, mite.y - host.y) > RULE.seekReach * (1.15 - 0.15 * mite.traits.bulk)
   ) {
     mite.targetHostId = null;
     mite.vx = 0;
@@ -119,7 +123,7 @@ function moveSeeking(world: World, mite: CargoMite, dt: number): void {
     mite.vy = host.vy;
     return;
   }
-  const speed = Math.min(RULE.speed, Math.max(0, distance - RULE.attachReach) / dt);
+  const speed = Math.min(RULE.speed * traitMobility(mite.traits), Math.max(0, distance - RULE.attachReach) / dt);
   mite.vx = (dx / distance) * speed;
   mite.vy = (dy / distance) * speed;
   mite.x += mite.vx * dt;
@@ -128,7 +132,11 @@ function moveSeeking(world: World, mite: CargoMite, dt: number): void {
 }
 
 function feed(world: World, mite: CargoMite, host: Grazer, dt: number): void {
-  const intake = Math.min(host.cargo, dt * RULE.intakeRate, Math.max(0, RULE.reserveCapacity - mite.reserve));
+  const intake = Math.min(
+    host.cargo,
+    dt * RULE.intakeRate * mite.traits.drive,
+    Math.max(0, RULE.reserveCapacity - mite.reserve),
+  );
   if (intake <= 0) return;
   mite.hue = blendHue(mite.hue, host.hue, mite.reserve, intake);
   host.cargo -= intake;
@@ -170,6 +178,7 @@ function birth(world: World, parent: CargoMite, host: Grazer): void {
       targetHostId: null,
       parentId: parent.id,
       nextBirthAt: current.elapsed + RULE.maturityAge,
+      traits: mutateTraits(current, parent.traits),
     };
     parent.reserve -= RULE.childCost;
     parent.nextBirthAt = current.elapsed + RULE.breedingRest;
@@ -195,7 +204,7 @@ function updateOne(world: World, mite: CargoMite, dt: number): void {
     mite.vy = host.vy;
     feed(world, mite, host, dt);
   }
-  const maintenance = Math.min(mite.reserve, dt * RULE.maintenanceRate);
+  const maintenance = Math.min(mite.reserve, dt * RULE.maintenanceRate * mite.traits.drive);
   mite.reserve -= maintenance;
   world.ecologyLedger.cargoMiteMaintenancePigment += maintenance;
   mite.starvedFor = mite.reserve <= 0 ? mite.starvedFor + dt : 0;

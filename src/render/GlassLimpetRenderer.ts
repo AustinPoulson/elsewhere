@@ -1,5 +1,6 @@
 import { Container, Graphics, Sprite, type Texture } from 'pixi.js';
 import type { World } from '../world/types';
+import { appearanceGlow, appearanceScale } from '../world/traits';
 
 interface LimpetVisual {
   node: Container;
@@ -56,10 +57,11 @@ export class GlassLimpetRenderer {
       visual.node.position.set(limpet.x, limpet.y);
       visual.node.rotation = Math.atan2(limpet.y - 500, limpet.x - 720) + Math.PI / 2;
       const load = Math.min(1, Math.max(0, limpet.cargo / 0.8));
+      visual.node.scale.set(appearanceScale(limpet.traits));
       visual.glow.tint = 0xa8e1d3;
       visual.glow.width = 50 + load * 18;
       visual.glow.height = 38 + load * 14;
-      visual.glow.alpha = 0.07 + load * 0.11;
+      visual.glow.alpha = (0.07 + load * 0.11) * appearanceGlow(limpet.traits);
       visual.catch.clear();
       if (load > 0) {
         visual.catch

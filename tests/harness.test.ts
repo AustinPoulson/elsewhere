@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createWorld, stepWorld, getStats } from '../src/world/simulation';
 import { serializeWorld } from '../src/world/persistence';
 import { FIXED_STEP } from '../src/world/types';
+import { parseHarnessArgs, runHarness } from '../scripts/harness';
 
 const DAY_SECONDS = 360;
 
@@ -79,4 +80,16 @@ describe('headless harness', () => {
     expect(world.elapsed).toBeGreaterThan(3 * DAY_SECONDS - 1);
     expect(world.nests.length).toBeGreaterThan(0);
   }, 15_000);
+
+  it('reports trait drift and an optional visitor-light pulse', () => {
+    expect(parseHarnessArgs(['--days', '2', '--seed', '1']).visitorLight).toBe(false);
+    expect(parseHarnessArgs(['--days', '2', '--seed', '1', '--visitor-light']).visitorLight).toBe(true);
+    const quiet = runHarness({ days: 2, seed: 1, visitorLight: false });
+    expect(quiet.traitDrift.length).toBeGreaterThan(1);
+    expect(quiet.traitDrift[0].lucents).toMatchObject({ count: 24, drive: 1, bulk: 1 });
+    expect(quiet.resources.ambientHarvested).toBeGreaterThan(0);
+    const tended = runHarness({ days: 2, seed: 1, visitorLight: true });
+    expect(tended.visitorLight).toBe(true);
+    expect(tended.resources.totalConsumed).toBeGreaterThan(quiet.resources.totalConsumed);
+  }, 20_000);
 });

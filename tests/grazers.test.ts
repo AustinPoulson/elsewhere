@@ -18,9 +18,12 @@ function run(world: World, steps: number): void {
 
 function isolatedGrazer(): World {
   const world = createWorld(71);
-  // Keep this short single-species transfer fixture isolated from nest-funded admissions.
+  world.elapsed = 120;
   world.skimmerAdmissionAt = world.elapsed + 60;
   world.siltstitcherAdmissionAt = world.elapsed + 60;
+  world.reedwellAdmissionAt = world.elapsed + 60;
+  world.rainbellAdmissionAt = world.elapsed + 60;
+  world.glassLimpetAdmissionAt = world.elapsed + 60;
   world.cargoMiteAdmissionAt = world.elapsed + 60;
   world.organisms = [world.organisms[0]];
   world.lights = [];
@@ -77,7 +80,7 @@ function legacyPayload(world: World): string {
   } = world;
   return JSON.stringify({
     ...legacy,
-    organisms: organisms.map(({ pigmentCredit: _credit, ...entry }) => entry),
+    organisms: organisms.map(({ pigmentCredit: _credit, traits: _traits, ...entry }) => entry),
     version: 1,
   });
 }

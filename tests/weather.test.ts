@@ -83,20 +83,22 @@ describe('rain diffuses existing light', () => {
     expect(initialLight - rain.lights[0].energy).toBeCloseTo(rain.consumed + FIXED_STEP * 0.045, 10);
     expect(rain.organisms[0].energy - 0.5).toBeCloseTo(rain.consumed * 0.065 - FIXED_STEP * 0.008, 10);
     expect(rain.sediment).toHaveLength(0);
-    expect(rain.organisms[0].pigmentCredit).toBeCloseTo(rain.consumed * 0.02, 12);
+    expect(rain.organisms[0].pigmentCredit).toBeCloseTo(
+      (rain.consumed + rain.ecologyLedger.ambientHarvested) * 0.02,
+      12,
+    );
     expect(rain.organisms[0].vy).toBeGreaterThan(calm.organisms[0].vy * 4);
     expect(rain.organisms[0].vx).toBeLessThan(calm.organisms[0].vx);
     expect(rain.lights[0].initialEnergy).toBe(initialLight);
     run(rain, 180);
     const deposited = rain.sediment.reduce((total, grain) => total + grain.strength, 0);
     expect(deposited).toBeGreaterThan(0);
-    const paid = rain.consumed * 0.02;
+    const paid = (rain.consumed + rain.ecologyLedger.ambientHarvested) * 0.02;
     expect(deposited + rain.organisms[0].pigmentCredit).toBeLessThanOrEqual(paid + 1e-10);
-    // The only subsequent loss is ordinary floor fading; no epsilon-meal gift.
     expect(deposited + rain.organisms[0].pigmentCredit).toBeGreaterThan(paid * Math.exp(-6.1 * 0.0013));
   });
 
-  it('creates no light, energy, pigment, or random draws without a light source', () => {
+  it('creates no visitor light, energy, or random draws without a light source', () => {
     const world = createWorld(17);
     world.lights = [];
     world.sediment = [];
@@ -104,14 +106,13 @@ describe('rain diffuses existing light', () => {
     world.nests = [];
     const initialEnergy = world.organisms.map((entry) => entry.energy);
     const randomState = world.randomState;
-    const nextId = world.nextId;
     run(world, 30 * 400);
     expect(world.lights).toHaveLength(0);
-    expect(world.sediment).toHaveLength(0);
     expect(world.consumed).toBe(0);
     expect(getStats(world).light).toBe(0);
+    expect(getStats(world).pigment).toBeGreaterThan(0);
+    expect(world.ecologyLedger.ambientHarvested).toBeGreaterThan(0);
     expect(world.randomState).toBe(randomState);
-    expect(world.nextId).toBe(nextId);
     for (let i = 0; i < world.organisms.length; i++) expect(world.organisms[i].energy).toBeLessThan(initialEnergy[i]);
   });
 
@@ -230,7 +231,7 @@ describe('weather and existing snapshots', () => {
     } = legacy;
     const snapshot = JSON.stringify({
       ...fields,
-      organisms: organisms.map(({ pigmentCredit: _credit, ...entry }) => entry),
+      organisms: organisms.map(({ pigmentCredit: _credit, traits: _traits, ...entry }) => entry),
       version: 1,
     });
     const restored = restoreWorld(snapshot);

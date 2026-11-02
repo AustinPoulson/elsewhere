@@ -1,5 +1,6 @@
 import { sedimentCurrentVelocity } from '../currents';
 import { isInPool, poolRadius, WORLD_HEIGHT, WORLD_WIDTH, type GlassLimpet, type Sediment, type World } from '../types';
+import { baselineTraits } from '../traits';
 import { activeNewTypePopulation, NEW_TYPE_POPULATION_CAP, SPECIES_CATALOG } from './catalog';
 import { AdmissionSources } from './admission-sources';
 import { blendHue, returnPigment, safeId } from './resources';
@@ -81,6 +82,7 @@ export function admitGlassLimpet(world: World): boolean {
     hue,
     starvedFor: 0,
     targetSedimentId: null,
+    traits: baselineTraits(),
   });
   world.glassLimpetAdmissionAt = world.elapsed + RULE.admissionRest;
   return true;
@@ -118,7 +120,7 @@ function updateOne(world: World, limpet: GlassLimpet, dt: number, index: Map<num
       // cannot silently absorb reserve's quarter, nor vice versa.
       const intake = Math.min(
         food.strength,
-        dt * RULE.intakeRate,
+        dt * RULE.intakeRate * limpet.traits.drive,
         Math.max(0, RULE.reserveCapacity - limpet.reserve) / 0.25,
         Math.max(0, RULE.cargoCapacity - limpet.cargo) / 0.75,
       );
@@ -131,7 +133,7 @@ function updateOne(world: World, limpet: GlassLimpet, dt: number, index: Map<num
       }
     } else limpet.targetSedimentId = null;
   } else limpet.targetSedimentId = null;
-  const maintenance = Math.min(limpet.reserve, dt * RULE.maintenanceRate);
+  const maintenance = Math.min(limpet.reserve, dt * RULE.maintenanceRate * limpet.traits.drive);
   limpet.reserve -= maintenance;
   world.ecologyLedger.glassLimpetMaintenancePigment += maintenance;
   limpet.starvedFor = limpet.reserve <= 0 ? limpet.starvedFor + dt : 0;

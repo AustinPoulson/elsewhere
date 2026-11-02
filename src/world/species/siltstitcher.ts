@@ -1,5 +1,6 @@
 import { confinePosition } from '../geometry';
 import { LIMITS, isInPool, type Nest, type Point, type Sediment, type Siltstitcher, type World } from '../types';
+import { baselineTraits, traitMobility } from '../traits';
 import { activeNewTypePopulation, NEW_TYPE_POPULATION_CAP, SILTSTITCHER_CAP, SPECIES_CATALOG } from './catalog';
 import { blendHue, returnPigment, safeId } from './resources';
 
@@ -10,7 +11,7 @@ function move(body: Siltstitcher, target: Point, dt: number): boolean {
   const dx = target.x - body.x;
   const dy = target.y - body.y;
   const distance = Math.hypot(dx, dy);
-  const speed = Math.min(RULE.speed, distance / dt);
+  const speed = Math.min(RULE.speed * traitMobility(body.traits), distance / dt);
   body.vx = distance > 0.000001 ? (dx / distance) * speed : 0;
   body.vy = distance > 0.000001 ? (dy / distance) * speed : 0;
   body.x += body.vx * dt;
@@ -158,7 +159,7 @@ function updateOne(world: World, body: Siltstitcher, dt: number): void {
       if (body.blockedFor >= RULE.blockedLimit) returnHome(body);
     }
   } else returnHome(body);
-  const maintenance = Math.min(body.reserve, dt * RULE.maintenanceRate);
+  const maintenance = Math.min(body.reserve, dt * RULE.maintenanceRate * body.traits.drive);
   body.reserve -= maintenance;
   world.ecologyLedger.siltstitcherMaintenancePigment += maintenance;
   body.starvedFor = body.reserve <= 0 ? body.starvedFor + dt : 0;
@@ -209,6 +210,7 @@ export function admitSiltstitcher(world: World): boolean {
     mode: 'home',
     destination: null,
     blockedFor: 0,
+    traits: baselineTraits(),
   });
   world.siltstitcherAdmissionAt = world.elapsed + RULE.admissionRest;
   return true;
