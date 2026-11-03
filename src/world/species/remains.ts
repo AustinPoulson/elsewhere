@@ -113,13 +113,15 @@ export function depositRemain(world: World, point: Point, hue: number, pigment: 
   }
 }
 
-export function updateRemains(world: World, dt: number): void {
+export function updateRemains(world: World, dt: number, decayScale = 1): void {
   if (world.remains.length === 0) return;
   let write = 0;
   for (const remain of world.remains) {
     remain.age += dt;
-    leachRemain(world, remain, dt * REMAIN_DECAY_RATE);
-    if (remain.pigment > 0 && remain.pigment < REMAIN_MIN) leachRemain(world, remain, remain.pigment);
+    if (decayScale > 0) {
+      leachRemain(world, remain, decayScale * dt * REMAIN_DECAY_RATE);
+      if (remain.pigment > 0 && remain.pigment < REMAIN_MIN) leachRemain(world, remain, remain.pigment);
+    }
     if (remain.pigment > 0) world.remains[write++] = remain;
   }
   world.remains.length = write;

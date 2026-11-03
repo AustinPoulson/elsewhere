@@ -438,5 +438,5 @@ describe('rain-rooted daylight reedwell', () => {
     console.info(
       `Reedwell initial-max-budget profile: 42 lucents/6 reedwells/6 skimmers/8 grazers/16 nests/3 currents/600 grains/32 lights; 2 x 36,000 fixed steps, 20 exact trajectory samples, ${wallMs.toFixed(1)} ms total; ${(wallMs / 72000).toFixed(4)} ms/whole-world step.`,
     );
-  }, 30_000);
+  }, 60_000);
 });

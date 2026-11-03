@@ -485,8 +485,8 @@ export function stepWorld(world: World, dt = FIXED_STEP): void {
   updateCargoMites(world, dt);
   updateMarlgrubs(world, dt);
   runNormalFounding(world);
-  tryEventFounding(world, admitMarlgrub);
-  updateRemains(world, dt);
+  if (world.remains.length > 0) tryEventFounding(world, admitMarlgrub);
+  updateRemains(world, dt, world.tick % 6 === 0 ? 6 : 0);
   applyCurrentDrift(world, dt);
   syncAttachedCargoMites(world);
   for (const light of world.lights) {

@@ -53,5 +53,5 @@ export function applyCurrentDrift(world: World, dt: number): void {
   for (const body of world.cargoMites) if (body.mode === 'seeking') drift(world, body, dt, 1, 11);
   for (const body of world.marlgrubs) drift(world, body, dt, 1, 11);
   for (const body of world.sediment) drift(world, body, dt, SEDIMENT_DRIFT, 0);
-  for (const body of world.remains) drift(world, body, dt, SEDIMENT_DRIFT, 0);
+  if (world.remains.length > 0) for (const body of world.remains) drift(world, body, dt, SEDIMENT_DRIFT, 0);
 }
