@@ -1,5 +1,7 @@
 import { LIMITS, type Point, type Sediment, type World } from '../types';
 
+export const MIN_SEDIMENT_GRAIN = 0.025;
+
 export function safeId(world: World): boolean {
   return Number.isSafeInteger(world.nextId) && world.nextId > 0 && world.nextId < Number.MAX_SAFE_INTEGER;
 }
@@ -16,7 +18,7 @@ export function blendHue(a: number, b: number, amountA: number, amountB: number)
 // up; the named mineralization sink accounts for every unplaced remainder.
 export function returnPigment(world: World, point: Point, hue: number, pigment: number): void {
   let amount = pigment;
-  if (amount > 0 && world.sediment.length < LIMITS.sediment && safeId(world)) {
+  if (amount >= MIN_SEDIMENT_GRAIN && world.sediment.length < LIMITS.sediment && safeId(world)) {
     const returned = Math.min(1, amount);
     world.sediment.push({ id: world.nextId++, x: point.x, y: point.y, radius: 6, hue, strength: returned, age: 0 });
     amount -= returned;

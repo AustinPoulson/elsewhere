@@ -5,6 +5,7 @@ import { blendHue, returnPigment, safeId } from './resources';
 export const REMAIN_DECAY_RATE = 0.003;
 export const REMAIN_MIN = 0.015;
 export const REMAIN_MERGE_REACH = 28;
+export const DEATH_SEDIMENT_FRACTION = 2 / 3;
 
 export function remainRadius(pigment: number): number {
   return Math.min(12, 4 + Math.max(0, pigment) * 4);
@@ -61,6 +62,15 @@ function nearestRemain(world: World, point: Point, reach: number): Remain | unde
     }
   }
   return nearest;
+}
+
+export function settleDeath(world: World, point: Point, hue: number, pigment: number): void {
+  const amount = Math.max(0, pigment);
+  if (amount <= 0) return;
+  const sedimentShare = amount * DEATH_SEDIMENT_FRACTION;
+  const remainShare = amount - sedimentShare;
+  if (remainShare > 0) depositRemain(world, point, hue, remainShare);
+  if (sedimentShare > 0) returnPigment(world, point, hue, sedimentShare);
 }
 
 export function depositRemain(world: World, point: Point, hue: number, pigment: number): void {

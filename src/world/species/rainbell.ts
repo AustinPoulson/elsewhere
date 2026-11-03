@@ -4,7 +4,7 @@ import { baselineTraits } from '../traits';
 import { effectiveWeather } from '../weather';
 import { activeNewTypePopulation, NEW_TYPE_POPULATION_CAP, RAINBELL_CAP, SPECIES_CATALOG } from './catalog';
 import { blendHue, safeId } from './resources';
-import { depositRemain } from './remains';
+import { settleDeath } from './remains';
 import { AdmissionSources } from './admission-sources';
 
 const RULE = SPECIES_CATALOG.rainbell;
@@ -171,7 +171,7 @@ export function updateRainbells(world: World, dt: number, allowStandaloneAdmissi
   let write = 0;
   for (const bell of world.rainbells) {
     if (bell.age >= RULE.lifespan || bell.starvedFor >= RULE.starvationLimit)
-      depositRemain(world, bell, bell.hue, bell.body + bell.reserve);
+      settleDeath(world, bell, bell.hue, bell.body + bell.reserve);
     else world.rainbells[write++] = bell;
   }
   world.rainbells.length = write;

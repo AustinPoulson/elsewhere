@@ -61,16 +61,16 @@ _This section records surprising population dynamics, extinctions, or runaway re
 
 ### Remains and marlgrubs (seeds 1 and 42)
 
-**Death leaves a located resource, and the ledger balances:** Over 30 days seed 1 created 45.25 remain pigment (20.01 consumed, 25.24 decayed, 0 held at the end). Seed 42 created 44.58 (20.63 consumed, 23.60 decayed, 0.36 held). Both harness conservation checks report `created = held + consumed + decayed`.
+**Death leaves a located resource, and the ledger balances:** Two thirds of each mortal death returns immediately as sediment; the rest becomes a remain. Over 30 days seed 1 created 20.32 remain pigment (0.93 consumed, 19.14 decayed, 0.25 held). Seed 42 created 19.10 (0.94 consumed, 18.16 decayed, 0 held). Both harness conservation checks report `created = held + consumed + decayed`.
 
-**A scavenger pays for itself from remains:** Marlgrubs appear only when a remnant can fund body 0.1 plus reserve 0.1. Seed 1 had 57 births / 57 deaths and went extinct at 178m 44s once the floor was empty. Seed 42 had 60 births / 57 deaths and ended with 3 living grubs and 1 remain. Neither opening worlds nor migrated saves receive a free population. The type cap of 4 held.
+**A scavenger pays for itself from remains, off the normal founding rotation:** Marlgrubs appear through the death-founded event offer when a remnant can fund body 0.1 plus reserve 0.1. They are not a seventh slot in the six-type founding cadence. Seed 1 had 4 births / 4 deaths and went extinct at 146m 42s. Seed 42 had 4 births / 4 deaths and went extinct at 92m 32s. Neither opening worlds nor migrated saves receive a free population. The type cap of 4 held.
 
-**Pigment spends more time as bodies and stains:** Nested pigment ended at 1.21 / 0.84 versus 2.33 / 2.80 on main, because death no longer dumps immediately into sediment. Loose pigment stayed bounded (0.14 / 0.42). Skimmer and mite turnover continued: seed 1 kept 2 skimmers (64 births / 62 deaths) and 4 mites at cap (74 / 70); seed 42 kept 3 skimmers (74 / 71).
+**Shoreline recycling is no longer a dust leak:** Remain decay used to emit ~0.0001 grains that the 0.025 sediment filter dropped, so a starved glass limpet's 0.2 body never refunded a coarse grain. Tiny returns now merge into nearby sediment. A starved 0.2 death leaves a 0.133 grain, which is coarse (>= 0.12). Glass limpets lasted 161m / 160m versus 179m / 45m on main — they still die, but not at the mechanical 2m 42s shared by both seeds.
 
-**The seven-type founding rotation and delayed return change who persists:** Glass limpets dropped to a single brief founding on both seeds (extinct at ~2m 43s, versus 179m / 45m on main). Seed 42 lost siltstitchers at 7m 29s — they survived on main — and cargo mites at 179m 52s. Rainbells no longer appeared on seed 1. Extinction is still allowed and still seed-shaped.
+**Nest-funded types last several generations, then yield:** Siltstitchers now found repeatedly (8 / 6 births) and go extinct at ~21m versus 62m / survived on main. Nested pigment ended at 1.32 / 1.89 versus 2.33 / 2.80, because one third of each death is delayed as remains. That is slower nest refill, not a one-lifespan collapse. Skimmers persisted on both seeds (75 / 71 and 74 / 70). Seed 1 kept 2 cargo mites; seed 42 lost them at 179m 16s.
 
 **Implications for upcoming work:**
 
 1. Catching up on time away can resume a world that still cycles remains and scavengers, not only lucents and grazers
-2. Nest-funded types now compete with a delay: corpses feed marlgrubs or leach slowly, so shoreline and nest lineages have less immediately available pigment than when death returned as sediment
-3. That is a physics change, not a population gift; later work can add conditions that concentrate remains, not free bodies
+2. Nest-funded types still compete with a delay: a third of each corpse is remain rather than immediate sediment, so individual nests sit above the 1.5 founding threshold less often
+3. That is a physics change, not a population gift; later work can concentrate remains rather than grant free bodies

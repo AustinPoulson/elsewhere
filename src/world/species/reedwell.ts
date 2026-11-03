@@ -4,7 +4,7 @@ import { baselineTraits } from '../traits';
 import { effectiveWeather } from '../weather';
 import { activeNewTypePopulation, NEW_TYPE_POPULATION_CAP, REEDWELL_CAP, SPECIES_CATALOG } from './catalog';
 import { blendHue, safeId } from './resources';
-import { depositRemain } from './remains';
+import { settleDeath } from './remains';
 import { AdmissionSources } from './admission-sources';
 
 const RULE = SPECIES_CATALOG.reedwell;
@@ -118,7 +118,7 @@ export function updateReedwells(world: World, dt: number, allowStandaloneAdmissi
   let write = 0;
   for (const reedwell of world.reedwells) {
     if (reedwell.age >= RULE.lifespan) {
-      depositRemain(world, reedwell, reedwell.hue, reedwell.body);
+      settleDeath(world, reedwell, reedwell.hue, reedwell.body);
       world.ecologyLedger.reedwellDissipatedLight += reedwell.lightStore;
     } else world.reedwells[write++] = reedwell;
   }

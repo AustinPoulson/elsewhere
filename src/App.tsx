@@ -1186,10 +1186,10 @@ export function App() {
                   <div>
                     <h3>What a body leaves</h3>
                     <p>
-                      When a short life ends, its paid body and remaining stores settle as a dark stain on the floor.
-                      That remnant is a real resource: it slowly leaches back into ordinary pigment, or a marlgrub can
-                      feed on it. Nothing accumulates without bound. Observe a stain to see how much color it still
-                      holds.
+                      When a short life ends, most of its paid color returns at once as ordinary pigment. The rest
+                      settles as a dark stain on the floor. That remnant is a real resource: it slowly leaches back into
+                      ordinary pigment, or a marlgrub can feed on it. Nothing accumulates without bound. Observe a stain
+                      to see how much color it still holds.
                     </p>
                   </div>
                 </div>

@@ -9,6 +9,7 @@ import {
 import { activeNewTypePopulation, SPECIES_CATALOG } from '../src/world/species/catalog';
 import { baselineTraits } from '../src/world/traits';
 import { LIMITS, type Grazer, type World } from '../src/world/types';
+import { DEATH_SEDIMENT_FRACTION } from '../src/world/species/remains';
 
 function habitat(): { world: World; host: Grazer } {
   const world = createWorld(28);
@@ -180,8 +181,8 @@ describe('cargo mite funded host and offspring lifecycle', () => {
     const remaining = mite.body + mite.reserve;
     updateCargoMites(world, 0.02);
     expect(world.cargoMites).toHaveLength(0);
-    expect(world.sediment[0].strength).toBeCloseTo(0.2, 4);
-    expect(world.remains[0].pigment).toBeCloseTo(remaining, 4);
+    expect(world.sediment[0].strength).toBeCloseTo(Math.min(1, 0.2 + remaining * DEATH_SEDIMENT_FRACTION), 4);
+    expect(world.remains[0].pigment).toBeCloseTo(remaining * (1 - DEATH_SEDIMENT_FRACTION), 4);
     expect(world.nextId).toBe(id + 1);
     const mineralized = world.ecologyLedger.mineralizedPigment;
     updateCargoMites(world, 0.02);

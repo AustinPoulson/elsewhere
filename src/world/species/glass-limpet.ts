@@ -4,7 +4,7 @@ import { baselineTraits } from '../traits';
 import { activeNewTypePopulation, NEW_TYPE_POPULATION_CAP, SPECIES_CATALOG } from './catalog';
 import { AdmissionSources } from './admission-sources';
 import { blendHue, safeId } from './resources';
-import { depositRemain } from './remains';
+import { settleDeath } from './remains';
 
 const RULE = SPECIES_CATALOG.glassLimpet;
 const indexes = new WeakMap<World, Map<number, Sediment>>();
@@ -153,7 +153,7 @@ export function updateGlassLimpets(world: World, dt: number): void {
   let write = 0;
   for (const limpet of world.glassLimpets) {
     if (limpet.age >= RULE.lifespan || limpet.starvedFor >= RULE.starvationLimit) {
-      depositRemain(world, limpet, limpet.hue, limpet.body + limpet.reserve + limpet.cargo);
+      settleDeath(world, limpet, limpet.hue, limpet.body + limpet.reserve + limpet.cargo);
     } else world.glassLimpets[write++] = limpet;
   }
   world.glassLimpets.length = write;

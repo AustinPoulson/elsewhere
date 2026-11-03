@@ -4,7 +4,7 @@ import { baselineTraits, traitMobility } from '../traits';
 
 import { activeNewTypePopulation, NEW_TYPE_POPULATION_CAP, SKIMMER_CAP, SPECIES_CATALOG } from './catalog';
 import { blendHue, safeId } from './resources';
-import { depositRemain } from './remains';
+import { settleDeath } from './remains';
 
 const SKIMMER_MAINTENANCE = 0.002;
 const SKIMMER_INTAKE = 0.03;
@@ -163,7 +163,7 @@ export function updateSkimmers(world: World, dt: number, allowStandaloneAdmissio
       skimmer.age >= SPECIES_CATALOG.skimmer.lifespan ||
       skimmer.starvedFor >= SPECIES_CATALOG.skimmer.starvationLimit
     )
-      depositRemain(world, skimmer, skimmer.hue, skimmer.body + skimmer.reserve);
+      settleDeath(world, skimmer, skimmer.hue, skimmer.body + skimmer.reserve);
     else world.skimmers[write++] = skimmer;
   }
   world.skimmers.length = write;

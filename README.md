@@ -54,7 +54,7 @@ Glass limpets may settle in suitable shoreline pockets after loose pigment pays 
 
 Cargo mites may appear on grazers carrying enough pigment. The grazer's actual bundle pays for the mite's first body and reserve; attached mites slowly draw more from that bundle, so less may reach the nest. A mature parent with enough reserve can pay for one young mite on the same host. Both lives are finite, and their remaining pigment returns to the water at exit. Grazers with no carried food cannot fund new mites, and old saves receive no free population. Observe the tiny shape on a grazer's rim to inspect its host and reserve; no new control is needed.
 
-When a short-lived body ends, its paid color settles as remains on the floor instead of vanishing. Those stains slowly leach back into ordinary pigment, and a marlgrub can pay for itself from a remnant large enough to fund a body. It feeds only on remains. Old saves start with none. Observe a stain or a grub to inspect it; no new control is needed.
+When a short-lived body ends, most of its paid color returns at once as ordinary pigment. The rest settles as remains on the floor. Those stains slowly leach back into ordinary pigment, and a marlgrub can pay for itself from a remnant large enough to fund a body. It feeds only on remains. Old saves start with none. Observe a stain or a grub to inspect it; no new control is needed.
 
 ## Publish on GitHub Pages
 

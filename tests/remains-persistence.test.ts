@@ -34,7 +34,7 @@ function inhabited(): World {
   world.marlgrubs[0].traits = { drive: 1.04, bulk: 0.96 };
   world.marlgrubAdmissionAt = 140;
   world.marlgrubCandidateAfterId = world.remains[0]?.id ?? 0;
-  world.foundingTypeCursor = 6;
+  world.foundingTypeCursor = 5;
   return world;
 }
 
@@ -101,7 +101,7 @@ describe('remains snapshot revision', () => {
         w.marlgrubs[0].targetRemainId = w.grazers[0].id;
       },
       (w) => {
-        w.foundingTypeCursor = 7;
+        w.foundingTypeCursor = 6;
       },
       (w) => {
         delete w.ecologyLedger.remainsCreated;

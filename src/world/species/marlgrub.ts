@@ -3,7 +3,7 @@ import type { Marlgrub, Remain, World } from '../types';
 import { baselineTraits, traitMobility } from '../traits';
 import { activeNewTypePopulation, NEW_TYPE_POPULATION_CAP, SPECIES_CATALOG } from './catalog';
 import { blendHue, safeId } from './resources';
-import { depositRemain, discardEmptyRemains, takeRemainPigment } from './remains';
+import { discardEmptyRemains, settleDeath, takeRemainPigment } from './remains';
 
 const RULE = SPECIES_CATALOG.marlgrub;
 const indexes = new WeakMap<World, Map<number, Remain>>();
@@ -129,7 +129,7 @@ export function updateMarlgrubs(world: World, dt: number): void {
   let write = 0;
   for (const grub of world.marlgrubs) {
     if (grub.age >= RULE.lifespan || grub.starvedFor >= RULE.starvationLimit) {
-      depositRemain(world, grub, grub.hue, grub.body + grub.reserve);
+      settleDeath(world, grub, grub.hue, grub.body + grub.reserve);
     } else world.marlgrubs[write++] = grub;
   }
   world.marlgrubs.length = write;

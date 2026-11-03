@@ -4,7 +4,7 @@ import { baselineTraits, mutateTraits, traitMobility } from '../traits';
 import { activeNewTypePopulation, NEW_TYPE_POPULATION_CAP, SPECIES_CATALOG } from './catalog';
 import { tryEventFounding } from './founding';
 import { blendHue, safeId } from './resources';
-import { depositRemain } from './remains';
+import { settleDeath } from './remains';
 
 const RULE = SPECIES_CATALOG.cargoMite;
 
@@ -227,7 +227,7 @@ export function updateCargoMites(world: World, dt: number): void {
   let write = 0;
   for (const mite of world.cargoMites) {
     if (mite.age >= RULE.lifespan || mite.starvedFor >= RULE.starvationLimit) {
-      depositRemain(world, mite, mite.hue, mite.body + mite.reserve);
+      settleDeath(world, mite, mite.hue, mite.body + mite.reserve);
     } else world.cargoMites[write++] = mite;
   }
   world.cargoMites.length = write;

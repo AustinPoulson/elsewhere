@@ -2,10 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { createWorld, stepWorld } from '../src/world/simulation';
 import { updateSkimmers } from '../src/world/species/skimmer';
 import { admitMarlgrub, updateMarlgrubs } from '../src/world/species/marlgrub';
+import { NORMAL_FOUNDER_COUNT, tryEventFounding } from '../src/world/species/founding';
 import {
+  DEATH_SEDIMENT_FRACTION,
   REMAIN_DECAY_RATE,
   depositRemain,
   heldRemainPigment,
+  settleDeath,
   takeRemainPigment,
   updateRemains,
 } from '../src/world/species/remains';
@@ -29,8 +32,20 @@ function balanced(world: World): void {
   );
 }
 
+function remainShare(amount: number): number {
+  return amount * (1 - DEATH_SEDIMENT_FRACTION);
+}
+
 describe('death remains', () => {
-  it('turns an exact body-plus-reserve into a located remain without touching sediment', () => {
+  it('returns a coarse grain from a starved body so shoreline founding can continue', () => {
+    const world = empty();
+    settleDeath(world, { x: 1200, y: 500 }, 180, 0.2);
+    expect(world.sediment[0].strength).toBeGreaterThanOrEqual(0.12);
+    expect(world.remains[0].pigment).toBeCloseTo(remainShare(0.2), 12);
+    balanced(world);
+  });
+
+  it('splits a death into a remain and immediate sediment without leaking pigment', () => {
     const world = empty();
     world.nests = [{ id: world.nextId++, x: 720, y: 500, hue: 180, pigment: 0.6, age: 0 }];
     world.skimmerAdmissionAt = 0;
@@ -39,16 +54,16 @@ describe('death remains', () => {
     const skimmer = world.skimmers[0];
     skimmer.reserve = 0.4;
     skimmer.age = 480;
-    const sediment = world.sediment.length;
     updateSkimmers(world, 1 / 30);
     expect(world.skimmers).toHaveLength(0);
     expect(world.remains).toHaveLength(1);
     expect(world.remains[0].x).toBe(skimmer.x);
     expect(world.remains[0].y).toBe(skimmer.y);
     expect(world.remains[0].hue).toBe(skimmer.hue);
-    expect(world.remains[0].pigment).toBeCloseTo(0.6, 12);
-    expect(world.sediment).toHaveLength(sediment);
-    expect(world.ecologyLedger.remainsCreated).toBeCloseTo(0.6, 12);
+    expect(world.remains[0].pigment).toBeCloseTo(remainShare(0.6), 12);
+    expect(world.sediment).toHaveLength(1);
+    expect(world.sediment[0].strength).toBeCloseTo(0.6 * DEATH_SEDIMENT_FRACTION, 12);
+    expect(world.ecologyLedger.remainsCreated).toBeCloseTo(remainShare(0.6), 12);
     expect(world.ecologyLedger.mineralizedPigment).toBe(0);
     balanced(world);
   });
@@ -66,6 +81,18 @@ describe('death remains', () => {
       world.ecologyLedger.remainsDecayed,
       12,
     );
+    balanced(world);
+  });
+
+  it('merges tiny decay into nearby sediment instead of spawning dust grains', () => {
+    const world = empty();
+    world.sediment = [{ id: world.nextId++, x: 720, y: 500, strength: 0.1, hue: 40, radius: 6, age: 0 }];
+    depositRemain(world, { x: 722, y: 500 }, 40, 0.5);
+    const before = world.sediment[0].strength;
+    updateRemains(world, 1 / 30);
+    expect(world.sediment).toHaveLength(1);
+    expect(world.sediment[0].strength).toBeCloseTo(before + (1 / 30) * REMAIN_DECAY_RATE, 12);
+    expect(world.ecologyLedger.mineralizedPigment).toBe(0);
     balanced(world);
   });
 
@@ -110,7 +137,7 @@ describe('marlgrub consumer', () => {
     balanced(funded);
   });
 
-  it('feeds only from remains and returns its body as remains', () => {
+  it('feeds only from remains and returns its body as remains and sediment', () => {
     const world = empty();
     depositRemain(world, { x: 720, y: 500 }, 90, 0.8);
     expect(admitMarlgrub(world)).toBe(true);
@@ -125,7 +152,7 @@ describe('marlgrub consumer', () => {
     const created = world.ecologyLedger.remainsCreated;
     updateMarlgrubs(world, 0.02);
     expect(world.marlgrubs).toHaveLength(0);
-    expect(world.ecologyLedger.remainsCreated).toBeCloseTo(created + held, 12);
+    expect(world.ecologyLedger.remainsCreated).toBeCloseTo(created + remainShare(held), 12);
     balanced(world);
   });
 
@@ -139,6 +166,25 @@ describe('marlgrub consumer', () => {
     expect(world.nextId).toBe(id);
     expect(world.randomState).toBe(random);
     expect(heldRemainPigment(world)).toBeCloseTo(0.19, 12);
+  });
+
+  it('founds through the off-phase event offer without joining the six-type rotation', () => {
+    expect(NORMAL_FOUNDER_COUNT).toBe(6);
+    const world = empty();
+    depositRemain(world, { x: 720, y: 500 }, 90, 0.5);
+    world.tick = 1;
+    world.nextFoundingTick = 0;
+    const cursor = world.foundingTypeCursor;
+    expect(tryEventFounding(world, admitMarlgrub)).toBe(true);
+    expect(world.marlgrubs).toHaveLength(1);
+    expect(world.foundingTypeCursor).toBe(cursor);
+    expect(world.nextFoundingTick).toBe(7);
+    const live = empty();
+    depositRemain(live, { x: 720, y: 500 }, 90, 0.5);
+    live.tick = 0;
+    live.nextFoundingTick = 0;
+    stepWorld(live);
+    expect(live.marlgrubs).toHaveLength(1);
   });
 });
 

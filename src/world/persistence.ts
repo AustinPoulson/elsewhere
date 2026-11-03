@@ -799,7 +799,7 @@ export function restoreWorld(input: string): World | null {
         Math.min(MAX_NUMBER, parsed.elapsed + SPECIES_CATALOG.glassLimpet.admissionRest),
       ) ||
       !integer(parsed.nextFoundingTick, 0, Math.min(MAX_NUMBER, (parsed.tick as number) + 6)) ||
-      !integer(parsed.foundingTypeCursor, 0, remainsRevision ? 6 : miteRevision ? 5 : 4)
+      !integer(parsed.foundingTypeCursor, 0, miteRevision ? 5 : 4)
     )
       return null;
     glassLimpets = parsed.glassLimpets as GlassLimpet[];
