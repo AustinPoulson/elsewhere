@@ -2,7 +2,8 @@ import { confinePosition } from '../geometry';
 import { LIMITS, isInPool, type Nest, type Point, type Sediment, type Siltstitcher, type World } from '../types';
 import { baselineTraits, traitMobility } from '../traits';
 import { activeNewTypePopulation, NEW_TYPE_POPULATION_CAP, SILTSTITCHER_CAP, SPECIES_CATALOG } from './catalog';
-import { blendHue, returnPigment, safeId } from './resources';
+import { blendHue, safeId } from './resources';
+import { settleDeath } from './remains';
 
 const RULE = SPECIES_CATALOG.siltstitcher;
 const TAU = 2 * Math.PI;
@@ -221,7 +222,7 @@ export function updateSiltstitchers(world: World, dt: number, allowStandaloneAdm
   let write = 0;
   for (const body of world.siltstitchers) {
     if (body.age >= RULE.lifespan || body.starvedFor >= RULE.starvationLimit)
-      returnPigment(world, body, body.hue, body.body + body.reserve + body.cargo);
+      settleDeath(world, body, body.hue, body.body + body.reserve + body.cargo);
     else world.siltstitchers[write++] = body;
   }
   world.siltstitchers.length = write;

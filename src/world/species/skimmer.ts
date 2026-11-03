@@ -3,7 +3,8 @@ import { LIMITS, type Nest, type Sediment, type Skimmer, type World } from '../t
 import { baselineTraits, traitMobility } from '../traits';
 
 import { activeNewTypePopulation, NEW_TYPE_POPULATION_CAP, SKIMMER_CAP, SPECIES_CATALOG } from './catalog';
-import { blendHue, returnPigment, safeId } from './resources';
+import { blendHue, safeId } from './resources';
+import { settleDeath } from './remains';
 
 const SKIMMER_MAINTENANCE = 0.002;
 const SKIMMER_INTAKE = 0.03;
@@ -162,7 +163,7 @@ export function updateSkimmers(world: World, dt: number, allowStandaloneAdmissio
       skimmer.age >= SPECIES_CATALOG.skimmer.lifespan ||
       skimmer.starvedFor >= SPECIES_CATALOG.skimmer.starvationLimit
     )
-      returnPigment(world, skimmer, skimmer.hue, skimmer.body + skimmer.reserve);
+      settleDeath(world, skimmer, skimmer.hue, skimmer.body + skimmer.reserve);
     else world.skimmers[write++] = skimmer;
   }
   world.skimmers.length = write;

@@ -1193,3 +1193,25 @@ h1 em {
     radial-gradient(ellipse at 50% 43%, #b6a47cdd 0 26%, #594c3d99 38% 57%, transparent 68%);
   box-shadow: 0 0 32px #e6c99022;
 }
+.specimen-orb.remain-orb {
+  width: 120px;
+  height: 72px;
+  margin: 42px auto;
+  border-radius: 50%;
+  border: 1px solid #8a6f4e77;
+  background:
+    radial-gradient(ellipse at 42% 55%, #5a4634cc 0 28%, #3a2c2288 40% 62%, transparent 78%),
+    radial-gradient(ellipse at 64% 48%, #c9b08055 0 18%, transparent 46%);
+  box-shadow: 0 0 28px #5a463422;
+}
+.specimen-orb.marlgrub-orb {
+  width: 108px;
+  height: 64px;
+  margin: 44px auto;
+  border-radius: 48% 52% 40% 44%;
+  border: 2px solid #cbb48aaa;
+  background:
+    radial-gradient(ellipse at 78% 40%, #f0e2c0dd 0 10%, transparent 22%),
+    radial-gradient(ellipse at 30% 55%, #7a6248cc 0 34%, #5a463499 48% 70%, transparent 82%);
+  box-shadow: 0 0 30px #c9b08022;
+}

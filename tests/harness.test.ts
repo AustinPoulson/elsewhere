@@ -88,6 +88,13 @@ describe('headless harness', () => {
     expect(quiet.traitDrift.length).toBeGreaterThan(1);
     expect(quiet.traitDrift[0].lucents).toMatchObject({ count: 24, drive: 1, bulk: 1 });
     expect(quiet.resources.ambientHarvested).toBeGreaterThan(0);
+    expect(quiet.conservationCheck.remainsBalanced).toBe(true);
+    expect(
+      quiet.conservationCheck.remainsCreated -
+        (quiet.conservationCheck.remainsHeld +
+          quiet.conservationCheck.remainsConsumed +
+          quiet.conservationCheck.remainsDecayed),
+    ).toBeCloseTo(0, 6);
     const tended = runHarness({ days: 2, seed: 1, visitorLight: true });
     expect(tended.visitorLight).toBe(true);
     expect(tended.resources.totalConsumed).toBeGreaterThan(quiet.resources.totalConsumed);

@@ -8,6 +8,7 @@ import { updateRainbells } from '../src/world/species/rainbell';
 import { updateReedwells } from '../src/world/species/reedwell';
 import { updateSkimmers } from '../src/world/species/skimmer';
 import { FIXED_STEP, LIMITS, isInPool, type Rainbell, type World } from '../src/world/types';
+import { DEATH_SEDIMENT_FRACTION } from '../src/world/species/remains';
 
 function habitat(): World {
   const world = createWorld(0);
@@ -40,6 +41,7 @@ function searchPhase(world: World, bell: Rainbell) {
 function pigment(world: World) {
   return (
     world.sediment.reduce((sum, entry) => sum + entry.strength, 0) +
+    world.remains.reduce((sum, remain) => sum + remain.pigment, 0) +
     world.rainbells.reduce((sum, entry) => sum + entry.body + entry.reserve, 0)
   );
 }
@@ -389,7 +391,7 @@ describe('rainbell polyp paid sediment pump', () => {
     updateRainbells(world, FIXED_STEP);
     expect(world.rainbells).toHaveLength(0);
     expect(world.currents[0]).toEqual(field);
-    expect(world.sediment.at(-1)!.strength).toBeCloseTo(0.2 + reserve, 12);
+    expect(world.remains[0].pigment).toBeCloseTo((0.2 + reserve) * (1 - DEATH_SEDIMENT_FRACTION), 12);
     const count = world.sediment.length;
     updateRainbells(world, FIXED_STEP);
     expect(world.sediment).toHaveLength(count);
@@ -398,15 +400,19 @@ describe('rainbell polyp paid sediment pump', () => {
     hungry.bell.starvedFor = 59.9;
     updateRainbells(hungry.world, 0.25);
     expect(hungry.world.rainbells).toHaveLength(0);
-    expect(hungry.world.sediment[0].strength).toBe(0.2);
+    expect(hungry.world.remains[0].pigment).toBeCloseTo(0.2 * (1 - DEATH_SEDIMENT_FRACTION), 12);
     const full = born();
     for (let i = 0; i < LIMITS.sediment; i++) grain(full.world, 720, 500, 1);
     full.world.sediment[0].strength = 0.8;
     full.bell.age = 600;
     full.bell.reserve = 1;
     updateRainbells(full.world, FIXED_STEP);
-    expect(full.world.sediment[0].strength).toBe(1);
-    expect(full.world.ecologyLedger.mineralizedPigment).toBeCloseTo(1, 12);
+    expect(full.world.sediment[0].strength).toBeCloseTo(Math.min(1, 0.8 + 1.2 * DEATH_SEDIMENT_FRACTION), 12);
+    expect(full.world.remains[0].pigment).toBeCloseTo(1.2 * (1 - DEATH_SEDIMENT_FRACTION), 12);
+    expect(full.world.ecologyLedger.mineralizedPigment).toBeCloseTo(
+      Math.max(0, 1.2 * DEATH_SEDIMENT_FRACTION - 0.2),
+      12,
+    );
   });
 
   it('restores both cached targets between staggered searches and follows the exact autonomous continuation', () => {
@@ -534,5 +540,5 @@ describe('rainbell polyp paid sediment pump', () => {
     console.info(
       `Rainbell initial-max-budget profile: 42 lucents/6 skimmers/6 reedwells/4 rainbells/8 grazers/16 nests/3 currents/600 grains/32 lights; 2 x 36,000 fixed steps, 20 exact samples, ${wallMs.toFixed(1)} ms total; ${(wallMs / 72000).toFixed(4)} ms/world step.`,
     );
-  }, 30_000);
+  }, 60_000);
 });

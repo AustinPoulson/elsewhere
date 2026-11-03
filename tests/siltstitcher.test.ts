@@ -9,6 +9,7 @@ import { updateReedwells } from '../src/world/species/reedwell';
 import { updateSiltstitchers } from '../src/world/species/siltstitcher';
 import { updateSkimmers } from '../src/world/species/skimmer';
 import { FIXED_STEP, LIMITS, isInPool, type Point, type Siltstitcher, type World } from '../src/world/types';
+import { DEATH_SEDIMENT_FRACTION } from '../src/world/species/remains';
 
 function habitat(stock = 3): World {
   const world = createWorld(0);
@@ -45,6 +46,7 @@ function pigment(world: World) {
   return (
     world.nests.reduce((sum, nest) => sum + nest.pigment, 0) +
     world.sediment.reduce((sum, entry) => sum + entry.strength, 0) +
+    world.remains.reduce((sum, remain) => sum + remain.pigment, 0) +
     world.siltstitchers.reduce((sum, body) => sum + body.body + body.reserve + body.cargo, 0)
   );
 }
@@ -234,7 +236,7 @@ describe('siltstitcher outward nest disperser', () => {
     separated.body.starvedFor = 59.9;
     updateSiltstitchers(separated.world, 0.25);
     expect(separated.world.siltstitchers).toHaveLength(0);
-    expect(separated.world.sediment[0].strength).toBe(0.5);
+    expect(separated.world.remains[0].pigment).toBeCloseTo(0.5 * (1 - DEATH_SEDIMENT_FRACTION), 12);
   });
 
   it('retains cargo on a full floor, returns after10s blocked and retries without another cargo withdrawal', () => {
@@ -331,7 +333,7 @@ describe('siltstitcher outward nest disperser', () => {
     const remains = aged.body.body + aged.body.reserve + aged.body.cargo;
     updateSiltstitchers(aged.world, FIXED_STEP);
     expect(aged.world.siltstitchers).toHaveLength(0);
-    expect(aged.world.sediment[0].strength).toBeCloseTo(remains, 12);
+    expect(aged.world.remains[0].pigment).toBeCloseTo(remains * (1 - DEATH_SEDIMENT_FRACTION), 12);
   });
 
   it('uses the shared bounded exit fallback and mineralizes every unplaced remainder', () => {
@@ -340,12 +342,16 @@ describe('siltstitcher outward nest disperser', () => {
     for (let i = 0; i < LIMITS.sediment; i++) grain(world);
     const nearest = world.sediment[0];
     Object.assign(nearest, { x: body.x, y: body.y, strength: 0.8 });
-    const remaining = body.body + body.reserve + body.cargo - 0.2;
+    const remaining = body.body + body.reserve + body.cargo;
     body.age = 480;
     updateSiltstitchers(world, FIXED_STEP);
-    expect(nearest.strength).toBe(1);
+    expect(nearest.strength).toBeCloseTo(Math.min(1, 0.8 + remaining * DEATH_SEDIMENT_FRACTION), 12);
     expect(world.sediment).toHaveLength(600);
-    expect(world.ecologyLedger.mineralizedPigment).toBeCloseTo(remaining, 12);
+    expect(world.remains[0].pigment).toBeCloseTo(remaining * (1 - DEATH_SEDIMENT_FRACTION), 12);
+    expect(world.ecologyLedger.mineralizedPigment).toBeCloseTo(
+      Math.max(0, remaining * DEATH_SEDIMENT_FRACTION - 0.2),
+      12,
+    );
   });
 
   it('preserves arbitrary outbound destination, velocity, cargo and search phase through exact saved continuation', () => {

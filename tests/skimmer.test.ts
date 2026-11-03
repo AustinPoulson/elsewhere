@@ -6,6 +6,7 @@ import { baselineTraits } from '../src/world/traits';
 import { FIXED_STEP, LIMITS, isInPool, type Skimmer, type World } from '../src/world/types';
 import { confinePosition } from '../src/world/geometry';
 import { applyCurrent } from '../src/world/actions/current';
+import { DEATH_SEDIMENT_FRACTION } from '../src/world/species/remains';
 
 function habitat(): World {
   const world = createWorld(47);
@@ -38,6 +39,7 @@ function pigment(world: World) {
   return (
     world.nests.reduce((sum, nest) => sum + nest.pigment, 0) +
     world.sediment.reduce((sum, deposit) => sum + deposit.strength, 0) +
+    world.remains.reduce((sum, remain) => sum + remain.pigment, 0) +
     world.skimmers.reduce((sum, body) => sum + body.body + body.reserve, 0)
   );
 }
@@ -198,10 +200,12 @@ describe('autonomous prism skimmer', () => {
     skimmer.starvedFor = 59.9;
     updateSkimmers(world, 0.25);
     expect(world.skimmers).toHaveLength(0);
+    expect(world.remains).toHaveLength(1);
+    expect(world.remains[0].pigment).toBeCloseTo(0.2 * (1 - DEATH_SEDIMENT_FRACTION), 12);
     expect(world.sediment).toHaveLength(1);
-    expect(world.sediment[0].strength).toBe(0.2);
+    expect(world.sediment[0].strength).toBeCloseTo(0.2 * DEATH_SEDIMENT_FRACTION, 12);
     updateSkimmers(world, 0.25);
-    expect(world.sediment).toHaveLength(1);
+    expect(world.remains).toHaveLength(1);
     world.elapsed = 60;
     world.nests[0].pigment = 0.6;
     updateSkimmers(world, 0.25);
@@ -210,8 +214,12 @@ describe('autonomous prism skimmer', () => {
     world.skimmers[0].reserve = 1;
     updateSkimmers(world, 0.25);
     expect(world.skimmers).toHaveLength(0);
-    expect(world.sediment.at(-1)!.strength).toBe(1);
-    expect(world.ecologyLedger.mineralizedPigment).toBeCloseTo(0.2, 12);
+    expect(world.remains.reduce((sum, remain) => sum + remain.pigment, 0)).toBeCloseTo(
+      1.4 * (1 - DEATH_SEDIMENT_FRACTION),
+      12,
+    );
+    expect(world.ecologyLedger.mineralizedPigment).toBe(0);
+    expect(world.ecologyLedger.remainsCreated).toBeCloseTo(1.4 * (1 - DEATH_SEDIMENT_FRACTION), 12);
   });
 
   it('tops up the nearest underfilled grain on a full floor and mineralizes every unplaced remainder', () => {
@@ -227,8 +235,9 @@ describe('autonomous prism skimmer', () => {
     updateSkimmers(world, 0.25);
     expect(world.sediment).toHaveLength(600);
     expect(world.sediment.map((entry) => entry.id)).toEqual(beforeIds);
-    expect(destination.strength).toBe(1);
-    expect(world.ecologyLedger.mineralizedPigment).toBeCloseTo(1, 12);
+    expect(destination.strength).toBeCloseTo(1, 12);
+    expect(world.remains[0].pigment).toBeCloseTo(1.2 * (1 - DEATH_SEDIMENT_FRACTION), 12);
+    expect(world.ecologyLedger.mineralizedPigment).toBeCloseTo(1.2 * DEATH_SEDIMENT_FRACTION - 0.2, 12);
     expect(world.skimmers).toHaveLength(0);
   });
 

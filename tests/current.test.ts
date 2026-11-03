@@ -195,6 +195,10 @@ describe('current save revisions', () => {
       cargoMites: _cargoMites,
       cargoMiteAdmissionAt: _cargoMiteAdmissionAt,
       cargoMiteCandidateAfterId: _cargoMiteCandidateAfterId,
+      remains: _remains,
+      marlgrubs: _marlgrubs,
+      marlgrubAdmissionAt: _marlgrubAdmissionAt,
+      marlgrubCandidateAfterId: _marlgrubCandidateAfterId,
       organisms,
       ...rest
     } = world;
@@ -210,13 +214,14 @@ describe('current save revisions', () => {
     expect(migrated).toEqual({
       ...world,
       elapsed: 12,
-      schemaRevision: 9,
+      schemaRevision: 10,
       skimmerAdmissionAt: 12,
       reedwellAdmissionAt: 12,
       rainbellAdmissionAt: 12,
       siltstitcherAdmissionAt: 12,
       glassLimpetAdmissionAt: 12,
       cargoMiteAdmissionAt: 12,
+      marlgrubAdmissionAt: 12,
       weatherCall: previous.weatherCall,
       currents: [],
     });
@@ -233,7 +238,7 @@ describe('current save revisions', () => {
         w.currents = null;
       },
       (w) => {
-        w.schemaRevision = 10;
+        w.schemaRevision = 11;
       },
       (w) => {
         w.currents[0].x = 0;

@@ -25,7 +25,9 @@ import { updateRainbells } from './species/rainbell';
 import { updateSiltstitchers } from './species/siltstitcher';
 import { updateGlassLimpets } from './species/glass-limpet';
 import { syncAttachedCargoMites, updateCargoMites } from './species/cargo-mite';
-import { runNormalFounding } from './species/founding';
+import { admitMarlgrub, updateMarlgrubs } from './species/marlgrub';
+import { updateRemains } from './species/remains';
+import { runNormalFounding, tryEventFounding } from './species/founding';
 import { nextRandom } from './rng';
 import { baselineTraits, traitMobility } from './traits';
 import { ambientOffer } from './environment/daylight';
@@ -151,7 +153,7 @@ export function createWorld(seed = 20261006): World {
   const normalizedSeed = Math.trunc(seed) >>> 0;
   const world: World = {
     version: 3,
-    schemaRevision: 9,
+    schemaRevision: 10,
     currents: [],
     weatherCall: { startedAt: null, nextAllowedAt: 0 },
     skimmers: [],
@@ -172,6 +174,10 @@ export function createWorld(seed = 20261006): World {
     cargoMites: [],
     cargoMiteAdmissionAt: 0,
     cargoMiteCandidateAfterId: 0,
+    marlgrubs: [],
+    marlgrubAdmissionAt: 0,
+    marlgrubCandidateAfterId: 0,
+    remains: [],
     nextFoundingTick: 0,
     foundingTypeCursor: 0,
     ecologyLedger: {
@@ -196,6 +202,11 @@ export function createWorld(seed = 20261006): World {
       cargoMiteIntake: 0,
       cargoMiteMaintenancePigment: 0,
       ambientHarvested: 0,
+      remainsCreated: 0,
+      remainsConsumed: 0,
+      remainsDecayed: 0,
+      marlgrubIntake: 0,
+      marlgrubMaintenancePigment: 0,
     },
     seed: normalizedSeed,
     randomState: normalizedSeed,
@@ -472,7 +483,10 @@ export function stepWorld(world: World, dt = FIXED_STEP): void {
   updateSiltstitchers(world, dt, false);
   updateGlassLimpets(world, dt);
   updateCargoMites(world, dt);
+  updateMarlgrubs(world, dt);
   runNormalFounding(world);
+  if (world.remains.length > 0) tryEventFounding(world, admitMarlgrub);
+  updateRemains(world, dt, world.tick % 6 === 0 ? 6 : 0);
   applyCurrentDrift(world, dt);
   syncAttachedCargoMites(world);
   for (const light of world.lights) {
@@ -507,6 +521,9 @@ export function getStats(world: World): WorldStats {
     siltstitchers: world.siltstitchers.length,
     glassLimpets: world.glassLimpets.length,
     cargoMites: world.cargoMites.length,
+    marlgrubs: world.marlgrubs.length,
+    remains: world.remains.length,
+    remainPigment: world.remains.reduce((total, remain) => total + remain.pigment, 0),
     nestPigment: world.nests.reduce((total, nest) => total + nest.pigment, 0),
   };
 }

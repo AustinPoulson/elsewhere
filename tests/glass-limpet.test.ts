@@ -6,6 +6,7 @@ import { admitGlassLimpet, updateGlassLimpets } from '../src/world/species/glass
 import { activeNewTypePopulation, SPECIES_CATALOG } from '../src/world/species/catalog';
 import { baselineTraits } from '../src/world/traits';
 import { LIMITS, type GlassLimpet, type World } from '../src/world/types';
+import { DEATH_SEDIMENT_FRACTION } from '../src/world/species/remains';
 
 function habitat(): World {
   const world = createWorld(0);
@@ -278,10 +279,11 @@ describe('glass limpet current capture', () => {
     updateGlassLimpets(world, 0.02);
     expect(world.glassLimpets).toHaveLength(0);
     expect(world.sediment).toHaveLength(LIMITS.sediment);
-    expect(world.sediment[0].strength).toBe(1);
-    expect(world.ecologyLedger.mineralizedPigment).toBeCloseTo(0.3, 12);
-    expect(world.nextId).toBe(beforeId);
+    expect(world.sediment[0].strength).toBeCloseTo(Math.min(1, 0.2 + 1.1 * DEATH_SEDIMENT_FRACTION), 12);
+    expect(world.remains[0].pigment).toBeCloseTo(1.1 * (1 - DEATH_SEDIMENT_FRACTION), 12);
+    expect(world.ecologyLedger.mineralizedPigment).toBeCloseTo(Math.max(0, 1.1 * DEATH_SEDIMENT_FRACTION - 0.8), 12);
+    expect(world.nextId).toBe(beforeId + 1);
     updateGlassLimpets(world, 0.02);
-    expect(world.ecologyLedger.mineralizedPigment).toBeCloseTo(0.3, 12);
+    expect(world.ecologyLedger.mineralizedPigment).toBeCloseTo(Math.max(0, 1.1 * DEATH_SEDIMENT_FRACTION - 0.8), 12);
   });
 });

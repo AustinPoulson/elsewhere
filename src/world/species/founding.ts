@@ -8,9 +8,6 @@ import { admitGlassLimpet } from './glass-limpet';
 import { admitCargoMite } from './cargo-mite';
 import { safeId } from './resources';
 
-// Catalog definitions are possible life; this fixed registry schedules scans
-// without allocating a body for every available type. Additions extend the
-// rotation rather than multiplying normal source work per simulation phase.
 const FOUNDERS = [
   { cap: SPECIES_CATALOG.skimmer.cap, population: (world: World) => world.skimmers.length, admit: admitSkimmer },
   { cap: SPECIES_CATALOG.reedwell.cap, population: (world: World) => world.reedwells.length, admit: admitReedwell },
@@ -39,8 +36,6 @@ export function foundingBudgetAvailable(world: World): boolean {
   );
 }
 
-// An actual birth, including a future off-phase death offer, takes the same
-// saved six-tick slot. Refusals leave the budget and all paid resources alone.
 export function tryEventFounding(world: World, offer: (world: World) => boolean): boolean {
   if (!foundingBudgetAvailable(world)) return false;
   if (!offer(world)) return false;
@@ -50,9 +45,7 @@ export function tryEventFounding(world: World, offer: (world: World) => boolean)
 
 export function runNormalFounding(world: World): boolean {
   if (world.tick % 6 !== 0) return false;
-  const founder = FOUNDERS[world.foundingTypeCursor];
-  // The cursor advances even when this type is capped, unready, or its source
-  // refuses payment. No other type searches during this six-tick phase.
+  const founder = FOUNDERS[world.foundingTypeCursor % FOUNDERS.length];
   world.foundingTypeCursor = (world.foundingTypeCursor + 1) % FOUNDERS.length;
   if (!foundingBudgetAvailable(world) || founder.population(world) >= founder.cap) return false;
   if (!founder.admit(world)) return false;

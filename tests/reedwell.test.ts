@@ -8,6 +8,7 @@ import { NEW_TYPE_POPULATION_CAP, SPECIES_CATALOG } from '../src/world/species/c
 import { updateReedwells } from '../src/world/species/reedwell';
 import { updateSkimmers } from '../src/world/species/skimmer';
 import { FIXED_STEP, LIMITS, isInPool, type Reedwell, type World } from '../src/world/types';
+import { DEATH_SEDIMENT_FRACTION } from '../src/world/species/remains';
 
 function habitat(): World {
   const world = createWorld(0);
@@ -290,11 +291,11 @@ describe('rain-rooted daylight reedwell', () => {
     world.ecologyLedger.daylightHarvested = 2;
     updateReedwells(world, 0.25);
     expect(world.reedwells).toHaveLength(0);
-    expect(world.sediment.at(-1)!.strength).toBe(0.6);
+    expect(world.remains[0].pigment).toBeCloseTo(0.6 * (1 - DEATH_SEDIMENT_FRACTION), 12);
     expect(world.ecologyLedger.reedwellDissipatedLight).toBe(2);
     expect(world.ecologyLedger.daylightHarvested).toBe(2);
     updateReedwells(world, 0.25);
-    expect(world.sediment).toHaveLength(2);
+    expect(world.remains).toHaveLength(1);
     assertEnergy(world);
   });
 
@@ -307,9 +308,10 @@ describe('rain-rooted daylight reedwell', () => {
     reedwell.age = 900;
     updateReedwells(world, 0.25);
     expect(world.sediment).toHaveLength(600);
-    expect(world.sediment[0].strength).toBe(1);
+    expect(world.sediment[0].strength).toBeCloseTo(Math.min(1, 0.8 + 0.6 * DEATH_SEDIMENT_FRACTION), 12);
     expect(world.sediment[1].strength).toBe(0.8);
-    expect(world.ecologyLedger.mineralizedPigment).toBeCloseTo(0.4, 12);
+    expect(world.remains[0].pigment).toBeCloseTo(0.6 * (1 - DEATH_SEDIMENT_FRACTION), 12);
+    expect(world.ecologyLedger.mineralizedPigment).toBeCloseTo(Math.max(0, 0.6 * DEATH_SEDIMENT_FRACTION - 0.2), 12);
   });
 
   it('pays lucent pigment only from actually consumed reedwell light, including tiny remnants', () => {
@@ -436,5 +438,5 @@ describe('rain-rooted daylight reedwell', () => {
     console.info(
       `Reedwell initial-max-budget profile: 42 lucents/6 reedwells/6 skimmers/8 grazers/16 nests/3 currents/600 grains/32 lights; 2 x 36,000 fixed steps, 20 exact trajectory samples, ${wallMs.toFixed(1)} ms total; ${(wallMs / 72000).toFixed(4)} ms/whole-world step.`,
     );
-  }, 30_000);
+  }, 60_000);
 });

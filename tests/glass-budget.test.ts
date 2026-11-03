@@ -95,7 +95,7 @@ function mixedMaximum(): World {
       lastEmissionAt: null,
       traits: baselineTraits(),
     });
-    if (i < 4)
+    if (i < 2)
       world.siltstitchers.push({
         id: freshId(),
         species: 'siltstitcher',
@@ -172,6 +172,36 @@ function mixedMaximum(): World {
       traits: baselineTraits(),
     });
   }
+  for (let i = 0; i < 2; i++) {
+    world.marlgrubs.push({
+      id: freshId(),
+      species: 'marlgrub',
+      x: 640 + i * 80,
+      y: 420,
+      vx: 0,
+      vy: 0,
+      body: 0.1,
+      reserve: 0.2,
+      age: 0,
+      hue: 40,
+      starvedFor: 0,
+      targetRemainId: null,
+      traits: baselineTraits(),
+    });
+  }
+  for (let i = 0; i < LIMITS.remains; i++) {
+    const angle = i * 2.39996322973;
+    world.remains.push({
+      id: freshId(),
+      species: 'remain',
+      x: 720 + Math.cos(angle) * 280,
+      y: 500 + Math.sin(angle) * 180,
+      pigment: 0.4,
+      hue: 40,
+      age: 0,
+      radius: 6,
+    });
+  }
   for (const x of [320, 720, 1120]) {
     world.currents.push({ id: freshId(), x, y: 500, dx: 1, dy: 0, startedAt: 0, radius: 110, duration: 8 });
   }
@@ -188,6 +218,8 @@ function checkCaps(world: World): void {
   expect(activeNewTypePopulation(world)).toBeLessThanOrEqual(NEW_TYPE_POPULATION_CAP);
   expect(world.glassLimpets.length).toBeLessThanOrEqual(4);
   expect(world.cargoMites.length).toBeLessThanOrEqual(4);
+  expect(world.marlgrubs.length).toBeLessThanOrEqual(4);
+  expect(world.remains.length).toBeLessThanOrEqual(LIMITS.remains);
 }
 
 function stepStress(world: World, index: number): void {
@@ -219,6 +251,10 @@ function stepStress(world: World, index: number): void {
     body.starvedFor = 0;
     body.nextBirthAt = world.elapsed - body.age + 30;
   }
+  for (const body of world.marlgrubs) {
+    body.age %= 359;
+    body.starvedFor = 0;
+  }
   stepWorld(world, FIXED_STEP);
   while (world.sediment.length < LIMITS.sediment) {
     const angle = world.nextId * 2.39996322973;
@@ -234,6 +270,19 @@ function stepStress(world: World, index: number): void {
   }
   while (world.lights.length < LIMITS.lights) {
     world.lights.push({ id: world.nextId++, x: 720, y: 500, energy: 90, initialEnergy: 90, age: 0 });
+  }
+  while (world.remains.length < LIMITS.remains) {
+    const angle = world.nextId * 2.39996322973;
+    world.remains.push({
+      id: world.nextId++,
+      species: 'remain',
+      x: 720 + Math.cos(angle) * 280,
+      y: 500 + Math.sin(angle) * 180,
+      pigment: 0.4,
+      hue: 40,
+      age: 0,
+      radius: 6,
+    });
   }
 }
 
