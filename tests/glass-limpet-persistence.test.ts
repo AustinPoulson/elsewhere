@@ -20,10 +20,23 @@ function revision6(world: World): Record<string, any> {
     'cargoMites',
     'cargoMiteAdmissionAt',
     'cargoMiteCandidateAfterId',
+    'remains',
+    'marlgrubs',
+    'marlgrubAdmissionAt',
+    'marlgrubCandidateAfterId',
   ])
     delete old[key];
   for (const key of limpetLedgerKeys) delete old.ecologyLedger[key];
-  for (const key of ['cargoMiteIntake', 'cargoMiteMaintenancePigment', 'ambientHarvested'])
+  for (const key of [
+    'cargoMiteIntake',
+    'cargoMiteMaintenancePigment',
+    'ambientHarvested',
+    'remainsCreated',
+    'remainsConsumed',
+    'remainsDecayed',
+    'marlgrubIntake',
+    'marlgrubMaintenancePigment',
+  ])
     delete old.ecologyLedger[key];
   return old;
 }
@@ -68,7 +81,7 @@ describe('glass limpet snapshot revision', () => {
     const migrated = restoreWorld(serialized)!;
     expect(migrated).not.toBeNull();
     expect(migrated).toMatchObject({
-      schemaRevision: 9,
+      schemaRevision: 10,
       glassLimpets: [],
       cargoMites: [],
       glassLimpetAdmissionAt: source.elapsed,
@@ -186,7 +199,7 @@ describe('glass limpet snapshot revision', () => {
         w.nextFoundingTick = w.tick + 7;
       },
       (w) => {
-        w.foundingTypeCursor = 6;
+        w.foundingTypeCursor = 7;
       },
       (w) => {
         delete w.ecologyLedger.glassLimpetIntake;

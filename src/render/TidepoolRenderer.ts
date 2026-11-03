@@ -19,6 +19,7 @@ import { RainbellRenderer } from './RainbellRenderer';
 import { SiltstitcherRenderer } from './SiltstitcherRenderer';
 import { GlassLimpetRenderer } from './GlassLimpetRenderer';
 import { CargoMiteRenderer } from './CargoMiteRenderer';
+import { MarlgrubRenderer } from './MarlgrubRenderer';
 import { cargoMiteDisplayPoint } from './cargoMiteDisplay';
 import { daylight } from '../world/environment/daylight';
 import { appearanceGlow, appearanceScale } from '../world/traits';
@@ -101,12 +102,14 @@ export class TidepoolRenderer {
   private readonly water = new Container();
   private readonly sedimentLayer = new Container();
   private readonly sedimentCores = new Graphics();
+  private readonly remainCores = new Graphics();
   private readonly nestLayer = new Container();
   private readonly reedwellLayer = new Container();
   private readonly rainbellLayer = new Container();
   private readonly siltstitcherLayer = new Container();
   private readonly glassLimpetLayer = new Container();
   private readonly cargoMiteLayer = new Container();
+  private readonly marlgrubLayer = new Container();
   private readonly lightLayer = new Container();
   private readonly organismLayer = new Container();
   private readonly grazerLayer = new Container();
@@ -136,6 +139,7 @@ export class TidepoolRenderer {
   private readonly siltstitcherRenderer: SiltstitcherRenderer;
   private readonly glassLimpetRenderer: GlassLimpetRenderer;
   private readonly cargoMiteRenderer: CargoMiteRenderer;
+  private readonly marlgrubRenderer: MarlgrubRenderer;
   private readonly resizeObserver: ResizeObserver;
   private readonly colors = new Map<number, number>();
   private reducedMotion = false;
@@ -156,6 +160,7 @@ export class TidepoolRenderer {
     this.siltstitcherRenderer = new SiltstitcherRenderer(this.siltstitcherLayer, this.glowTexture);
     this.glassLimpetRenderer = new GlassLimpetRenderer(this.glassLimpetLayer, this.glowTexture);
     this.cargoMiteRenderer = new CargoMiteRenderer(this.cargoMiteLayer, this.glowTexture);
+    this.marlgrubRenderer = new MarlgrubRenderer(this.marlgrubLayer, this.glowTexture);
     this.textures.push(terrainTexture, this.glowTexture, this.bodyTexture, this.lightPatchTexture);
     this.app.canvas.style.display = 'block';
     this.app.canvas.style.pointerEvents = 'none';
@@ -176,6 +181,7 @@ export class TidepoolRenderer {
       this.lightPatchLayer,
       this.sedimentLayer,
       this.sedimentCores,
+      this.remainCores,
       this.nestLayer,
       this.reedwellLayer,
       this.rainbellLayer,
@@ -188,6 +194,7 @@ export class TidepoolRenderer {
       this.organismLayer,
       this.grazerLayer,
       this.cargoMiteLayer,
+      this.marlgrubLayer,
       this.rain,
       this.indicator,
     );
@@ -288,6 +295,7 @@ export class TidepoolRenderer {
     this.tendrils.clear();
     this.indicator.clear();
     this.sedimentCores.clear();
+    this.remainCores.clear();
     this.drawCurrents(world, tool === 'stir' && stirPreview !== null);
 
     let coreCount = 0;
@@ -316,12 +324,14 @@ export class TidepoolRenderer {
       }
     }
     this.pruneSprites(this.sediments);
+    this.drawRemains(world, selectedId);
     this.drawNests(world);
     this.reedwellRenderer.render(world, this.reducedMotion);
     this.rainbellRenderer.render(world, this.reducedMotion);
     this.siltstitcherRenderer.render(world);
     this.glassLimpetRenderer.render(world);
     this.cargoMiteRenderer.render(world);
+    this.marlgrubRenderer.render(world);
     for (const plant of world.reedwells) {
       if (plant.id === selectedId) this.drawSelection(plant, 38);
     }
@@ -336,6 +346,9 @@ export class TidepoolRenderer {
     }
     for (const mite of world.cargoMites) {
       if (mite.id === selectedId) this.drawSelection(cargoMiteDisplayPoint(world, mite), 26);
+    }
+    for (const grub of world.marlgrubs) {
+      if (grub.id === selectedId) this.drawSelection(grub, 24);
     }
 
     let patchCount = 0;
@@ -634,6 +647,24 @@ export class TidepoolRenderer {
         .moveTo(point.x + Math.cos(start) * radius, point.y + Math.sin(start) * radius)
         .arc(point.x, point.y, radius, start, start + 0.47)
         .stroke({ color: 0xe1d7b4, alpha: 0.72, width: 1 });
+    }
+  }
+
+  private drawRemains(world: World, selectedId: number | null): void {
+    const count = Math.min(LIMITS.remains, world.remains.length);
+    for (let index = 0; index < count; index++) {
+      const remain = world.remains[index];
+      const load = Math.min(1, remain.pigment / 1.2);
+      const tint = this.color(remain.hue);
+      const radius = Math.max(5, remain.radius * (1.4 + load));
+      this.remainCores
+        .ellipse(remain.x, remain.y, radius, radius * 0.62)
+        .fill({ color: 0x3a2c22, alpha: 0.18 + load * 0.28 })
+        .stroke({ color: tint, alpha: 0.16 + load * 0.22, width: 1.1 });
+      this.remainCores
+        .ellipse(remain.x - radius * 0.12, remain.y + radius * 0.08, radius * 0.42, radius * 0.22)
+        .fill({ color: tint, alpha: 0.1 + load * 0.18 });
+      if (remain.id === selectedId) this.drawSelection(remain, radius + 8);
     }
   }
 
@@ -955,6 +986,7 @@ export class TidepoolRenderer {
     this.siltstitcherRenderer.clear();
     this.glassLimpetRenderer.clear();
     this.cargoMiteRenderer.clear();
+    this.marlgrubRenderer.clear();
     this.nests.clear();
     this.colors.clear();
   }

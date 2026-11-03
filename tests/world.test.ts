@@ -69,6 +69,7 @@ describe('tidepool ecology', () => {
       stepWorld(world);
       expect(world.lights.length).toBeLessThanOrEqual(LIMITS.lights);
       expect(world.sediment.length).toBeLessThanOrEqual(LIMITS.sediment);
+      expect(world.remains.length).toBeLessThanOrEqual(LIMITS.remains);
       for (const creature of world.organisms) {
         expect(isInPool(creature.x, creature.y, creature.size + 3)).toBe(true);
         expect(creature.trail.length).toBeLessThanOrEqual(LIMITS.trail);

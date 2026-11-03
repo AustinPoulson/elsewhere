@@ -100,6 +100,10 @@ function revision3(world: World): Record<string, any> {
     cargoMites: _cargoMites,
     cargoMiteAdmissionAt: _cargoMiteAdmissionAt,
     cargoMiteCandidateAfterId: _cargoMiteCandidateAfterId,
+    remains: _remains,
+    marlgrubs: _marlgrubs,
+    marlgrubAdmissionAt: _marlgrubAdmissionAt,
+    marlgrubCandidateAfterId: _marlgrubCandidateAfterId,
     skimmerCandidateAfterId: _skimmerCandidate,
     ...previous
   } = structuredClone(world);
@@ -111,6 +115,11 @@ function revision3(world: World): Record<string, any> {
     ...limpetLedgerKeys,
     ...cargoMiteLedgerKeys,
     'ambientHarvested',
+    'remainsCreated',
+    'remainsConsumed',
+    'remainsDecayed',
+    'marlgrubIntake',
+    'marlgrubMaintenancePigment',
   ])
     delete result.ecologyLedger[key];
   return result;
@@ -140,6 +149,10 @@ describe('reedwell snapshot revision', () => {
       cargoMites: _cargoMites,
       cargoMiteAdmissionAt: _cargoMiteAdmissionAt,
       cargoMiteCandidateAfterId: _cargoMiteCandidateAfterId,
+      remains: _remains,
+      marlgrubs: _marlgrubs,
+      marlgrubAdmissionAt: _marlgrubAdmissionAt,
+      marlgrubCandidateAfterId: _marlgrubCandidateAfterId,
       skimmerCandidateAfterId: _skimmerCandidate,
       ...oldFields
     } = restored;
@@ -160,6 +173,11 @@ describe('reedwell snapshot revision', () => {
       ...limpetLedgerKeys,
       ...cargoMiteLedgerKeys,
       'ambientHarvested',
+      'remainsCreated',
+      'remainsConsumed',
+      'remainsDecayed',
+      'marlgrubIntake',
+      'marlgrubMaintenancePigment',
     ]) {
       expect(oldLedger[key]).toBe(0);
       delete oldLedger[key];
@@ -173,7 +191,7 @@ describe('reedwell snapshot revision', () => {
     const before = JSON.stringify(historicalStudy);
     const restored = restoreWorld(before)!;
     expect(restored).toMatchObject({
-      schemaRevision: 9,
+      schemaRevision: 10,
       reedwells: [],
       reedwellAdmissionAt: historicalStudy.elapsed,
       reedwellCandidateAfterId: 0,
@@ -354,7 +372,7 @@ describe('reedwell snapshot revision', () => {
         w.nextId += 7;
       },
       (w) => {
-        w.schemaRevision = 10;
+        w.schemaRevision = 11;
       },
     ];
     for (const key of reedwellLedgerKeys) {

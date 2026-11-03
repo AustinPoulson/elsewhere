@@ -51,6 +51,10 @@ describe('safe shower study', () => {
       cargoMites: _cargoMites,
       cargoMiteAdmissionAt: _cargoMiteAdmissionAt,
       cargoMiteCandidateAfterId: _cargoMiteCandidateAfterId,
+      remains: _remains,
+      marlgrubs: _marlgrubs,
+      marlgrubAdmissionAt: _marlgrubAdmissionAt,
+      marlgrubCandidateAfterId: _marlgrubCandidateAfterId,
       organisms,
       grazers,
       ...normalizedEcology
@@ -197,6 +201,10 @@ describe('safe shower study', () => {
     delete legacy.cargoMites;
     delete legacy.cargoMiteAdmissionAt;
     delete legacy.cargoMiteCandidateAfterId;
+    delete legacy.remains;
+    delete legacy.marlgrubs;
+    delete legacy.marlgrubAdmissionAt;
+    delete legacy.marlgrubCandidateAfterId;
     delete legacy.nextFoundingTick;
     delete legacy.foundingTypeCursor;
     for (const entry of legacy.organisms) delete entry.pigmentCredit;

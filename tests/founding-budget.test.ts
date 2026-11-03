@@ -19,7 +19,7 @@ describe('shared founding budget', () => {
     const world = empty();
     const beforeId = world.nextId;
     const beforeRandom = world.randomState;
-    expect(NORMAL_FOUNDER_COUNT).toBe(6);
+    expect(NORMAL_FOUNDER_COUNT).toBe(7);
     for (let phase = 1; phase <= 10; phase++) {
       world.tick = phase * 6;
       expect(runNormalFounding(world)).toBe(false);

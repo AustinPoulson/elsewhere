@@ -1,7 +1,16 @@
 export const WORLD_WIDTH = 1440;
 export const WORLD_HEIGHT = 1000;
 export const FIXED_STEP = 1 / 30;
-export const LIMITS = { organisms: 42, lights: 32, sediment: 600, trail: 14, grazers: 8, nests: 16 } as const;
+export const LIMITS = {
+  organisms: 42,
+  lights: 32,
+  sediment: 600,
+  trail: 14,
+  grazers: 8,
+  nests: 16,
+  remains: 48,
+} as const;
+export const REMAIN_CAPACITY = 2;
 export const GRAZER_CAPACITY = 1.2;
 export const NEST_CAPACITY = 12;
 
@@ -124,6 +133,27 @@ export interface CargoMite extends Point {
   nextBirthAt: number;
   traits: Traits;
 }
+export interface Remain extends Point {
+  id: number;
+  species: 'remain';
+  pigment: number;
+  hue: number;
+  age: number;
+  radius: number;
+}
+export interface Marlgrub extends Point {
+  id: number;
+  species: 'marlgrub';
+  vx: number;
+  vy: number;
+  body: 0.1;
+  reserve: number;
+  age: number;
+  hue: number;
+  starvedFor: number;
+  targetRemainId: number | null;
+  traits: Traits;
+}
 export interface EcologyLedger {
   mineralizedPigment: number;
   maintenancePigment: number;
@@ -146,6 +176,11 @@ export interface EcologyLedger {
   cargoMiteIntake: number;
   cargoMiteMaintenancePigment: number;
   ambientHarvested: number;
+  remainsCreated: number;
+  remainsConsumed: number;
+  remainsDecayed: number;
+  marlgrubIntake: number;
+  marlgrubMaintenancePigment: number;
 }
 export interface LightSource extends Point {
   id: number;
@@ -182,7 +217,7 @@ export interface Nest extends Point {
 }
 export interface World {
   version: 3;
-  schemaRevision: 9;
+  schemaRevision: 10;
   skimmers: Skimmer[];
   skimmerAdmissionAt: number;
   skimmerCandidateAfterId: number;
@@ -201,6 +236,10 @@ export interface World {
   cargoMites: CargoMite[];
   cargoMiteAdmissionAt: number;
   cargoMiteCandidateAfterId: number;
+  marlgrubs: Marlgrub[];
+  marlgrubAdmissionAt: number;
+  marlgrubCandidateAfterId: number;
+  remains: Remain[];
   nextFoundingTick: number;
   foundingTypeCursor: number;
   ecologyLedger: EcologyLedger;
@@ -232,6 +271,9 @@ export interface WorldStats {
   siltstitchers: number;
   glassLimpets: number;
   cargoMites: number;
+  marlgrubs: number;
+  remains: number;
+  remainPigment: number;
   nestPigment: number;
 }
 

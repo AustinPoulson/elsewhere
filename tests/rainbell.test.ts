@@ -40,6 +40,7 @@ function searchPhase(world: World, bell: Rainbell) {
 function pigment(world: World) {
   return (
     world.sediment.reduce((sum, entry) => sum + entry.strength, 0) +
+    world.remains.reduce((sum, remain) => sum + remain.pigment, 0) +
     world.rainbells.reduce((sum, entry) => sum + entry.body + entry.reserve, 0)
   );
 }
@@ -389,7 +390,7 @@ describe('rainbell polyp paid sediment pump', () => {
     updateRainbells(world, FIXED_STEP);
     expect(world.rainbells).toHaveLength(0);
     expect(world.currents[0]).toEqual(field);
-    expect(world.sediment.at(-1)!.strength).toBeCloseTo(0.2 + reserve, 12);
+    expect(world.remains[0].pigment).toBeCloseTo(0.2 + reserve, 12);
     const count = world.sediment.length;
     updateRainbells(world, FIXED_STEP);
     expect(world.sediment).toHaveLength(count);
@@ -398,15 +399,16 @@ describe('rainbell polyp paid sediment pump', () => {
     hungry.bell.starvedFor = 59.9;
     updateRainbells(hungry.world, 0.25);
     expect(hungry.world.rainbells).toHaveLength(0);
-    expect(hungry.world.sediment[0].strength).toBe(0.2);
+    expect(hungry.world.remains[0].pigment).toBe(0.2);
     const full = born();
     for (let i = 0; i < LIMITS.sediment; i++) grain(full.world, 720, 500, 1);
     full.world.sediment[0].strength = 0.8;
     full.bell.age = 600;
     full.bell.reserve = 1;
     updateRainbells(full.world, FIXED_STEP);
-    expect(full.world.sediment[0].strength).toBe(1);
-    expect(full.world.ecologyLedger.mineralizedPigment).toBeCloseTo(1, 12);
+    expect(full.world.sediment[0].strength).toBe(0.8);
+    expect(full.world.remains[0].pigment).toBeCloseTo(1.2, 12);
+    expect(full.world.ecologyLedger.mineralizedPigment).toBe(0);
   });
 
   it('restores both cached targets between staggered searches and follows the exact autonomous continuation', () => {

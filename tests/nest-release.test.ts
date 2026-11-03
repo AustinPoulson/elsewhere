@@ -248,6 +248,10 @@ describe('nest pigment release', () => {
       cargoMites: _cargoMites,
       cargoMiteAdmissionAt: _cargoMiteAdmissionAt,
       cargoMiteCandidateAfterId: _cargoMiteCandidateAfterId,
+      remains: _remains,
+      marlgrubs: _marlgrubs,
+      marlgrubAdmissionAt: _marlgrubAdmissionAt,
+      marlgrubCandidateAfterId: _marlgrubCandidateAfterId,
       organisms,
       ...fields
     } = legacy;

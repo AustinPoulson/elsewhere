@@ -116,6 +116,10 @@ function revision4(world: World): Record<string, any> {
     cargoMites: _cargoMites,
     cargoMiteAdmissionAt: _cargoMiteAdmissionAt,
     cargoMiteCandidateAfterId: _cargoMiteCandidateAfterId,
+    remains: _remains,
+    marlgrubs: _marlgrubs,
+    marlgrubAdmissionAt: _marlgrubAdmissionAt,
+    marlgrubCandidateAfterId: _marlgrubCandidateAfterId,
     skimmerCandidateAfterId: _skimmerCandidate,
     ...previous
   } = structuredClone(world);
@@ -126,6 +130,11 @@ function revision4(world: World): Record<string, any> {
     ...limpetLedgerKeys,
     ...cargoMiteLedgerKeys,
     'ambientHarvested',
+    'remainsCreated',
+    'remainsConsumed',
+    'remainsDecayed',
+    'marlgrubIntake',
+    'marlgrubMaintenancePigment',
   ])
     delete result.ecologyLedger[key];
   return result;
@@ -187,10 +196,14 @@ describe('rainbell snapshot revision', () => {
       cargoMites: _cargoMites,
       cargoMiteAdmissionAt: _cargoMiteAdmissionAt,
       cargoMiteCandidateAfterId: _cargoMiteCandidateAfterId,
+      remains: _remains,
+      marlgrubs: _marlgrubs,
+      marlgrubAdmissionAt: _marlgrubAdmissionAt,
+      marlgrubCandidateAfterId: _marlgrubCandidateAfterId,
       skimmerCandidateAfterId: _skimmerCandidate,
       ...oldFields
     } = restored;
-    expect(restored.schemaRevision).toBe(9);
+    expect(restored.schemaRevision).toBe(10);
     expect(rainbells).toEqual([]);
     expect(rainbellAdmissionAt).toBe(source.elapsed);
     expect(rainbellCandidateAfterId).toBe(0);
@@ -204,6 +217,11 @@ describe('rainbell snapshot revision', () => {
       ...limpetLedgerKeys,
       ...cargoMiteLedgerKeys,
       'ambientHarvested',
+      'remainsCreated',
+      'remainsConsumed',
+      'remainsDecayed',
+      'marlgrubIntake',
+      'marlgrubMaintenancePigment',
     ]) {
       expect(oldLedger[key]).toBe(0);
       delete oldLedger[key];
@@ -226,7 +244,7 @@ describe('rainbell snapshot revision', () => {
       const before = JSON.stringify(source);
       const restored = restoreWorld(before)!;
       expect(restored).toMatchObject({
-        schemaRevision: 9,
+        schemaRevision: 10,
         rainbells: [],
         rainbellAdmissionAt: source.elapsed,
         rainbellCandidateAfterId: 0,
@@ -400,7 +418,7 @@ describe('rainbell snapshot revision', () => {
         w.nextId += 5;
       },
       (w) => {
-        w.schemaRevision = 10;
+        w.schemaRevision = 11;
       },
     ];
     for (const target of ['feedTargetSedimentId', 'pumpTargetSedimentId']) {

@@ -278,10 +278,11 @@ describe('glass limpet current capture', () => {
     updateGlassLimpets(world, 0.02);
     expect(world.glassLimpets).toHaveLength(0);
     expect(world.sediment).toHaveLength(LIMITS.sediment);
-    expect(world.sediment[0].strength).toBe(1);
-    expect(world.ecologyLedger.mineralizedPigment).toBeCloseTo(0.3, 12);
-    expect(world.nextId).toBe(beforeId);
+    expect(world.sediment[0].strength).toBe(0.2);
+    expect(world.remains[0].pigment).toBeCloseTo(1.1, 12);
+    expect(world.ecologyLedger.mineralizedPigment).toBe(0);
+    expect(world.nextId).toBe(beforeId + 1);
     updateGlassLimpets(world, 0.02);
-    expect(world.ecologyLedger.mineralizedPigment).toBeCloseTo(0.3, 12);
+    expect(world.ecologyLedger.mineralizedPigment).toBe(0);
   });
 });

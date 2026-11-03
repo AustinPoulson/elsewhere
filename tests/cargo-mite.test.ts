@@ -177,10 +177,12 @@ describe('cargo mite funded host and offspring lifecycle', () => {
       age: 0,
     }));
     const id = world.nextId;
+    const remaining = mite.body + mite.reserve;
     updateCargoMites(world, 0.02);
     expect(world.cargoMites).toHaveLength(0);
-    expect(world.sediment[0].strength).toBeCloseTo(0.7 - 0.0001, 4);
-    expect(world.nextId).toBe(id);
+    expect(world.sediment[0].strength).toBeCloseTo(0.2, 4);
+    expect(world.remains[0].pigment).toBeCloseTo(remaining, 4);
+    expect(world.nextId).toBe(id + 1);
     const mineralized = world.ecologyLedger.mineralizedPigment;
     updateCargoMites(world, 0.02);
     expect(world.ecologyLedger.mineralizedPigment).toBe(mineralized);

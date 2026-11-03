@@ -10,9 +10,21 @@ function previousRevision(world: World): Record<string, any> {
   delete previous.cargoMites;
   delete previous.cargoMiteAdmissionAt;
   delete previous.cargoMiteCandidateAfterId;
+  delete previous.remains;
+  delete previous.marlgrubs;
+  delete previous.marlgrubAdmissionAt;
+  delete previous.marlgrubCandidateAfterId;
   delete previous.ecologyLedger.cargoMiteIntake;
   delete previous.ecologyLedger.cargoMiteMaintenancePigment;
   delete previous.ecologyLedger.ambientHarvested;
+  for (const key of [
+    'remainsCreated',
+    'remainsConsumed',
+    'remainsDecayed',
+    'marlgrubIntake',
+    'marlgrubMaintenancePigment',
+  ])
+    delete previous.ecologyLedger[key];
   return previous;
 }
 
@@ -58,7 +70,7 @@ describe('cargo mite snapshot revision', () => {
     const migrated = restoreWorld(source)!;
     expect(migrated).not.toBeNull();
     expect(migrated).toMatchObject({
-      schemaRevision: 9,
+      schemaRevision: 10,
       cargoMites: [],
       cargoMiteAdmissionAt: old.elapsed,
       cargoMiteCandidateAfterId: 0,
@@ -161,7 +173,7 @@ describe('cargo mite snapshot revision', () => {
         w.cargoMites.push(...Array.from({ length: 4 }, () => ({ ...w.cargoMites[0], id: w.nextId++ })));
       },
       (w) => {
-        w.foundingTypeCursor = 6;
+        w.foundingTypeCursor = 7;
       },
       (w) => {
         delete w.ecologyLedger.cargoMiteIntake;

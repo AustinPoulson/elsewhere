@@ -137,11 +137,25 @@ function previous(world: World): Record<string, any> {
     cargoMites: _cargoMites,
     cargoMiteAdmissionAt: _cargoMiteAdmissionAt,
     cargoMiteCandidateAfterId: _cargoMiteCandidateAfterId,
+    remains: _remains,
+    marlgrubs: _marlgrubs,
+    marlgrubAdmissionAt: _marlgrubAdmissionAt,
+    marlgrubCandidateAfterId: _marlgrubCandidateAfterId,
     skimmerCandidateAfterId: _skimmerCandidate,
     ...old
   } = structuredClone(world);
   const result: Record<string, any> = { ...old, schemaRevision: 5 };
-  for (const key of [...ledgerKeys, ...limpetLedgerKeys, ...cargoMiteLedgerKeys, 'ambientHarvested'])
+  for (const key of [
+    ...ledgerKeys,
+    ...limpetLedgerKeys,
+    ...cargoMiteLedgerKeys,
+    'ambientHarvested',
+    'remainsCreated',
+    'remainsConsumed',
+    'remainsDecayed',
+    'marlgrubIntake',
+    'marlgrubMaintenancePigment',
+  ])
     delete result.ecologyLedger[key];
   return result;
 }
@@ -208,15 +222,29 @@ describe('siltstitcher snapshot revision', () => {
       cargoMites: _cargoMites,
       cargoMiteAdmissionAt: _cargoMiteAdmissionAt,
       cargoMiteCandidateAfterId: _cargoMiteCandidateAfterId,
+      remains: _remains,
+      marlgrubs: _marlgrubs,
+      marlgrubAdmissionAt: _marlgrubAdmissionAt,
+      marlgrubCandidateAfterId: _marlgrubCandidateAfterId,
       skimmerCandidateAfterId: _skimmerCandidate,
       ...old
     } = restored;
-    expect(restored.schemaRevision).toBe(9);
+    expect(restored.schemaRevision).toBe(10);
     expect(siltstitchers).toEqual([]);
     expect(siltstitcherAdmissionAt).toBe(source.elapsed);
     expect(siltstitcherCandidateAfterId).toBe(0);
     const oldLedger = { ...old.ecologyLedger } as Record<string, number>;
-    for (const key of [...ledgerKeys, ...limpetLedgerKeys, ...cargoMiteLedgerKeys, 'ambientHarvested']) {
+    for (const key of [
+      ...ledgerKeys,
+      ...limpetLedgerKeys,
+      ...cargoMiteLedgerKeys,
+      'ambientHarvested',
+      'remainsCreated',
+      'remainsConsumed',
+      'remainsDecayed',
+      'marlgrubIntake',
+      'marlgrubMaintenancePigment',
+    ]) {
       expect(oldLedger[key]).toBe(0);
       delete oldLedger[key];
     }
@@ -239,7 +267,7 @@ describe('siltstitcher snapshot revision', () => {
       const before = JSON.stringify(source);
       const restored = restoreWorld(before)!;
       expect(restored).toMatchObject({
-        schemaRevision: 9,
+        schemaRevision: 10,
         siltstitchers: [],
         siltstitcherAdmissionAt: source.elapsed,
         siltstitcherCandidateAfterId: 0,
@@ -506,7 +534,7 @@ describe('siltstitcher snapshot revision', () => {
         w.siltstitchers = Array.from({ length: 7 }, () => ({ ...w.siltstitchers[0], id: w.nextId++ }));
       },
       (w) => {
-        w.schemaRevision = 10;
+        w.schemaRevision = 11;
       },
     ];
     for (const other of [

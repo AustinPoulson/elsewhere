@@ -32,6 +32,10 @@ function ecology(world: World) {
     cargoMites: _cargoMites,
     cargoMiteAdmissionAt: _cargoMiteAdmissionAt,
     cargoMiteCandidateAfterId: _cargoMiteCandidateAfterId,
+    remains: _remains,
+    marlgrubs: _marlgrubs,
+    marlgrubAdmissionAt: _marlgrubAdmissionAt,
+    marlgrubCandidateAfterId: _marlgrubCandidateAfterId,
     organisms,
     grazers,
     ...rest
@@ -153,7 +157,7 @@ describe('versioned weather calls', () => {
     expect(ecology(migrated)).toEqual(original);
     expect(migrated).toMatchObject({
       version: 3,
-      schemaRevision: 9,
+      schemaRevision: 10,
       weatherCall: { startedAt: null, nextAllowedAt: 0 },
     });
     expect(JSON.stringify(fixture)).toBe(old);
@@ -169,7 +173,7 @@ describe('versioned weather calls', () => {
         delete world.schemaRevision;
       },
       (world) => {
-        world.schemaRevision = 10;
+        world.schemaRevision = 11;
       },
       (world) => {
         world.weatherCall = null;

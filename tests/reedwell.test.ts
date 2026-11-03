@@ -290,11 +290,11 @@ describe('rain-rooted daylight reedwell', () => {
     world.ecologyLedger.daylightHarvested = 2;
     updateReedwells(world, 0.25);
     expect(world.reedwells).toHaveLength(0);
-    expect(world.sediment.at(-1)!.strength).toBe(0.6);
+    expect(world.remains[0].pigment).toBe(0.6);
     expect(world.ecologyLedger.reedwellDissipatedLight).toBe(2);
     expect(world.ecologyLedger.daylightHarvested).toBe(2);
     updateReedwells(world, 0.25);
-    expect(world.sediment).toHaveLength(2);
+    expect(world.remains).toHaveLength(1);
     assertEnergy(world);
   });
 
@@ -307,9 +307,10 @@ describe('rain-rooted daylight reedwell', () => {
     reedwell.age = 900;
     updateReedwells(world, 0.25);
     expect(world.sediment).toHaveLength(600);
-    expect(world.sediment[0].strength).toBe(1);
+    expect(world.sediment[0].strength).toBe(0.8);
     expect(world.sediment[1].strength).toBe(0.8);
-    expect(world.ecologyLedger.mineralizedPigment).toBeCloseTo(0.4, 12);
+    expect(world.remains[0].pigment).toBe(0.6);
+    expect(world.ecologyLedger.mineralizedPigment).toBe(0);
   });
 
   it('pays lucent pigment only from actually consumed reedwell light, including tiny remnants', () => {

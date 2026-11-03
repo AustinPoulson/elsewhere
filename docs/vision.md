@@ -10,7 +10,7 @@ Eventually: several pools linked by slow currents, and the world keeps living wh
 
 - [x] **Heritable traits with small mutations** — Offspring inherit parent traits with small random variations; reproduction costs real parent reserves. A faint ambient daylight cycle lets lucents convert sky light into pigment so some lineages can persist without visitor input. _Success: offspring visibly differ from parents; resource cost is reflected in parent reserve depletion; 30-day harness runs without visitor light keep at least one advanced lineage alive and bounded._
 
-- [ ] **A second resource and body-eating consumer** — Introduce decomposition or predation of real bodies; a new resource derived from death. _Success: dead organisms become food for a consumer; resource accounting remains balanced._
+- [x] **A second resource and body-eating consumer** — When a mortal body ends, its paid color becomes a located remain that slowly leaches into ordinary pigment; a small scavenger (marlgrub) can pay for itself from those remains. _Success: dead organisms become food for a consumer; resource accounting remains balanced._
 
 - [ ] **Catching up on time spent away** — Simulate elapsed time when the user returns; generate a "while you were gone" journal. _Success: reopening after an hour shows the world has advanced; journal summarizes key events._
 
@@ -58,3 +58,19 @@ _This section records surprising population dynamics, extinctions, or runaway re
 2. Selection has something to bite on while cargo mites reproduce; other species still need their own birth rules before their traits can drift
 3. Reedwells and rainbells still go extinct without more specific weather/light conditions — a later physics change, not a population gift
 4. A body-eating consumer will have real deaths to feed on (skimmer and mite turnover is already dozens per 30 days)
+
+### Remains and marlgrubs (seeds 1 and 42)
+
+**Death leaves a located resource, and the ledger balances:** Over 30 days seed 1 created 45.25 remain pigment (20.01 consumed, 25.24 decayed, 0 held at the end). Seed 42 created 44.58 (20.63 consumed, 23.60 decayed, 0.36 held). Both harness conservation checks report `created = held + consumed + decayed`.
+
+**A scavenger pays for itself from remains:** Marlgrubs appear only when a remnant can fund body 0.1 plus reserve 0.1. Seed 1 had 57 births / 57 deaths and went extinct at 178m 44s once the floor was empty. Seed 42 had 60 births / 57 deaths and ended with 3 living grubs and 1 remain. Neither opening worlds nor migrated saves receive a free population. The type cap of 4 held.
+
+**Pigment spends more time as bodies and stains:** Nested pigment ended at 1.21 / 0.84 versus 2.33 / 2.80 on main, because death no longer dumps immediately into sediment. Loose pigment stayed bounded (0.14 / 0.42). Skimmer and mite turnover continued: seed 1 kept 2 skimmers (64 births / 62 deaths) and 4 mites at cap (74 / 70); seed 42 kept 3 skimmers (74 / 71).
+
+**The seven-type founding rotation and delayed return change who persists:** Glass limpets dropped to a single brief founding on both seeds (extinct at ~2m 43s, versus 179m / 45m on main). Seed 42 lost siltstitchers at 7m 29s — they survived on main — and cargo mites at 179m 52s. Rainbells no longer appeared on seed 1. Extinction is still allowed and still seed-shaped.
+
+**Implications for upcoming work:**
+
+1. Catching up on time away can resume a world that still cycles remains and scavengers, not only lucents and grazers
+2. Nest-funded types now compete with a delay: corpses feed marlgrubs or leach slowly, so shoreline and nest lineages have less immediately available pigment than when death returned as sediment
+3. That is a physics change, not a population gift; later work can add conditions that concentrate remains, not free bodies

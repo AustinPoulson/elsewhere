@@ -8,6 +8,7 @@ export const RAINBELL_CAP = 4;
 export const SILTSTITCHER_CAP = 6;
 export const GLASS_LIMPET_CAP = 4;
 export const CARGO_MITE_CAP = 4;
+export const MARLGRUB_CAP = 4;
 export const SPECIES_CATALOG = {
   skimmer: {
     cap: SKIMMER_CAP,
@@ -124,6 +125,23 @@ export const SPECIES_CATALOG = {
     spacing: 48,
     hostCap: 2,
   },
+  marlgrub: {
+    cap: MARLGRUB_CAP,
+    bodyPigment: 0.1,
+    initialReserve: 0.1,
+    admissionPigment: 0.2,
+    admissionRest: 60,
+    lifespan: 360,
+    starvationLimit: 60,
+    reserveCapacity: 0.8,
+    intakeRate: 0.02,
+    maintenanceRate: 0.001,
+    speed: 9,
+    feedReach: 14,
+    seekReach: 140,
+    spacing: 48,
+    margin: 11,
+  },
 } as const;
 
 export function activeNewTypePopulation(world: World): number {
@@ -133,6 +151,7 @@ export function activeNewTypePopulation(world: World): number {
     world.rainbells.length +
     world.siltstitchers.length +
     world.glassLimpets.length +
-    world.cargoMites.length
+    world.cargoMites.length +
+    world.marlgrubs.length
   );
 }

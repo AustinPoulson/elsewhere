@@ -352,6 +352,7 @@ export function App() {
         ...worldRef.current.rainbells,
         ...worldRef.current.siltstitchers,
         ...worldRef.current.glassLimpets,
+        ...worldRef.current.marlgrubs,
       ]) {
         const d = Math.hypot(organism.x - point.x, organism.y - point.y);
         if (d < distance) {
@@ -367,27 +368,40 @@ export function App() {
           distance = d;
         }
       }
-      setSelectedId(nearest?.id ?? null);
-      if (nearest) {
+      let nearestRemain = null;
+      for (const remain of worldRef.current.remains) {
+        const d = Math.hypot(remain.x - point.x, remain.y - point.y);
+        if (d < Math.max(distance, remain.radius + 12) && d < distance) {
+          nearestRemain = remain;
+          distance = d;
+        }
+      }
+      const chosen = nearest ?? nearestRemain;
+      setSelectedId(chosen?.id ?? null);
+      if (chosen) {
         setPanel('specimen');
         setNotice(
-          nearest.species === 'grazer'
+          chosen.species === 'grazer'
             ? 'A keeper of borrowed colors.'
-            : nearest.species === 'skimmer'
+            : chosen.species === 'skimmer'
               ? 'A prism skimmer, turning color into light.'
-              : nearest.species === 'reedwell'
+              : chosen.species === 'reedwell'
                 ? 'A rooted reedwell, gathering daylight.'
-                : nearest.species === 'rainbell'
+                : chosen.species === 'rainbell'
                   ? 'A rainbell, drawing food through water.'
-                  : nearest.species === 'siltstitcher'
+                  : chosen.species === 'siltstitcher'
                     ? 'A siltstitcher, bearing color away from its nest.'
-                    : nearest.species === 'glassLimpet'
+                    : chosen.species === 'glassLimpet'
                       ? 'A glass limpet, catching food carried by currents.'
-                      : nearest.species === 'cargoMite'
+                      : chosen.species === 'cargoMite'
                         ? 'A cargo mite, feeding on color in a grazer’s bundle.'
-                        : 'A lucent, briefly known.',
+                        : chosen.species === 'marlgrub'
+                          ? 'A marlgrub, feeding on what death left behind.'
+                          : chosen.species === 'remain'
+                            ? 'Settled remains, slowly returning to the floor.'
+                            : 'A lucent, briefly known.',
         );
-      } else setNotice('Touch a living inhabitant to look more closely.');
+      } else setNotice('Touch a living inhabitant or a remnant on the floor.');
     }
   }
   function pointerDown(event: PointerEvent<HTMLDivElement>) {
@@ -616,7 +630,9 @@ export function App() {
     ...worldRef.current.siltstitchers,
     ...worldRef.current.glassLimpets,
     ...worldRef.current.cargoMites,
+    ...worldRef.current.marlgrubs,
   ].find((organism) => organism.id === selectedId);
+  const selectedRemain = worldRef.current.remains.find((remain) => remain.id === selectedId) ?? null;
   const selectedNest =
     selected?.species === 'grazer' ? worldRef.current.nests.find((nest) => nest.id === selected.nestId) : null;
   const openPanel = (next: Panel) => setPanel((current) => (current === next ? null : next));
@@ -771,6 +787,13 @@ export function App() {
         {stats.skimmers > 0 && (
           <div className="skimmer-readout">
             ◇ {stats.skimmers} prism skimmer{stats.skimmers === 1 ? '' : 's'}
+          </div>
+        )}
+        {(stats.remains > 0 || stats.marlgrubs > 0) && (
+          <div className="skimmer-readout">
+            {stats.remains > 0 ? `${stats.remains} remain${stats.remains === 1 ? '' : 's'}` : null}
+            {stats.remains > 0 && stats.marlgrubs > 0 ? ' · ' : null}
+            {stats.marlgrubs > 0 ? `${stats.marlgrubs} marlgrub${stats.marlgrubs === 1 ? '' : 's'}` : null}
           </div>
         )}
         <div className={`weather-readout ${weather.raining ? 'is-raining' : ''}`} aria-label="Pool weather">
@@ -1158,6 +1181,29 @@ export function App() {
                     </p>
                   </div>
                 </div>
+                <div className="guide-entry">
+                  <span className="entry-number">15</span>
+                  <div>
+                    <h3>What a body leaves</h3>
+                    <p>
+                      When a short life ends, its paid body and remaining stores settle as a dark stain on the floor.
+                      That remnant is a real resource: it slowly leaches back into ordinary pigment, or a marlgrub can
+                      feed on it. Nothing accumulates without bound. Observe a stain to see how much color it still
+                      holds.
+                    </p>
+                  </div>
+                </div>
+                <div className="guide-entry">
+                  <span className="entry-number">16</span>
+                  <div>
+                    <h3>The marlgrub</h3>
+                    <p>
+                      A remnant large enough to pay for a small body can give rise to a marlgrub. It crawls to settled
+                      remains and feeds only from those stains. It may never appear, and an old save receives none.
+                      After six world minutes or a minute without reserve, its body becomes remains again.
+                    </p>
+                  </div>
+                </div>
                 <div className="guide-controls">
                   <p className="eyebrow">WAYS TO VISIT</p>
                   <p>
@@ -1173,7 +1219,13 @@ export function App() {
             {panel === 'specimen' && (
               <>
                 <h2 id="panel-title">
-                  {selected?.species === 'grazer' ? (
+                  {selectedRemain && !selected ? (
+                    <>
+                      A remnant,
+                      <br />
+                      <em>settling into the floor.</em>
+                    </>
+                  ) : selected?.species === 'grazer' ? (
                     <>
                       A keeper
                       <br />
@@ -1215,6 +1267,12 @@ export function App() {
                       <br />
                       <em>living on borrowed color.</em>
                     </>
+                  ) : selected?.species === 'marlgrub' ? (
+                    <>
+                      A grub,
+                      <br />
+                      <em>feeding on remains.</em>
+                    </>
                   ) : (
                     <>
                       A lucent,
@@ -1224,10 +1282,33 @@ export function App() {
                   )}
                 </h2>
                 <p className="panel-intro">Every life is part of the same small story.</p>
-                {selected ? (
+                {selectedRemain && !selected ? (
+                  <>
+                    <div className="specimen-orb remain-orb" aria-hidden="true" />
+                    <p className="eyebrow">REMAINS / {String(selectedRemain.id).padStart(3, '0')}</p>
+                    <dl className="specimen-details">
+                      <div>
+                        <dt>Time on the floor</dt>
+                        <dd>{timeLabel(selectedRemain.age)}</dd>
+                      </div>
+                      <div>
+                        <dt>Color held</dt>
+                        <dd>{selectedRemain.pigment.toFixed(3)}</dd>
+                      </div>
+                      <div>
+                        <dt>Disposition</dt>
+                        <dd>Settling · leaching back into pigment</dd>
+                      </div>
+                    </dl>
+                    <p className="guide-caption">
+                      A short life ended here. The body and remaining color sit as a stain until a marlgrub feeds or the
+                      remnant slowly returns to ordinary pigment.
+                    </p>
+                  </>
+                ) : selected ? (
                   <>
                     <div
-                      className={`specimen-orb ${selected.species === 'grazer' ? 'grazer-orb' : selected.species === 'skimmer' ? 'skimmer-orb' : selected.species === 'reedwell' ? 'reedwell-orb' : selected.species === 'rainbell' ? 'rainbell-orb' : selected.species === 'siltstitcher' ? 'siltstitcher-orb' : selected.species === 'glassLimpet' ? 'glass-limpet-orb' : selected.species === 'cargoMite' ? 'cargo-mite-orb' : ''}`}
+                      className={`specimen-orb ${selected.species === 'grazer' ? 'grazer-orb' : selected.species === 'skimmer' ? 'skimmer-orb' : selected.species === 'reedwell' ? 'reedwell-orb' : selected.species === 'rainbell' ? 'rainbell-orb' : selected.species === 'siltstitcher' ? 'siltstitcher-orb' : selected.species === 'glassLimpet' ? 'glass-limpet-orb' : selected.species === 'cargoMite' ? 'cargo-mite-orb' : selected.species === 'marlgrub' ? 'marlgrub-orb' : ''}`}
                       aria-hidden="true"
                     />
                     <p className="eyebrow">
@@ -1245,7 +1326,9 @@ export function App() {
                                   ? 'GLASS LIMPET'
                                   : selected.species === 'cargoMite'
                                     ? 'CARGO MITE'
-                                    : 'LUCENT'}{' '}
+                                    : selected.species === 'marlgrub'
+                                      ? 'MARLGRUB'
+                                      : 'LUCENT'}{' '}
                       / {String(selected.id).padStart(3, '0')}
                     </p>
                     <dl className="specimen-details">
@@ -1401,6 +1484,27 @@ export function App() {
                             </dd>
                           </div>
                         </>
+                      ) : selected.species === 'marlgrub' ? (
+                        <>
+                          <div>
+                            <dt>Color in reserve</dt>
+                            <dd>{selected.reserve.toFixed(3)}</dd>
+                          </div>
+                          <div>
+                            <dt>Color in its body</dt>
+                            <dd>{selected.body.toFixed(1)}</dd>
+                          </div>
+                          <div>
+                            <dt>Disposition</dt>
+                            <dd>
+                              {selected.reserve <= 0
+                                ? 'Hungry for remains'
+                                : selected.targetRemainId !== null
+                                  ? 'Crawling toward remains'
+                                  : 'Searching the floor'}
+                            </dd>
+                          </div>
+                        </>
                       ) : selected.species === 'reedwell' ? (
                         <>
                           <div>
@@ -1452,14 +1556,16 @@ export function App() {
                                   ? 'Only real current-borne coarse food that reaches this shell fills its reserve and basin. Its body and catch return to the pool at the end of its finite life.'
                                   : selected.species === 'cargoMite'
                                     ? 'A grazer’s carried color feeds this mite instead of reaching the nest. A grown parent pays color from its own reserve for a young mite, whose appetite and frame may drift a little from its parent. A stouter frame holds more of that color but does not travel as far. Both return remaining color when their short lives end.'
-                                    : "Leave light nearby and watch this one's path change."}
+                                    : selected.species === 'marlgrub'
+                                      ? 'It pays for its body from settled remains and feeds only on those stains. Unused remnants slowly leach back into ordinary pigment. When this short life ends, its body becomes remains again.'
+                                      : "Leave light nearby and watch this one's path change."}
                     </p>
                   </>
                 ) : (
                   <p className="panel-intro">
                     {selectedId !== null
-                      ? 'This creature has left the pool. Choose Observe to meet another.'
-                      : 'Choose Observe and touch a creature in the water.'}
+                      ? 'This has left the pool. Choose Observe to meet another.'
+                      : 'Choose Observe and touch a creature or a remnant on the floor.'}
                   </p>
                 )}
                 {selected?.species === 'grazer' && selectedNest && (
@@ -1496,6 +1602,8 @@ export function App() {
                   <span>
                     {stats.population} LUCENTS · {stats.grazers} GRAZERS
                     {stats.skimmers > 0 ? ` · ${stats.skimmers} SKIMMERS` : ''}
+                    {stats.marlgrubs > 0 ? ` · ${stats.marlgrubs} MARLGRUBS` : ''}
+                    {stats.remains > 0 ? ` · ${stats.remains} REMAINS` : ''}
                   </span>
                   <span>SEED {worldRef.current.seed}</span>
                 </div>
