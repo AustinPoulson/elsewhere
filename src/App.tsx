@@ -8,6 +8,14 @@ import { SAVE_KEY, WorldSession } from './app/session';
 import { SHOWER_STUDY } from './app/study';
 import { TidepoolRenderer } from './render/TidepoolRenderer';
 import { cargoMiteDisplayPoint } from './render/cargoMiteDisplay';
+import {
+  catchUpShouldShowProgress,
+  catchUpWorldChunked,
+  planCatchUp,
+  shouldPresentJournal,
+  type CatchUpJournal,
+  type CatchUpPlan,
+} from './world/catchup';
 import { addLight, createWorld, getStats, releaseNestPigment, stepWorld } from './world/simulation';
 import { restoreWorld, serializeWorld } from './world/persistence';
 import { callRain, effectiveWeather } from './world/weather';
@@ -26,13 +34,30 @@ type PoolControls = {
   keyboard: boolean;
 };
 type Panel = 'guide' | 'specimen' | 'pocket' | null;
-function loadInitialWorld(): { world: World; remembered: boolean; storageAvailable: boolean } {
+function loadInitialWorld(): {
+  world: World;
+  remembered: boolean;
+  storageAvailable: boolean;
+  catchUpPlan: CatchUpPlan;
+} {
   try {
     const saved = localStorage.getItem(SAVE_KEY);
     const world = saved ? restoreWorld(saved) : null;
-    return { world: world ?? createWorld(), remembered: Boolean(world), storageAvailable: true };
+    const loaded = world ?? createWorld();
+    return {
+      world: loaded,
+      remembered: Boolean(world),
+      storageAvailable: true,
+      catchUpPlan: planCatchUp(loaded.lastSeenAt, Date.now()),
+    };
   } catch {
-    return { world: createWorld(), remembered: false, storageAvailable: false };
+    const world = createWorld();
+    return {
+      world,
+      remembered: false,
+      storageAvailable: false,
+      catchUpPlan: planCatchUp(world.lastSeenAt, Date.now()),
+    };
   }
 }
 function timeLabel(seconds: number): string {
@@ -52,6 +77,11 @@ export function App() {
   const panelReturnFocusRef = useRef<HTMLElement | null>(null);
   const resetRef = useRef<HTMLDialogElement>(null);
   const resetTriggerRef = useRef<HTMLElement | null>(null);
+  const journalRef = useRef<HTMLDialogElement>(null);
+  const catchingUpRef = useRef(initial.catchUpPlan.reason === 'ready');
+  const catchUpLockRef = useRef(false);
+  const [catchUpProgress, setCatchUpProgress] = useState<{ done: number; total: number } | null>(null);
+  const [journal, setJournal] = useState<CatchUpJournal | null>(null);
   const [reducedMotion, setReducedMotion] = useState(() => matchMedia('(prefers-reduced-motion: reduce)').matches);
   const [paused, setPaused] = useState(reducedMotion);
   const [tool, setTool] = useState<Tool>('light');
@@ -62,7 +92,11 @@ export function App() {
   const [error, setError] = useState('');
   const [storageAvailable, setStorageAvailable] = useState(initial.storageAvailable);
   const [notice, setNoticeState] = useState(
-    initial.remembered ? 'Your tidepool remembers you.' : 'Leave a little light. See what follows.',
+    initial.remembered && initial.catchUpPlan.reason !== 'ready'
+      ? 'Your tidepool remembers you.'
+      : initial.remembered
+        ? ''
+        : 'Leave a little light. See what follows.',
   );
   const [feedback, setFeedback] = useState('');
   function setNotice(message: string): void {
@@ -172,11 +206,50 @@ export function App() {
   }
 
   function saveWorld(): void {
-    if (sessionRef.current.preview) return;
+    if (sessionRef.current.preview || catchingUpRef.current) return;
+    if (!document.hidden) worldRef.current.lastSeenAt = Date.now();
     try {
       setStorageAvailable(sessionRef.current.save(localStorage) === 'saved');
     } catch {
       setStorageAvailable(false);
+    }
+  }
+
+  async function runCatchUp(plan: CatchUpPlan): Promise<void> {
+    if (catchUpLockRef.current) return;
+    if (sessionRef.current.preview || plan.reason !== 'ready') {
+      catchingUpRef.current = false;
+      setCatchUpProgress(null);
+      if (!sessionRef.current.preview) worldRef.current.lastSeenAt = Date.now();
+      return;
+    }
+    catchUpLockRef.current = true;
+    catchingUpRef.current = true;
+    const startedAt = performance.now();
+    let progressVisible = false;
+    try {
+      const report = await catchUpWorldChunked(worldRef.current, plan, {
+        onProgress(done, total) {
+          if (progressVisible || catchUpShouldShowProgress(performance.now() - startedAt, done, total)) {
+            progressVisible = true;
+            setCatchUpProgress({ done, total });
+          }
+        },
+      });
+      worldRef.current.lastSeenAt = Date.now();
+      setCatchUpProgress(null);
+      setStats(getStats(worldRef.current));
+      catchingUpRef.current = false;
+      saveWorld();
+      if (shouldPresentJournal(plan, report.events)) {
+        setJournal(report.journal);
+        setNotice('The pool lived while you were away.');
+      } else {
+        setNotice('The pool moved on a little while you were away.');
+      }
+    } finally {
+      catchingUpRef.current = false;
+      catchUpLockRef.current = false;
     }
   }
 
@@ -195,11 +268,23 @@ export function App() {
       clock.reset();
       if (document.hidden) {
         cancelAnimationFrame(frame);
-        saveWorld();
-      } else if (rendererRef.current) frame = requestAnimationFrame(tick);
+        if (!catchingUpRef.current) {
+          worldRef.current.lastSeenAt = Date.now();
+          saveWorld();
+        }
+      } else if (rendererRef.current) {
+        void (async () => {
+          if (!sessionRef.current.preview) {
+            await runCatchUp(planCatchUp(worldRef.current.lastSeenAt, Date.now()));
+          }
+          if (!cancelled && rendererRef.current && !document.hidden && !catchingUpRef.current) {
+            frame = requestAnimationFrame(tick);
+          }
+        })();
+      }
     };
     const tick = (now: number) => {
-      if (cancelled || document.hidden) return;
+      if (cancelled || document.hidden || catchingUpRef.current) return;
       const renderer = rendererRef.current;
       if (!renderer) return;
       if (revision !== sessionRef.current.revision) {
@@ -241,6 +326,19 @@ export function App() {
       // A paused world still responds to cursor and tool changes.
       frame = requestAnimationFrame(tick);
     };
+    function startLoop(): void {
+      if (!cancelled && rendererRef.current && !document.hidden && !catchingUpRef.current) {
+        frame = requestAnimationFrame(tick);
+      }
+    }
+    void (async () => {
+      if (initial.catchUpPlan.reason === 'ready' && !sessionRef.current.preview) {
+        await runCatchUp(initial.catchUpPlan);
+      } else if (!sessionRef.current.preview && worldRef.current.lastSeenAt == null) {
+        worldRef.current.lastSeenAt = Date.now();
+      }
+      startLoop();
+    })();
     TidepoolRenderer.create(host)
       .then((renderer) => {
         if (cancelled) {
@@ -250,7 +348,7 @@ export function App() {
         rendererRef.current = renderer;
         renderer.setReducedMotion(controlsRef.current.reducedMotion);
         setReady(true);
-        if (!document.hidden) frame = requestAnimationFrame(tick);
+        startLoop();
       })
       .catch((cause) => {
         if (!cancelled) setError(cause instanceof Error ? cause.message : 'The tidepool could not open.');
@@ -298,6 +396,15 @@ export function App() {
     };
   }, [panel]);
   useEffect(() => {
+    const dialog = journalRef.current;
+    if (!dialog) return;
+    if (catchUpProgress || journal) {
+      if (!dialog.open) dialog.showModal();
+      const focus = dialog.querySelector<HTMLButtonElement>('button');
+      focus?.focus();
+    } else if (dialog.open) dialog.close();
+  }, [catchUpProgress, journal]);
+  useEffect(() => {
     const key = (event: globalThis.KeyboardEvent) => {
       if (event.key === 'Escape') {
         setPanel(null);
@@ -306,7 +413,13 @@ export function App() {
         cancelCarry(true);
         return;
       }
-      if (resetRef.current?.open || panelRef.current?.contains(event.target as Node)) return;
+      if (
+        resetRef.current?.open ||
+        journalRef.current?.open ||
+        catchingUpRef.current ||
+        panelRef.current?.contains(event.target as Node)
+      )
+        return;
       const target = event.target as HTMLElement;
       if (target.closest('button,input,select,textarea,a') || target.isContentEditable || target === hostRef.current)
         return;
@@ -1204,6 +1317,20 @@ export function App() {
                     </p>
                   </div>
                 </div>
+                <div className="guide-entry">
+                  <span className="entry-number">17</span>
+                  <div>
+                    <h3>While you were gone</h3>
+                    <p>
+                      Closing the page lets the pool live on its own, up to eight hours of remembered time. Brief
+                      absences catch up quietly. After about ten minutes, or if a lineage ended while you were away, a
+                      short field journal tells what happened. A progress note appears only when catching up would take
+                      a visible moment. Longer absences are named honestly: the rest of the time, the world slept.
+                      Opening a saved snapshot restores that frozen moment; it is not time away. Old saves receive no
+                      free life.
+                    </p>
+                  </div>
+                </div>
                 <div className="guide-controls">
                   <p className="eyebrow">WAYS TO VISIT</p>
                   <p>
@@ -1659,6 +1786,62 @@ export function App() {
         aria-label="Open tidepool snapshot"
         onChange={importSnapshot}
       />
+      <dialog
+        ref={journalRef}
+        className="reset-dialog journal-dialog"
+        aria-labelledby="journal-title"
+        aria-describedby="journal-copy"
+        onCancel={(event) => {
+          if (catchingUpRef.current || catchUpProgress) event.preventDefault();
+        }}
+        onClose={() => {
+          if (!catchingUpRef.current) setJournal(null);
+        }}
+      >
+        <p className="eyebrow">{catchUpProgress ? 'THE POOL HAS BEEN WAITING' : 'WHILE YOU WERE GONE'}</p>
+        <h2 id="journal-title">{catchUpProgress ? 'Recalling the hours' : 'A few notes from the pool'}</h2>
+        {catchUpProgress ? (
+          <div id="journal-copy">
+            <p>The water kept living. This may take a quiet moment.</p>
+            <div
+              className="catchup-progress"
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={
+                catchUpProgress.total === 0 ? 0 : Math.round((100 * catchUpProgress.done) / catchUpProgress.total)
+              }
+              aria-label="Catching up on time spent away"
+            >
+              <div
+                style={{
+                  width: `${catchUpProgress.total === 0 ? 0 : (100 * catchUpProgress.done) / catchUpProgress.total}%`,
+                }}
+              />
+            </div>
+          </div>
+        ) : (
+          <div id="journal-copy">
+            <ul className="journal-lines">
+              {(journal?.lines ?? []).map((line, index) => (
+                <li key={index}>{line}</li>
+              ))}
+            </ul>
+            <div className="dialog-actions">
+              <button
+                className="primary-button"
+                autoFocus
+                onClick={() => {
+                  setJournal(null);
+                  journalRef.current?.close();
+                }}
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        )}
+      </dialog>
       <dialog
         ref={resetRef}
         className="reset-dialog"

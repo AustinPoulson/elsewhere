@@ -36,7 +36,7 @@ npm run preview
 - Reset asks for confirmation, then returns to the opening tidepool with the same seed.
 - **Pocket this world** exports a snapshot to keep an era or transfer it. Opening a snapshot replaces the current pool; save the current one first if you want to keep both.
 
-The interface includes keyboard controls and a visible shortcut reference. Saves belong to this browser and site address. A local development save and a GitHub Pages save are separate. The world advances while the page is running; it does not simulate the time you spend away.
+The interface includes keyboard controls and a visible shortcut reference. Saves belong to this browser and site address. A local development save and a GitHub Pages save are separate. The world advances while the page is running. When you return after being away, it catches up through at most eight hours of the same simulation rules. Brief absences catch up quietly; after about ten minutes, or if a lineage ended, a short field journal names what happened. Longer absences are recorded as sleep rather than freezing the tab. Opening a saved snapshot restores that frozen moment and is not treated as time away.
 
 With the habitat focused, arrow keys move an interaction cursor and **Enter** applies the selected tool there. **L** selects Light, **O** selects Observe, **M** selects Carry light, **S** selects Stir water, **R** calls rain, **Space** pauses or resumes, and **Escape** cancels carrying or stirring, or clears the inspection. Global shortcuts yield to focused form controls and dialogs. The habitat starts paused when the browser requests reduced motion; resume when you want to explore it.
 

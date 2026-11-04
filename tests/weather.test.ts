@@ -230,6 +230,7 @@ describe('weather and existing snapshots', () => {
       marlgrubs: _marlgrubs,
       marlgrubAdmissionAt: _marlgrubAdmissionAt,
       marlgrubCandidateAfterId: _marlgrubCandidateAfterId,
+      lastSeenAt: _lastSeenAt,
       organisms,
       ...fields
     } = legacy;

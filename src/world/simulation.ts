@@ -153,7 +153,8 @@ export function createWorld(seed = 20261006): World {
   const normalizedSeed = Math.trunc(seed) >>> 0;
   const world: World = {
     version: 3,
-    schemaRevision: 10,
+    schemaRevision: 11,
+    lastSeenAt: null,
     currents: [],
     weatherCall: { startedAt: null, nextAllowedAt: 0 },
     skimmers: [],

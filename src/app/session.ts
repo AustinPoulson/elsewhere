@@ -59,6 +59,7 @@ export class WorldSession<Controls> {
     if (this.preview || token === null || token !== this.revision) return 'stale';
     const restored = restoreWorld(snapshot);
     if (!restored) return 'invalid';
+    restored.lastSeenAt = Date.now();
     this.world = restored;
     this.revision++;
     return 'imported';

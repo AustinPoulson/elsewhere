@@ -12,7 +12,7 @@ Eventually: several pools linked by slow currents, and the world keeps living wh
 
 - [x] **A second resource and body-eating consumer** — When a mortal body ends, its paid color becomes a located remain that slowly leaches into ordinary pigment; a small scavenger (marlgrub) can pay for itself from those remains. _Success: dead organisms become food for a consumer; resource accounting remains balanced._
 
-- [ ] **Catching up on time spent away** — Simulate elapsed time when the user returns; generate a "while you were gone" journal. _Success: reopening after an hour shows the world has advanced; journal summarizes key events._
+- [x] **Catching up on time spent away** — Simulate elapsed time when the user returns; generate a "while you were gone" journal. _Success: reopening after an hour shows the world has advanced; journal summarizes key events._
 
 - [ ] **Fossils, eras, and linked pools** — Fossils in sediment record extinct populations; multiple pools connected by slow currents allow migration. _Success: fossils visible in old sediment; organisms can move between pools._
 
@@ -58,6 +58,16 @@ _This section records surprising population dynamics, extinctions, or runaway re
 2. Selection has something to bite on while cargo mites reproduce; other species still need their own birth rules before their traits can drift
 3. Reedwells and rainbells still go extinct without more specific weather/light conditions — a later physics change, not a population gift
 4. A body-eating consumer will have real deaths to feed on (skimmer and mite turnover is already dozens per 30 days)
+
+### Catching up on time away (seeds 1 and 42)
+
+**The same rules run while nobody watches:** Catch-up is `stepWorld` in a loop, capped at eight hours (864,000 steps) and chunked into ~12 ms of main-thread work. A 1h gap took ~1.3s of wall time; 8h took ~8.3–8.7s. Gaps under 30 seconds are ignored. Gaps under ten minutes still simulate, but without a journal unless a lineage ended; the progress dialog appears only if the work would block for more than about 250 ms. Missing or inverted clocks skip catch-up without gifts. Beyond eight hours the journal says the rest of the time the world slept. Opening a pocketed snapshot restores the frozen moment and stamps presence to now, so the file's age is not treated as time away.
+
+**Returning after an hour already changes the pool:** Both seeds left with 24 lucents and 4 grazers. After 1h, seed 1 held 4 skimmers and 3 cargo mites; seed 42 held 3 skimmers and 2 mites. Nested pigment rose from 0 to ~1.5. Loose pigment on seed 1 went quiet (10.0 → 0). Remains balanced on every run (`created = held + consumed + decayed`).
+
+**Extinction is visible in the journal, including the requested sentence:** After 8h on seed 1 the notes read "The last glass limpet died about two hours ago." Seed 1 also lost siltstitchers (~1h ago) and marlgrubs (~7 minutes ago); skimmers (181 births / 178 deaths) and cargo mites (266 / 265) kept turning over. Seed 42's 8h journal named reedwell, rainbell, siltstitcher, and glass limpet extinctions, while one marlgrub was still alive.
+
+**Old saves do not receive a free hour:** Revision 10 migrates to 11 with `lastSeenAt: null`, so the first load after this change does not invent elapsed time or populations.
 
 ### Remains and marlgrubs (seeds 1 and 42)
 

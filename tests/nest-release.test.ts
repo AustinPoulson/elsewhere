@@ -252,6 +252,7 @@ describe('nest pigment release', () => {
       marlgrubs: _marlgrubs,
       marlgrubAdmissionAt: _marlgrubAdmissionAt,
       marlgrubCandidateAfterId: _marlgrubCandidateAfterId,
+      lastSeenAt: _lastSeenAt,
       organisms,
       ...fields
     } = legacy;
