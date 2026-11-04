@@ -8,14 +8,21 @@ import { SAVE_KEY, WorldSession } from './app/session';
 import { SHOWER_STUDY } from './app/study';
 import { TidepoolRenderer } from './render/TidepoolRenderer';
 import { cargoMiteDisplayPoint } from './render/cargoMiteDisplay';
-import { catchUpWorldChunked, planCatchUp, type CatchUpJournal, type CatchUpPlan } from './world/catchup';
+import {
+  catchUpShouldShowProgress,
+  catchUpWorldChunked,
+  planCatchUp,
+  shouldPresentJournal,
+  type CatchUpJournal,
+  type CatchUpPlan,
+} from './world/catchup';
 import { addLight, createWorld, getStats, releaseNestPigment, stepWorld } from './world/simulation';
 import { restoreWorld, serializeWorld } from './world/persistence';
 import { callRain, effectiveWeather } from './world/weather';
 import { getDaylight } from './world/environment/daylight';
 import { describeBulk, describeDrive } from './world/traits';
 import { MAX_CURRENTS } from './world/actions/current';
-import { FIXED_STEP, isInPool, LIMITS, WORLD_HEIGHT, WORLD_WIDTH } from './world/types';
+import { isInPool, LIMITS, WORLD_HEIGHT, WORLD_WIDTH } from './world/types';
 import type { Point, Tool, World } from './world/types';
 
 type PoolControls = {
@@ -73,11 +80,7 @@ export function App() {
   const journalRef = useRef<HTMLDialogElement>(null);
   const catchingUpRef = useRef(initial.catchUpPlan.reason === 'ready');
   const catchUpLockRef = useRef(false);
-  const [catchUpProgress, setCatchUpProgress] = useState<{ done: number; total: number } | null>(() =>
-    initial.catchUpPlan.reason === 'ready'
-      ? { done: 0, total: Math.ceil(initial.catchUpPlan.simulateSeconds / FIXED_STEP) }
-      : null,
-  );
+  const [catchUpProgress, setCatchUpProgress] = useState<{ done: number; total: number } | null>(null);
   const [journal, setJournal] = useState<CatchUpJournal | null>(null);
   const [reducedMotion, setReducedMotion] = useState(() => matchMedia('(prefers-reduced-motion: reduce)').matches);
   const [paused, setPaused] = useState(reducedMotion);
@@ -222,11 +225,15 @@ export function App() {
     }
     catchUpLockRef.current = true;
     catchingUpRef.current = true;
-    setCatchUpProgress({ done: 0, total: Math.ceil(plan.simulateSeconds / FIXED_STEP) });
+    const startedAt = performance.now();
+    let progressVisible = false;
     try {
       const report = await catchUpWorldChunked(worldRef.current, plan, {
         onProgress(done, total) {
-          setCatchUpProgress({ done, total });
+          if (progressVisible || catchUpShouldShowProgress(performance.now() - startedAt, done, total)) {
+            progressVisible = true;
+            setCatchUpProgress({ done, total });
+          }
         },
       });
       worldRef.current.lastSeenAt = Date.now();
@@ -234,8 +241,12 @@ export function App() {
       setStats(getStats(worldRef.current));
       catchingUpRef.current = false;
       saveWorld();
-      setJournal(report.journal);
-      setNotice('The pool lived while you were away.');
+      if (shouldPresentJournal(plan, report.events)) {
+        setJournal(report.journal);
+        setNotice('The pool lived while you were away.');
+      } else {
+        setNotice('The pool moved on a little while you were away.');
+      }
     } finally {
       catchingUpRef.current = false;
       catchUpLockRef.current = false;
@@ -630,12 +641,8 @@ export function App() {
       setHintVisible(false);
       setSelectedId(null);
       setStats(getStats(restored));
-      const importedPlan = planCatchUp(restored.lastSeenAt, Date.now());
-      if (importedPlan.reason === 'ready') await runCatchUp(importedPlan);
-      else {
-        saveWorld();
-        setNotice('A remembered tidepool has returned.');
-      }
+      saveWorld();
+      setNotice('A remembered tidepool has returned.');
     } catch {
       setNotice('That file could not be opened. Your tidepool is still here.');
     }
@@ -1315,10 +1322,12 @@ export function App() {
                   <div>
                     <h3>While you were gone</h3>
                     <p>
-                      Closing the page lets the pool live on its own, up to eight hours of remembered time. When you
-                      return, it catches up in quiet pieces so the page stays responsive, then a short field journal
-                      tells what happened. Longer absences are named honestly: the rest of the time, the world slept.
-                      Old saves receive no free life.
+                      Closing the page lets the pool live on its own, up to eight hours of remembered time. Brief
+                      absences catch up quietly. After about ten minutes, or if a lineage ended while you were away, a
+                      short field journal tells what happened. A progress note appears only when catching up would take
+                      a visible moment. Longer absences are named honestly: the rest of the time, the world slept.
+                      Opening a saved snapshot restores that frozen moment; it is not time away. Old saves receive no
+                      free life.
                     </p>
                   </div>
                 </div>

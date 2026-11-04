@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { SAVE_KEY, WorldSession, type SaveStorage } from '../src/app/session';
 import { createShowerStudy, SHOWER_STUDY } from '../src/app/study';
 import { createWorld, releaseNestPigment, stepWorld } from '../src/world/simulation';
+import { planCatchUp } from '../src/world/catchup';
 import { restoreWorld, serializeWorld } from '../src/world/persistence';
 import { LIMITS } from '../src/world/types';
 import { getWeather } from '../src/world/weather';
@@ -218,5 +219,24 @@ describe('safe shower study', () => {
     expect(session.world).toBe(before);
     expect(session.importSnapshot(serializeWorld(createWorld(55)), session.importToken())).toBe('imported');
     expect(restoreWorld(serializeWorld(session.world))).toEqual(session.world);
+  });
+
+  it('restores a pocketed snapshot at its frozen moment instead of catching up on its old last-seen time', () => {
+    const frozen = createWorld(18);
+    frozen.lastSeenAt = 1_700_000_000_000;
+    const elapsed = frozen.elapsed;
+    const tick = frozen.tick;
+    const snapshot = serializeWorld(frozen);
+    const session = new WorldSession(createWorld(1));
+    const before = Date.now();
+    expect(session.importSnapshot(snapshot, session.importToken())).toBe('imported');
+    expect(session.world.elapsed).toBe(elapsed);
+    expect(session.world.tick).toBe(tick);
+    expect(session.world.lastSeenAt).toBeGreaterThanOrEqual(before);
+    expect(session.world.lastSeenAt).toBeLessThanOrEqual(Date.now());
+    expect(planCatchUp(session.world.lastSeenAt, Date.now())).toMatchObject({
+      reason: 'too-small',
+      simulateSeconds: 0,
+    });
   });
 });

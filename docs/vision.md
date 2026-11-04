@@ -61,7 +61,7 @@ _This section records surprising population dynamics, extinctions, or runaway re
 
 ### Catching up on time away (seeds 1 and 42)
 
-**The same rules run while nobody watches:** Catch-up is `stepWorld` in a loop, capped at eight hours (864,000 steps) and chunked into ~12 ms of main-thread work. A 1h gap took ~1.3s of wall time; 8h took ~8.3–8.7s. Gaps under 30 seconds are ignored. Missing or inverted clocks skip catch-up without gifts. Beyond eight hours the journal says the rest of the time the world slept.
+**The same rules run while nobody watches:** Catch-up is `stepWorld` in a loop, capped at eight hours (864,000 steps) and chunked into ~12 ms of main-thread work. A 1h gap took ~1.3s of wall time; 8h took ~8.3–8.7s. Gaps under 30 seconds are ignored. Gaps under ten minutes still simulate, but without a journal unless a lineage ended; the progress dialog appears only if the work would block for more than about 250 ms. Missing or inverted clocks skip catch-up without gifts. Beyond eight hours the journal says the rest of the time the world slept. Opening a pocketed snapshot restores the frozen moment and stamps presence to now, so the file's age is not treated as time away.
 
 **Returning after an hour already changes the pool:** Both seeds left with 24 lucents and 4 grazers. After 1h, seed 1 held 4 skimmers and 3 cargo mites; seed 42 held 3 skimmers and 2 mites. Nested pigment rose from 0 to ~1.5. Loose pigment on seed 1 went quiet (10.0 → 0). Remains balanced on every run (`created = held + consumed + decayed`).
 

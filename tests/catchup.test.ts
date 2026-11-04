@@ -1,13 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import {
+  CATCH_UP_JOURNAL_SECONDS,
   CATCH_UP_MAX_SECONDS,
   CATCH_UP_MIN_SECONDS,
+  CATCH_UP_PROGRESS_MS,
+  catchUpShouldShowProgress,
   catchUpWorld,
   catchUpWorldChunked,
   composeJournal,
   describeSpan,
   planCatchUp,
   remainsLedgerBalanced,
+  shouldPresentJournal,
   type CatchUpEvents,
   type ResourceSnapshot,
 } from '../src/world/catchup';
@@ -59,6 +63,46 @@ describe('catch-up planning', () => {
     expect(absurd.reason).toBe('ready');
     expect(absurd.simulateSeconds).toBe(CATCH_UP_MAX_SECONDS);
     expect(absurd.sleptSeconds).toBeGreaterThan(CATCH_UP_MAX_SECONDS);
+  });
+});
+
+describe('catch-up presentation', () => {
+  it('simulates a short gap without opening a journal', () => {
+    const seconds = 45;
+    const plan = planCatchUp(0, seconds * 1000);
+    expect(plan.reason).toBe('ready');
+    expect(plan.simulateSeconds).toBe(seconds);
+    expect(shouldPresentJournal(plan, idleEvents())).toBe(false);
+    const world = createWorld(5);
+    const report = catchUpWorld(world, plan);
+    expect(report.steps).toBe(Math.ceil(seconds / FIXED_STEP));
+    expect(world.elapsed).toBeCloseTo(seconds, 5);
+    expect(shouldPresentJournal(plan, report.events)).toBe(false);
+  });
+
+  it('opens a journal for a long gap even when little can be named', () => {
+    const plan = planCatchUp(0, CATCH_UP_JOURNAL_SECONDS * 1000);
+    expect(plan.reason).toBe('ready');
+    expect(shouldPresentJournal(plan, idleEvents())).toBe(true);
+    const justUnder = planCatchUp(0, (CATCH_UP_JOURNAL_SECONDS - 1) * 1000);
+    expect(justUnder.reason).toBe('ready');
+    expect(shouldPresentJournal(justUnder, idleEvents())).toBe(false);
+  });
+
+  it('still surfaces a short gap when a lineage ended', () => {
+    const plan = planCatchUp(0, 4 * 60 * 1000);
+    expect(plan.awaySeconds).toBeLessThan(CATCH_UP_JOURNAL_SECONDS);
+    const events = idleEvents();
+    events.glassLimpets = { births: 0, deaths: 1, extinctAt: 20 };
+    expect(shouldPresentJournal(plan, events)).toBe(true);
+    const journal = composeJournal(plan, events, quietResources, quietResources, 80);
+    expect(journal.lines).toContain('The last glass limpet died about a minute ago.');
+  });
+
+  it('withholds the progress overlay until catch-up would block', () => {
+    expect(catchUpShouldShowProgress(CATCH_UP_PROGRESS_MS, 10, 100)).toBe(false);
+    expect(catchUpShouldShowProgress(CATCH_UP_PROGRESS_MS + 1, 10, 100)).toBe(true);
+    expect(catchUpShouldShowProgress(CATCH_UP_PROGRESS_MS + 1, 100, 100)).toBe(false);
   });
 });
 
@@ -129,6 +173,7 @@ describe('catch-up simulation', () => {
         (report.after.remainPigment + world.ecologyLedger.remainsConsumed + world.ecologyLedger.remainsDecayed),
     ).toBeCloseTo(0, 6);
     expect(report.journal.lines[0]).toBe('You were away for about an hour.');
+    expect(shouldPresentJournal(plan, report.events)).toBe(true);
   }, 30_000);
 
   it('chunked catch-up matches the synchronous path', async () => {

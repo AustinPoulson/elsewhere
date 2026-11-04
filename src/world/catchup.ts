@@ -4,7 +4,9 @@ import { FIXED_STEP, type World } from './types';
 
 export const CATCH_UP_MAX_SECONDS = 8 * 3600;
 export const CATCH_UP_MIN_SECONDS = 30;
+export const CATCH_UP_JOURNAL_SECONDS = 10 * 60;
 export const CATCH_UP_CHUNK_MS = 12;
+export const CATCH_UP_PROGRESS_MS = 250;
 export const CATCH_UP_JOURNAL_CAP = 12;
 
 export type CatchUpReason = 'ready' | 'missing' | 'backwards' | 'too-small';
@@ -145,6 +147,19 @@ export function planCatchUp(lastSeenAt: number | null | undefined, now: number):
     simulateSeconds,
     sleptSeconds: Math.max(0, awaySeconds - simulateSeconds),
   };
+}
+
+export function catchUpHasExtinction(events: CatchUpEvents): boolean {
+  return SPECIES.some((species) => events[species].extinctAt !== null);
+}
+
+export function shouldPresentJournal(plan: CatchUpPlan, events: CatchUpEvents): boolean {
+  if (plan.reason !== 'ready') return false;
+  return plan.awaySeconds >= CATCH_UP_JOURNAL_SECONDS || catchUpHasExtinction(events);
+}
+
+export function catchUpShouldShowProgress(elapsedMs: number, done: number, total: number): boolean {
+  return elapsedMs > CATCH_UP_PROGRESS_MS && done < total;
 }
 
 export function quantityWord(value: number): string {
