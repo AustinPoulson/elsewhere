@@ -431,8 +431,9 @@ type Revision6Ledger = Omit<Revision7Ledger, (typeof GLASS_LIMPET_LEDGER_KEYS)[n
 type RainbellLedger = Omit<Revision6Ledger, (typeof SILTSTITCHER_LEDGER_KEYS)[number]>;
 type ReedwellLedger = Omit<RainbellLedger, (typeof RAINBELL_LEDGER_KEYS)[number]>;
 type PrismLedger = Omit<ReedwellLedger, (typeof REEDWELL_LEDGER_KEYS)[number]>;
+type Revision10World = Omit<World, 'schemaRevision' | 'lastSeenAt'> & { schemaRevision: 10 };
 type Revision9World = Omit<
-  World,
+  Revision10World,
   'schemaRevision' | 'remains' | 'marlgrubs' | 'marlgrubAdmissionAt' | 'marlgrubCandidateAfterId' | 'ecologyLedger'
 > & { schemaRevision: 9; ecologyLedger: Revision9Ledger };
 type Revision7World = Omit<
@@ -600,7 +601,7 @@ function migrateRevision8To9(previous: Revision8World): Revision9World {
   };
 }
 
-function migrateRevision9To10(previous: Revision9World): World {
+function migrateRevision9To10(previous: Revision9World): Revision10World {
   return {
     ...previous,
     schemaRevision: 10,
@@ -617,6 +618,10 @@ function migrateRevision9To10(previous: Revision9World): World {
       marlgrubMaintenancePigment: 0,
     },
   };
+}
+
+function migrateRevision10To11(previous: Revision10World): World {
+  return { ...previous, schemaRevision: 11, lastSeenAt: null };
 }
 
 export function serializeWorld(world: World): string {
@@ -646,12 +651,12 @@ export function restoreWorld(input: string): World | null {
 
   if (
     (parsed.version === 3 &&
-      (!integer(parsed.schemaRevision, 1, 10) || !weatherCall(parsed.weatherCall, parsed.elapsed))) ||
+      (!integer(parsed.schemaRevision, 1, 11) || !weatherCall(parsed.weatherCall, parsed.elapsed))) ||
     (parsed.version !== 3 && ('schemaRevision' in parsed || 'weatherCall' in parsed || 'currents' in parsed))
   )
     return null;
   let currents: Current[] = [];
-  if (parsed.version === 3 && integer(parsed.schemaRevision, 2, 10)) {
+  if (parsed.version === 3 && integer(parsed.schemaRevision, 2, 11)) {
     if (
       !Array.isArray(parsed.currents) ||
       parsed.currents.length > MAX_CURRENTS ||
@@ -661,7 +666,8 @@ export function restoreWorld(input: string): World | null {
     currents = parsed.currents as Current[];
   } else if ('currents' in parsed) return null;
 
-  const remainsRevision = parsed.version === 3 && parsed.schemaRevision === 10;
+  const catchUpRevision = parsed.version === 3 && parsed.schemaRevision === 11;
+  const remainsRevision = parsed.version === 3 && (parsed.schemaRevision === 10 || catchUpRevision);
   const traitRevision = parsed.version === 3 && (parsed.schemaRevision === 9 || remainsRevision);
   const { organisms, lights, sediment: deposits } = parsed;
   if (
@@ -882,6 +888,10 @@ export function restoreWorld(input: string): World | null {
     'marlgrubCandidateAfterId' in parsed
   )
     return null;
+
+  if (catchUpRevision) {
+    if (!(parsed.lastSeenAt === null || integer(parsed.lastSeenAt, 0))) return null;
+  } else if ('lastSeenAt' in parsed) return null;
 
   let grazers: Grazer[] = [];
   let nests: Nest[] = [];
@@ -1110,7 +1120,7 @@ export function restoreWorld(input: string): World | null {
             ecologyLedger: { ...(parsed.ecologyLedger as Revision9Ledger) },
           }
         : migrateRevision8To9(revision8);
-    return remainsRevision
+    const revision10: Revision10World = remainsRevision
       ? {
           ...revision9,
           schemaRevision: 10,
@@ -1121,15 +1131,20 @@ export function restoreWorld(input: string): World | null {
           ecologyLedger: { ...(parsed.ecologyLedger as EcologyLedger) },
         }
       : migrateRevision9To10(revision9);
+    return catchUpRevision
+      ? { ...revision10, schemaRevision: 11, lastSeenAt: parsed.lastSeenAt as number | null }
+      : migrateRevision10To11(revision10);
   }
   let legacy: LegacyWorld = { ...ecology, version: parsed.version };
   if (legacy.version === 1) legacy = migrateV1ToV2(legacy);
-  return migrateRevision9To10(
-    migrateRevision8To9(
-      migrateRevision7To8(
-        migrateRevision6To7(
-          migrateRevision5To6(
-            migrateRevision4To5(migrateRevision3To4(migrateRevision2To3(migrateRevision1To2(migrateV2ToV3(legacy))))),
+  return migrateRevision10To11(
+    migrateRevision9To10(
+      migrateRevision8To9(
+        migrateRevision7To8(
+          migrateRevision6To7(
+            migrateRevision5To6(
+              migrateRevision4To5(migrateRevision3To4(migrateRevision2To3(migrateRevision1To2(migrateV2ToV3(legacy))))),
+            ),
           ),
         ),
       ),

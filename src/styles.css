@@ -678,6 +678,41 @@ h1 em {
 .dialog-actions button {
   width: 50%;
 }
+.journal-dialog {
+  max-height: min(80vh, 640px);
+  overflow: auto;
+}
+.journal-dialog .dialog-actions {
+  justify-content: stretch;
+}
+.journal-dialog .dialog-actions button {
+  width: 100%;
+}
+.journal-lines {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.journal-lines li {
+  font-size: 13px;
+  line-height: 1.7;
+  color: #c9ddb4;
+}
+.catchup-progress {
+  margin-top: 22px;
+  height: 4px;
+  border-radius: 99px;
+  background: #1f3a32;
+  overflow: hidden;
+}
+.catchup-progress > div {
+  height: 100%;
+  background: #c9ddb4;
+  border-radius: 99px;
+}
 .storage-notice,
 .motion-notice {
   position: absolute;
@@ -782,6 +817,14 @@ h1 em {
   }
 }
 @media (max-width: 600px) {
+  .journal-dialog {
+    width: calc(100% - 32px);
+    max-height: min(78vh, 560px);
+    padding: 24px 20px;
+  }
+  .journal-dialog h2 {
+    font-size: 26px;
+  }
   .elsewhere {
     min-height: 590px;
   }

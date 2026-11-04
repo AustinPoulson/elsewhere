@@ -217,7 +217,8 @@ export interface Nest extends Point {
 }
 export interface World {
   version: 3;
-  schemaRevision: 10;
+  schemaRevision: 11;
+  lastSeenAt: number | null;
   skimmers: Skimmer[];
   skimmerAdmissionAt: number;
   skimmerCandidateAfterId: number;

@@ -120,6 +120,7 @@ function revision4(world: World): Record<string, any> {
     marlgrubs: _marlgrubs,
     marlgrubAdmissionAt: _marlgrubAdmissionAt,
     marlgrubCandidateAfterId: _marlgrubCandidateAfterId,
+    lastSeenAt: _lastSeenAt,
     skimmerCandidateAfterId: _skimmerCandidate,
     ...previous
   } = structuredClone(world);
@@ -200,10 +201,11 @@ describe('rainbell snapshot revision', () => {
       marlgrubs: _marlgrubs,
       marlgrubAdmissionAt: _marlgrubAdmissionAt,
       marlgrubCandidateAfterId: _marlgrubCandidateAfterId,
+      lastSeenAt: _lastSeenAt,
       skimmerCandidateAfterId: _skimmerCandidate,
       ...oldFields
     } = restored;
-    expect(restored.schemaRevision).toBe(10);
+    expect(restored.schemaRevision).toBe(11);
     expect(rainbells).toEqual([]);
     expect(rainbellAdmissionAt).toBe(source.elapsed);
     expect(rainbellCandidateAfterId).toBe(0);
@@ -244,7 +246,7 @@ describe('rainbell snapshot revision', () => {
       const before = JSON.stringify(source);
       const restored = restoreWorld(before)!;
       expect(restored).toMatchObject({
-        schemaRevision: 10,
+        schemaRevision: 11,
         rainbells: [],
         rainbellAdmissionAt: source.elapsed,
         rainbellCandidateAfterId: 0,
@@ -418,7 +420,7 @@ describe('rainbell snapshot revision', () => {
         w.nextId += 5;
       },
       (w) => {
-        w.schemaRevision = 11;
+        w.schemaRevision = 12;
       },
     ];
     for (const target of ['feedTargetSedimentId', 'pumpTargetSedimentId']) {

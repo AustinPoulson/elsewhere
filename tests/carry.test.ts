@@ -70,6 +70,7 @@ describe('carry a living light', () => {
       marlgrubCandidateAfterId: undefined,
       nextFoundingTick: undefined,
       foundingTypeCursor: undefined,
+      lastSeenAt: undefined,
       organisms: original.organisms.map(({ pigmentCredit: _credit, traits: _traits, ...entry }) => entry),
     };
     const world = restoreWorld(JSON.stringify(legacy))!;

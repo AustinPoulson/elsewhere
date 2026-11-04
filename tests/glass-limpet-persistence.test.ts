@@ -24,6 +24,7 @@ function revision6(world: World): Record<string, any> {
     'marlgrubs',
     'marlgrubAdmissionAt',
     'marlgrubCandidateAfterId',
+    'lastSeenAt',
   ])
     delete old[key];
   for (const key of limpetLedgerKeys) delete old.ecologyLedger[key];
@@ -81,7 +82,8 @@ describe('glass limpet snapshot revision', () => {
     const migrated = restoreWorld(serialized)!;
     expect(migrated).not.toBeNull();
     expect(migrated).toMatchObject({
-      schemaRevision: 10,
+      schemaRevision: 11,
+      lastSeenAt: null,
       glassLimpets: [],
       cargoMites: [],
       glassLimpetAdmissionAt: source.elapsed,
