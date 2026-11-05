@@ -200,6 +200,7 @@ describe('current save revisions', () => {
       marlgrubAdmissionAt: _marlgrubAdmissionAt,
       marlgrubCandidateAfterId: _marlgrubCandidateAfterId,
       lastSeenAt: _lastSeenAt,
+      fossils: _fossils,
       organisms,
       ...rest
     } = world;
@@ -215,7 +216,7 @@ describe('current save revisions', () => {
     expect(migrated).toEqual({
       ...world,
       elapsed: 12,
-      schemaRevision: 11,
+      schemaRevision: 12,
       skimmerAdmissionAt: 12,
       reedwellAdmissionAt: 12,
       rainbellAdmissionAt: 12,
@@ -239,7 +240,7 @@ describe('current save revisions', () => {
         w.currents = null;
       },
       (w) => {
-        w.schemaRevision = 12;
+        w.schemaRevision = 13;
       },
       (w) => {
         w.currents[0].x = 0;

@@ -1247,6 +1247,18 @@ h1 em {
     radial-gradient(ellipse at 64% 48%, #c9b08055 0 18%, transparent 46%);
   box-shadow: 0 0 28px #5a463422;
 }
+.specimen-orb.fossil-orb {
+  width: 132px;
+  height: 58px;
+  margin: 48px auto;
+  border-radius: 48% 52% 46% 54%;
+  border: 1px solid #cbb89288;
+  background:
+    radial-gradient(ellipse at 50% 50%, #5a4a3488 0 34%, #2c241c99 48% 70%, transparent 86%),
+    linear-gradient(18deg, transparent 42%, #d9c7a055 43% 45%, transparent 46%),
+    linear-gradient(-12deg, transparent 56%, #d9c7a044 57% 59%, transparent 60%);
+  box-shadow: 0 0 26px #cbb89222;
+}
 .specimen-orb.marlgrub-orb {
   width: 108px;
   height: 64px;

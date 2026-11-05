@@ -1,4 +1,5 @@
 import {
+  FOSSIL_CAPACITY,
   GRAZER_CAPACITY,
   LIMITS,
   NEST_CAPACITY,
@@ -19,12 +20,14 @@ import {
   type CargoMite,
   type Marlgrub,
   type Remain,
+  type Fossil,
   type EcologyLedger,
   type Traits,
   type World,
 } from './types';
 import { initializeGrazers } from './simulation';
 import { cargoMiteReserveCapacity } from './species/cargo-mite';
+import { isFossilSource, isRemainSource } from './species/fossils';
 import { baselineTraits, traitMobility, TRAIT_MAX, TRAIT_MIN } from './traits';
 import { RAIN_CALL_COOLDOWN } from './weather';
 import { CURRENT_DURATION, CURRENT_RADIUS, MAX_CURRENTS, currentStrength } from './actions/current';
@@ -217,6 +220,7 @@ const REMAINS_LEDGER_KEYS = [
   'marlgrubIntake',
   'marlgrubMaintenancePigment',
 ] as const;
+const FOSSIL_LEDGER_KEYS = ['fossilsFormed'] as const;
 
 function ledger(
   value: unknown,
@@ -227,6 +231,7 @@ function ledger(
   cargoMites: boolean,
   ambient: boolean,
   remains: boolean,
+  fossils: boolean,
 ): boolean {
   return (
     record(value) &&
@@ -251,7 +256,10 @@ function ledger(
       : AMBIENT_LEDGER_KEYS.every((key) => !(key in value))) &&
     (remains
       ? REMAINS_LEDGER_KEYS.every((key) => range(value[key], 0, MAX_NUMBER))
-      : REMAINS_LEDGER_KEYS.every((key) => !(key in value)))
+      : REMAINS_LEDGER_KEYS.every((key) => !(key in value))) &&
+    (fossils
+      ? FOSSIL_LEDGER_KEYS.every((key) => range(value[key], 0, MAX_NUMBER))
+      : FOSSIL_LEDGER_KEYS.every((key) => !(key in value)))
   );
 }
 
@@ -386,16 +394,34 @@ function cargoMite(value: unknown, elapsed: number, nextId: number, withTraits =
   );
 }
 
-function remain(value: unknown): boolean {
+function remain(value: unknown, withSource = false): boolean {
+  if (
+    !point(value) ||
+    !integer(value.id, 1) ||
+    value.species !== 'remain' ||
+    !range(value.pigment, 0.001, REMAIN_CAPACITY) ||
+    !range(value.hue, 0, 360) ||
+    value.hue >= 360 ||
+    !range(value.age, 0, MAX_NUMBER) ||
+    !range(value.radius, 0.1, 32)
+  )
+    return false;
+  if (withSource) return isRemainSource(value.source);
+  return !('source' in value);
+}
+
+function fossil(value: unknown): boolean {
   return (
     point(value) &&
     integer(value.id, 1) &&
-    value.species === 'remain' &&
-    range(value.pigment, 0.001, REMAIN_CAPACITY) &&
+    value.species === 'fossil' &&
+    isFossilSource(value.source) &&
+    range(value.pigment, 0.001, FOSSIL_CAPACITY) &&
     range(value.hue, 0, 360) &&
     value.hue < 360 &&
     range(value.age, 0, MAX_NUMBER) &&
-    range(value.radius, 0.1, 32)
+    range(value.radius, 0.1, 32) &&
+    range(value.formedAt, 0, MAX_NUMBER)
   );
 }
 
@@ -424,14 +450,21 @@ function marlgrub(value: unknown, nextId: number, withTraits = false): boolean {
 }
 
 type PrePrismOrganism = Omit<Organism, 'pigmentCredit'>;
-type Revision9Ledger = Omit<EcologyLedger, (typeof REMAINS_LEDGER_KEYS)[number]>;
+type Revision11Ledger = Omit<EcologyLedger, (typeof FOSSIL_LEDGER_KEYS)[number]>;
+type Revision11Remain = Omit<Remain, 'source'>;
+type Revision9Ledger = Omit<Revision11Ledger, (typeof REMAINS_LEDGER_KEYS)[number]>;
 type Revision8Ledger = Omit<Revision9Ledger, (typeof AMBIENT_LEDGER_KEYS)[number]>;
 type Revision7Ledger = Omit<Revision8Ledger, (typeof CARGO_MITE_LEDGER_KEYS)[number]>;
 type Revision6Ledger = Omit<Revision7Ledger, (typeof GLASS_LIMPET_LEDGER_KEYS)[number]>;
 type RainbellLedger = Omit<Revision6Ledger, (typeof SILTSTITCHER_LEDGER_KEYS)[number]>;
 type ReedwellLedger = Omit<RainbellLedger, (typeof RAINBELL_LEDGER_KEYS)[number]>;
 type PrismLedger = Omit<ReedwellLedger, (typeof REEDWELL_LEDGER_KEYS)[number]>;
-type Revision10World = Omit<World, 'schemaRevision' | 'lastSeenAt'> & { schemaRevision: 10 };
+type Revision11World = Omit<World, 'schemaRevision' | 'fossils' | 'remains' | 'ecologyLedger'> & {
+  schemaRevision: 11;
+  remains: Revision11Remain[];
+  ecologyLedger: Revision11Ledger;
+};
+type Revision10World = Omit<Revision11World, 'schemaRevision' | 'lastSeenAt'> & { schemaRevision: 10 };
 type Revision9World = Omit<
   Revision10World,
   'schemaRevision' | 'remains' | 'marlgrubs' | 'marlgrubAdmissionAt' | 'marlgrubCandidateAfterId' | 'ecologyLedger'
@@ -620,8 +653,18 @@ function migrateRevision9To10(previous: Revision9World): Revision10World {
   };
 }
 
-function migrateRevision10To11(previous: Revision10World): World {
+function migrateRevision10To11(previous: Revision10World): Revision11World {
   return { ...previous, schemaRevision: 11, lastSeenAt: null };
+}
+
+function migrateRevision11To12(previous: Revision11World): World {
+  return {
+    ...previous,
+    schemaRevision: 12,
+    fossils: [],
+    remains: previous.remains.map((entry) => ({ ...entry, source: 'unknown' as const })),
+    ecologyLedger: { ...previous.ecologyLedger, fossilsFormed: 0 },
+  };
 }
 
 export function serializeWorld(world: World): string {
@@ -651,12 +694,12 @@ export function restoreWorld(input: string): World | null {
 
   if (
     (parsed.version === 3 &&
-      (!integer(parsed.schemaRevision, 1, 11) || !weatherCall(parsed.weatherCall, parsed.elapsed))) ||
+      (!integer(parsed.schemaRevision, 1, 12) || !weatherCall(parsed.weatherCall, parsed.elapsed))) ||
     (parsed.version !== 3 && ('schemaRevision' in parsed || 'weatherCall' in parsed || 'currents' in parsed))
   )
     return null;
   let currents: Current[] = [];
-  if (parsed.version === 3 && integer(parsed.schemaRevision, 2, 11)) {
+  if (parsed.version === 3 && integer(parsed.schemaRevision, 2, 12)) {
     if (
       !Array.isArray(parsed.currents) ||
       parsed.currents.length > MAX_CURRENTS ||
@@ -666,7 +709,8 @@ export function restoreWorld(input: string): World | null {
     currents = parsed.currents as Current[];
   } else if ('currents' in parsed) return null;
 
-  const catchUpRevision = parsed.version === 3 && parsed.schemaRevision === 11;
+  const fossilsRevision = parsed.version === 3 && parsed.schemaRevision === 12;
+  const catchUpRevision = parsed.version === 3 && (parsed.schemaRevision === 11 || fossilsRevision);
   const remainsRevision = parsed.version === 3 && (parsed.schemaRevision === 10 || catchUpRevision);
   const traitRevision = parsed.version === 3 && (parsed.schemaRevision === 9 || remainsRevision);
   const { organisms, lights, sediment: deposits } = parsed;
@@ -708,6 +752,7 @@ export function restoreWorld(input: string): World | null {
         miteRevision,
         traitRevision,
         remainsRevision,
+        fossilsRevision,
       )
     )
       return null;
@@ -859,7 +904,7 @@ export function restoreWorld(input: string): World | null {
     if (
       !Array.isArray(parsed.remains) ||
       parsed.remains.length > LIMITS.remains ||
-      !parsed.remains.every(remain) ||
+      !parsed.remains.every((entry: unknown) => remain(entry, fossilsRevision)) ||
       !Array.isArray(parsed.marlgrubs) ||
       parsed.marlgrubs.length > MARLGRUB_CAP ||
       skimmers.length +
@@ -888,6 +933,20 @@ export function restoreWorld(input: string): World | null {
     'marlgrubCandidateAfterId' in parsed
   )
     return null;
+
+  let fossils: Fossil[] = [];
+  if (fossilsRevision) {
+    if (
+      !Array.isArray(parsed.fossils) ||
+      parsed.fossils.length > LIMITS.fossils ||
+      !parsed.fossils.every(fossil) ||
+      parsed.fossils.some(
+        (entry: Fossil) => typeof entry.formedAt !== 'number' || entry.formedAt > (parsed.elapsed as number) + 1e-6,
+      )
+    )
+      return null;
+    fossils = parsed.fossils as Fossil[];
+  } else if ('fossils' in parsed) return null;
 
   if (catchUpRevision) {
     if (!(parsed.lastSeenAt === null || integer(parsed.lastSeenAt, 0))) return null;
@@ -930,6 +989,7 @@ export function restoreWorld(input: string): World | null {
     ...cargoMites,
     ...marlgrubs,
     ...remains,
+    ...fossils,
   ]) {
     const id = (entry as Record<string, unknown>).id as number;
     if (ids.has(id)) return null;
@@ -1128,22 +1188,35 @@ export function restoreWorld(input: string): World | null {
           marlgrubs,
           marlgrubAdmissionAt: parsed.marlgrubAdmissionAt as number,
           marlgrubCandidateAfterId: parsed.marlgrubCandidateAfterId as number,
-          ecologyLedger: { ...(parsed.ecologyLedger as EcologyLedger) },
+          ecologyLedger: { ...(parsed.ecologyLedger as Revision11Ledger) },
         }
       : migrateRevision9To10(revision9);
-    return catchUpRevision
+    const revision11: Revision11World = catchUpRevision
       ? { ...revision10, schemaRevision: 11, lastSeenAt: parsed.lastSeenAt as number | null }
       : migrateRevision10To11(revision10);
+    return fossilsRevision
+      ? {
+          ...revision11,
+          schemaRevision: 12,
+          fossils,
+          remains,
+          ecologyLedger: { ...(parsed.ecologyLedger as EcologyLedger) },
+        }
+      : migrateRevision11To12(revision11);
   }
   let legacy: LegacyWorld = { ...ecology, version: parsed.version };
   if (legacy.version === 1) legacy = migrateV1ToV2(legacy);
-  return migrateRevision10To11(
-    migrateRevision9To10(
-      migrateRevision8To9(
-        migrateRevision7To8(
-          migrateRevision6To7(
-            migrateRevision5To6(
-              migrateRevision4To5(migrateRevision3To4(migrateRevision2To3(migrateRevision1To2(migrateV2ToV3(legacy))))),
+  return migrateRevision11To12(
+    migrateRevision10To11(
+      migrateRevision9To10(
+        migrateRevision8To9(
+          migrateRevision7To8(
+            migrateRevision6To7(
+              migrateRevision5To6(
+                migrateRevision4To5(
+                  migrateRevision3To4(migrateRevision2To3(migrateRevision1To2(migrateV2ToV3(legacy)))),
+                ),
+              ),
             ),
           ),
         ),

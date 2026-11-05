@@ -153,7 +153,7 @@ export function updateGlassLimpets(world: World, dt: number): void {
   let write = 0;
   for (const limpet of world.glassLimpets) {
     if (limpet.age >= RULE.lifespan || limpet.starvedFor >= RULE.starvationLimit) {
-      settleDeath(world, limpet, limpet.hue, limpet.body + limpet.reserve + limpet.cargo);
+      settleDeath(world, limpet, limpet.hue, limpet.body + limpet.reserve + limpet.cargo, 'glassLimpet');
     } else world.glassLimpets[write++] = limpet;
   }
   world.glassLimpets.length = write;

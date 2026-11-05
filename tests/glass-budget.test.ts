@@ -194,6 +194,7 @@ function mixedMaximum(): World {
     world.remains.push({
       id: freshId(),
       species: 'remain',
+      source: 'unknown' as const,
       x: 720 + Math.cos(angle) * 280,
       y: 500 + Math.sin(angle) * 180,
       pigment: 0.4,
@@ -220,6 +221,7 @@ function checkCaps(world: World): void {
   expect(world.cargoMites.length).toBeLessThanOrEqual(4);
   expect(world.marlgrubs.length).toBeLessThanOrEqual(4);
   expect(world.remains.length).toBeLessThanOrEqual(LIMITS.remains);
+  expect(world.fossils.length).toBeLessThanOrEqual(LIMITS.fossils);
 }
 
 function stepStress(world: World, index: number): void {
@@ -276,6 +278,7 @@ function stepStress(world: World, index: number): void {
     world.remains.push({
       id: world.nextId++,
       species: 'remain',
+      source: 'unknown' as const,
       x: 720 + Math.cos(angle) * 280,
       y: 500 + Math.sin(angle) * 180,
       pigment: 0.4,

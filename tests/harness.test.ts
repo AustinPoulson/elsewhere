@@ -89,6 +89,7 @@ describe('headless harness', () => {
     expect(quiet.traitDrift[0].lucents).toMatchObject({ count: 24, drive: 1, bulk: 1 });
     expect(quiet.resources.ambientHarvested).toBeGreaterThan(0);
     expect(quiet.conservationCheck.remainsBalanced).toBe(true);
+    expect(quiet.conservationCheck.fossilsBalanced).toBe(true);
     expect(
       quiet.conservationCheck.remainsCreated -
         (quiet.conservationCheck.remainsHeld +

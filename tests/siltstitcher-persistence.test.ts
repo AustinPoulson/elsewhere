@@ -142,6 +142,7 @@ function previous(world: World): Record<string, any> {
     marlgrubAdmissionAt: _marlgrubAdmissionAt,
     marlgrubCandidateAfterId: _marlgrubCandidateAfterId,
     lastSeenAt: _lastSeenAt,
+    fossils: _fossils,
     skimmerCandidateAfterId: _skimmerCandidate,
     ...old
   } = structuredClone(world);
@@ -156,6 +157,7 @@ function previous(world: World): Record<string, any> {
     'remainsDecayed',
     'marlgrubIntake',
     'marlgrubMaintenancePigment',
+    'fossilsFormed',
   ])
     delete result.ecologyLedger[key];
   return result;
@@ -228,10 +230,11 @@ describe('siltstitcher snapshot revision', () => {
       marlgrubAdmissionAt: _marlgrubAdmissionAt,
       marlgrubCandidateAfterId: _marlgrubCandidateAfterId,
       lastSeenAt: _lastSeenAt,
+      fossils: _fossils,
       skimmerCandidateAfterId: _skimmerCandidate,
       ...old
     } = restored;
-    expect(restored.schemaRevision).toBe(11);
+    expect(restored.schemaRevision).toBe(12);
     expect(siltstitchers).toEqual([]);
     expect(siltstitcherAdmissionAt).toBe(source.elapsed);
     expect(siltstitcherCandidateAfterId).toBe(0);
@@ -246,6 +249,7 @@ describe('siltstitcher snapshot revision', () => {
       'remainsDecayed',
       'marlgrubIntake',
       'marlgrubMaintenancePigment',
+      'fossilsFormed',
     ]) {
       expect(oldLedger[key]).toBe(0);
       delete oldLedger[key];
@@ -269,7 +273,7 @@ describe('siltstitcher snapshot revision', () => {
       const before = JSON.stringify(source);
       const restored = restoreWorld(before)!;
       expect(restored).toMatchObject({
-        schemaRevision: 11,
+        schemaRevision: 12,
         siltstitchers: [],
         siltstitcherAdmissionAt: source.elapsed,
         siltstitcherCandidateAfterId: 0,
@@ -536,7 +540,7 @@ describe('siltstitcher snapshot revision', () => {
         w.siltstitchers = Array.from({ length: 7 }, () => ({ ...w.siltstitchers[0], id: w.nextId++ }));
       },
       (w) => {
-        w.schemaRevision = 12;
+        w.schemaRevision = 13;
       },
     ];
     for (const other of [

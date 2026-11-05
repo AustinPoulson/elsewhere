@@ -7,6 +7,8 @@ function previousRevision(world: World): Record<string, unknown> {
   const previous = structuredClone(world) as unknown as Record<string, unknown>;
   previous.schemaRevision = 10;
   delete previous.lastSeenAt;
+  delete previous.fossils;
+  delete (previous.ecologyLedger as { fossilsFormed?: number }).fossilsFormed;
   return previous;
 }
 
@@ -20,7 +22,7 @@ describe('catch-up snapshot revision', () => {
     const migrated = restoreWorld(source)!;
     expect(migrated).not.toBeNull();
     expect(migrated).toMatchObject({
-      schemaRevision: 11,
+      schemaRevision: 12,
       lastSeenAt: null,
       remains: old.remains,
       marlgrubs: old.marlgrubs,
@@ -73,7 +75,7 @@ describe('catch-up snapshot revision', () => {
         w.schemaRevision = 10;
       },
       (w) => {
-        w.schemaRevision = 12;
+        w.schemaRevision = 13;
       },
     ];
     for (const edit of edits) {

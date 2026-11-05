@@ -33,7 +33,13 @@ function idleEvents(): CatchUpEvents {
   };
 }
 
-const quietResources: ResourceSnapshot = { loosePigment: 1, nestedPigment: 1, remainPigment: 0 };
+const quietResources: ResourceSnapshot = {
+  loosePigment: 1,
+  nestedPigment: 1,
+  remainPigment: 0,
+  fossilPigment: 0,
+  fossils: 0,
+};
 
 describe('catch-up planning', () => {
   it('ignores missing, inverted, and tiny clocks without granting time', () => {

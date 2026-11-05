@@ -1,5 +1,15 @@
 import { confinePosition } from '../geometry';
-import { LIMITS, REMAIN_CAPACITY, isInPool, type Point, type Remain, type World } from '../types';
+import {
+  LIMITS,
+  REMAIN_CAPACITY,
+  isInPool,
+  type FossilSource,
+  type Point,
+  type Remain,
+  type RemainSource,
+  type World,
+} from '../types';
+import { depositFossil, lineageAlive } from './fossils';
 import { blendHue, returnPigment, safeId } from './resources';
 
 export const REMAIN_DECAY_RATE = 0.003;
@@ -64,16 +74,16 @@ function nearestRemain(world: World, point: Point, reach: number): Remain | unde
   return nearest;
 }
 
-export function settleDeath(world: World, point: Point, hue: number, pigment: number): void {
+export function settleDeath(world: World, point: Point, hue: number, pigment: number, source: FossilSource): void {
   const amount = Math.max(0, pigment);
   if (amount <= 0) return;
   const sedimentShare = amount * DEATH_SEDIMENT_FRACTION;
   const remainShare = amount - sedimentShare;
-  if (remainShare > 0) depositRemain(world, point, hue, remainShare);
+  if (remainShare > 0) depositRemain(world, point, hue, remainShare, source);
   if (sedimentShare > 0) returnPigment(world, point, hue, sedimentShare);
 }
 
-export function depositRemain(world: World, point: Point, hue: number, pigment: number): void {
+export function depositRemain(world: World, point: Point, hue: number, pigment: number, source: RemainSource): void {
   let amount = pigment;
   if (amount <= 0) return;
   const location = { x: point.x, y: point.y };
@@ -98,6 +108,7 @@ export function depositRemain(world: World, point: Point, hue: number, pigment: 
     world.remains.push({
       id: world.nextId++,
       species: 'remain',
+      source,
       x: location.x,
       y: location.y,
       pigment: held,
@@ -114,10 +125,18 @@ export function depositRemain(world: World, point: Point, hue: number, pigment: 
 }
 
 export function updateRemains(world: World, dt: number, decayScale = 1): void {
+  for (const fossil of world.fossils) fossil.age += dt;
   if (world.remains.length === 0) return;
   let write = 0;
   for (const remain of world.remains) {
     remain.age += dt;
+    if (remain.source !== 'unknown' && !lineageAlive(world, remain.source)) {
+      const amount = remain.pigment;
+      remain.pigment = 0;
+      world.ecologyLedger.remainsDecayed += amount;
+      depositFossil(world, remain, remain.hue, amount, remain.source);
+      continue;
+    }
     if (decayScale > 0) {
       leachRemain(world, remain, decayScale * dt * REMAIN_DECAY_RATE);
       if (remain.pigment > 0 && remain.pigment < REMAIN_MIN) leachRemain(world, remain, remain.pigment);

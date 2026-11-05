@@ -153,7 +153,7 @@ export function createWorld(seed = 20261006): World {
   const normalizedSeed = Math.trunc(seed) >>> 0;
   const world: World = {
     version: 3,
-    schemaRevision: 11,
+    schemaRevision: 12,
     lastSeenAt: null,
     currents: [],
     weatherCall: { startedAt: null, nextAllowedAt: 0 },
@@ -179,6 +179,7 @@ export function createWorld(seed = 20261006): World {
     marlgrubAdmissionAt: 0,
     marlgrubCandidateAfterId: 0,
     remains: [],
+    fossils: [],
     nextFoundingTick: 0,
     foundingTypeCursor: 0,
     ecologyLedger: {
@@ -208,6 +209,7 @@ export function createWorld(seed = 20261006): World {
       remainsDecayed: 0,
       marlgrubIntake: 0,
       marlgrubMaintenancePigment: 0,
+      fossilsFormed: 0,
     },
     seed: normalizedSeed,
     randomState: normalizedSeed,
@@ -525,6 +527,8 @@ export function getStats(world: World): WorldStats {
     marlgrubs: world.marlgrubs.length,
     remains: world.remains.length,
     remainPigment: world.remains.reduce((total, remain) => total + remain.pigment, 0),
+    fossils: world.fossils.length,
+    fossilPigment: world.fossils.reduce((total, fossil) => total + fossil.pigment, 0),
     nestPigment: world.nests.reduce((total, nest) => total + nest.pigment, 0),
   };
 }

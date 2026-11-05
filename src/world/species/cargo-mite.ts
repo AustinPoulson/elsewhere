@@ -227,7 +227,7 @@ export function updateCargoMites(world: World, dt: number): void {
   let write = 0;
   for (const mite of world.cargoMites) {
     if (mite.age >= RULE.lifespan || mite.starvedFor >= RULE.starvationLimit) {
-      settleDeath(world, mite, mite.hue, mite.body + mite.reserve);
+      settleDeath(world, mite, mite.hue, mite.body + mite.reserve, 'cargoMite');
     } else world.cargoMites[write++] = mite;
   }
   world.cargoMites.length = write;

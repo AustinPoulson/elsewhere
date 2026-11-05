@@ -1,8 +1,9 @@
 #!/usr/bin/env npx tsx
 import { addLight, createWorld, getStats, SPRINGS, stepWorld } from '../src/world/simulation';
 import { restoreWorld } from '../src/world/persistence';
+import { FOSSIL_LABEL, FOSSIL_SOURCES, fossilsBySource, heldFossilPigment } from '../src/world/species/fossils';
 import { heldRemainPigment } from '../src/world/species/remains';
-import { FIXED_STEP, type Traits, type World } from '../src/world/types';
+import { FIXED_STEP, type FossilSource, type Traits, type World } from '../src/world/types';
 import * as fs from 'node:fs';
 
 const DAY_SECONDS = 360;
@@ -19,6 +20,7 @@ interface PopulationSample {
   cargoMites: number;
   marlgrubs: number;
   remains: number;
+  fossils: number;
 }
 
 interface TraitMeans {
@@ -62,9 +64,12 @@ export interface HarnessReport {
     loosePigment: number;
     nestedPigment: number;
     remainPigment: number;
+    fossilPigment: number;
+    fossils: number;
     totalConsumed: number;
     ambientHarvested: number;
   };
+  fossilsBySource: Record<FossilSource, { count: number; pigment: number }>;
   ledger: World['ecologyLedger'];
   conservationCheck: {
     inputLight: number;
@@ -74,6 +79,9 @@ export interface HarnessReport {
     remainsConsumed: number;
     remainsDecayed: number;
     remainsBalanced: boolean;
+    fossilsFormed: number;
+    fossilsHeld: number;
+    fossilsBalanced: boolean;
     note: string;
   };
 }
@@ -213,6 +221,7 @@ export function runHarness(config: HarnessConfig): HarnessReport {
       cargoMites: world.cargoMites.length,
       marlgrubs: world.marlgrubs.length,
       remains: world.remains.length,
+      fossils: world.fossils.length,
     };
   }
 
@@ -309,9 +318,12 @@ export function runHarness(config: HarnessConfig): HarnessReport {
       loosePigment: stats.pigment,
       nestedPigment: stats.nestPigment,
       remainPigment: stats.remainPigment,
+      fossilPigment: stats.fossilPigment,
+      fossils: stats.fossils,
       totalConsumed: world.consumed,
       ambientHarvested: world.ecologyLedger.ambientHarvested,
     },
+    fossilsBySource: fossilsBySource(world),
     ledger: { ...world.ecologyLedger },
     conservationCheck: {
       inputLight: world.consumed + stats.light + world.ecologyLedger.ambientHarvested,
@@ -330,7 +342,10 @@ export function runHarness(config: HarnessConfig): HarnessReport {
           world.ecologyLedger.remainsCreated -
             (heldRemainPigment(world) + world.ecologyLedger.remainsConsumed + world.ecologyLedger.remainsDecayed),
         ) < 1e-6,
-      note: 'Remains created equal held plus consumed plus decayed. Daylight and visitor light correlate with pigment rather than matching because of the energy floor, fade, and night.',
+      fossilsFormed: world.ecologyLedger.fossilsFormed,
+      fossilsHeld: heldFossilPigment(world),
+      fossilsBalanced: Math.abs(world.ecologyLedger.fossilsFormed - heldFossilPigment(world)) < 1e-6,
+      note: 'Remains created equal held plus consumed plus decayed. Fossil pigment equals fossils formed; it is paid remain color, not a new population. Daylight and visitor light correlate with pigment rather than matching because of the energy floor, fade, and night.',
     },
   };
 }
@@ -371,6 +386,7 @@ export function printReport(report: HarnessReport): void {
   console.log(`   Cargo mites: ${final.cargoMites}`);
   console.log(`   Marlgrubs: ${final.marlgrubs}`);
   console.log(`   Remains: ${final.remains}`);
+  console.log(`   Fossils: ${final.fossils}`);
 
   console.log(`\n📈 Population Curves (sampled over time)`);
   const samples = [
@@ -380,12 +396,12 @@ export function printReport(report: HarnessReport): void {
     Math.floor((3 * report.populations.length) / 4),
     report.populations.length - 1,
   ];
-  console.log('   Time       | Luc | Grz | Ski | Ree | Rai | Sil | Gla | Car | Mar | Rem');
-  console.log('   ' + '-'.repeat(68));
+  console.log('   Time       | Luc | Grz | Ski | Ree | Rai | Sil | Gla | Car | Mar | Rem | Fos');
+  console.log('   ' + '-'.repeat(74));
   for (const i of samples) {
     const p = report.populations[i];
     console.log(
-      `   ${formatTime(p.worldTime).padEnd(10)} | ${String(p.lucents).padStart(3)} | ${String(p.grazers).padStart(3)} | ${String(p.skimmers).padStart(3)} | ${String(p.reedwells).padStart(3)} | ${String(p.rainbells).padStart(3)} | ${String(p.siltstitchers).padStart(3)} | ${String(p.glassLimpets).padStart(3)} | ${String(p.cargoMites).padStart(3)} | ${String(p.marlgrubs).padStart(3)} | ${String(p.remains).padStart(3)}`,
+      `   ${formatTime(p.worldTime).padEnd(10)} | ${String(p.lucents).padStart(3)} | ${String(p.grazers).padStart(3)} | ${String(p.skimmers).padStart(3)} | ${String(p.reedwells).padStart(3)} | ${String(p.rainbells).padStart(3)} | ${String(p.siltstitchers).padStart(3)} | ${String(p.glassLimpets).padStart(3)} | ${String(p.cargoMites).padStart(3)} | ${String(p.marlgrubs).padStart(3)} | ${String(p.remains).padStart(3)} | ${String(p.fossils).padStart(3)}`,
     );
   }
 
@@ -429,11 +445,28 @@ export function printReport(report: HarnessReport): void {
     console.log('   No extinctions observed');
   }
 
+  console.log(`\n🦴 Fossils`);
+  if (report.resources.fossils === 0) {
+    console.log('   No fossils formed');
+  } else {
+    console.log(
+      `   ${report.resources.fossils} impression${report.resources.fossils === 1 ? '' : 's'} holding ${report.resources.fossilPigment.toFixed(3)} paid pigment`,
+    );
+    for (const source of FOSSIL_SOURCES) {
+      const entry = report.fossilsBySource[source];
+      if (entry.count === 0) continue;
+      console.log(
+        `   ${FOSSIL_LABEL[source].plural}: ${entry.count} holding ${entry.pigment.toFixed(3)} after extinction`,
+      );
+    }
+  }
+
   console.log(`\n💡 Resource Totals`);
   console.log(`   Light energy remaining: ${report.resources.lightEnergy.toFixed(2)}`);
   console.log(`   Loose pigment: ${report.resources.loosePigment.toFixed(2)}`);
   console.log(`   Nested pigment: ${report.resources.nestedPigment.toFixed(2)}`);
   console.log(`   Remain pigment: ${report.resources.remainPigment.toFixed(2)}`);
+  console.log(`   Fossil pigment: ${report.resources.fossilPigment.toFixed(2)}`);
   console.log(`   Total light consumed: ${report.resources.totalConsumed.toFixed(2)}`);
   console.log(`   Ambient daylight harvested: ${report.resources.ambientHarvested.toFixed(2)}`);
 
@@ -450,12 +483,16 @@ export function printReport(report: HarnessReport): void {
   console.log(`   Remains consumed: ${report.ledger.remainsConsumed.toFixed(2)}`);
   console.log(`   Remains decayed: ${report.ledger.remainsDecayed.toFixed(2)}`);
   console.log(`   Marlgrub intake: ${report.ledger.marlgrubIntake.toFixed(2)}`);
+  console.log(`   Fossils formed: ${report.ledger.fossilsFormed.toFixed(2)}`);
 
   console.log(`\n⚖️  Conservation Check`);
   console.log(`   Input (consumed + remaining + ambient): ${report.conservationCheck.inputLight.toFixed(2)}`);
   console.log(`   Output (pigment pools + ledger): ${report.conservationCheck.outputPigment.toFixed(2)}`);
   console.log(
     `   Remains (created = held + consumed + decayed): ${report.conservationCheck.remainsCreated.toFixed(3)} = ${report.conservationCheck.remainsHeld.toFixed(3)} + ${report.conservationCheck.remainsConsumed.toFixed(3)} + ${report.conservationCheck.remainsDecayed.toFixed(3)} ${report.conservationCheck.remainsBalanced ? '✓' : '✗'}`,
+  );
+  console.log(
+    `   Fossils (formed = held): ${report.conservationCheck.fossilsFormed.toFixed(3)} = ${report.conservationCheck.fossilsHeld.toFixed(3)} ${report.conservationCheck.fossilsBalanced ? '✓' : '✗'}`,
   );
   console.log(`   Note: ${report.conservationCheck.note}`);
 

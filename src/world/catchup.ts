@@ -1,3 +1,4 @@
+import { heldFossilPigment } from './species/fossils';
 import { heldRemainPigment } from './species/remains';
 import { stepWorld } from './simulation';
 import { FIXED_STEP, type World } from './types';
@@ -41,6 +42,8 @@ export interface ResourceSnapshot {
   loosePigment: number;
   nestedPigment: number;
   remainPigment: number;
+  fossilPigment: number;
+  fossils: number;
 }
 
 export interface CatchUpJournal {
@@ -118,6 +121,8 @@ export function resourceSnapshot(world: World): ResourceSnapshot {
     loosePigment: world.sediment.reduce((total, grain) => total + grain.strength, 0),
     nestedPigment: world.nests.reduce((total, nest) => total + nest.pigment, 0),
     remainPigment: heldRemainPigment(world),
+    fossilPigment: heldFossilPigment(world),
+    fossils: world.fossils.length,
   };
 }
 
@@ -267,6 +272,9 @@ export function composeJournal(
   const remainDelta = after.remainPigment - before.remainPigment;
   if (Math.abs(remainDelta) >= 0.2) {
     lines.push(remainDelta > 0 ? 'Death left more remains on the floor.' : 'Remains faded or were eaten.');
+  }
+  if (after.fossils > before.fossils || after.fossilPigment - before.fossilPigment >= 0.04) {
+    lines.push('Old sediment kept an impression of a lineage that ended.');
   }
 
   if (lines.length <= (plan.reason === 'ready' ? 1 : 0) + (plan.sleptSeconds >= CATCH_UP_MIN_SECONDS ? 1 : 0)) {

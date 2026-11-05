@@ -80,6 +80,7 @@ function legacyPayload(world: World): string {
     marlgrubAdmissionAt: _marlgrubAdmissionAt,
     marlgrubCandidateAfterId: _marlgrubCandidateAfterId,
     lastSeenAt: _lastSeenAt,
+    fossils: _fossils,
     organisms,
     ...legacy
   } = world;

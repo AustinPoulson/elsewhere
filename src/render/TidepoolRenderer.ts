@@ -102,6 +102,7 @@ export class TidepoolRenderer {
   private readonly water = new Container();
   private readonly sedimentLayer = new Container();
   private readonly sedimentCores = new Graphics();
+  private readonly fossilCores = new Graphics();
   private readonly remainCores = new Graphics();
   private readonly nestLayer = new Container();
   private readonly reedwellLayer = new Container();
@@ -181,6 +182,7 @@ export class TidepoolRenderer {
       this.lightPatchLayer,
       this.sedimentLayer,
       this.sedimentCores,
+      this.fossilCores,
       this.remainCores,
       this.nestLayer,
       this.reedwellLayer,
@@ -295,6 +297,7 @@ export class TidepoolRenderer {
     this.tendrils.clear();
     this.indicator.clear();
     this.sedimentCores.clear();
+    this.fossilCores.clear();
     this.remainCores.clear();
     this.drawCurrents(world, tool === 'stir' && stirPreview !== null);
 
@@ -324,6 +327,7 @@ export class TidepoolRenderer {
       }
     }
     this.pruneSprites(this.sediments);
+    this.drawFossils(world, selectedId);
     this.drawRemains(world, selectedId);
     this.drawNests(world);
     this.reedwellRenderer.render(world, this.reducedMotion);
@@ -647,6 +651,24 @@ export class TidepoolRenderer {
         .moveTo(point.x + Math.cos(start) * radius, point.y + Math.sin(start) * radius)
         .arc(point.x, point.y, radius, start, start + 0.47)
         .stroke({ color: 0xe1d7b4, alpha: 0.72, width: 1 });
+    }
+  }
+
+  private drawFossils(world: World, selectedId: number | null): void {
+    const count = Math.min(LIMITS.fossils, world.fossils.length);
+    for (let index = 0; index < count; index++) {
+      const fossil = world.fossils[index];
+      const load = Math.min(1, fossil.pigment / 0.6);
+      const tint = this.color(fossil.hue);
+      const radius = Math.max(6, fossil.radius * (1.1 + load * 0.5));
+      this.fossilCores
+        .ellipse(fossil.x, fossil.y, radius * 1.35, radius * 0.48)
+        .fill({ color: 0x2c241c, alpha: 0.22 + load * 0.28 })
+        .stroke({ color: tint, alpha: 0.34 + load * 0.28, width: 1.35 });
+      this.fossilCores
+        .ellipse(fossil.x + radius * 0.08, fossil.y - radius * 0.04, radius * 0.72, radius * 0.18)
+        .stroke({ color: 0xd9c7a0, alpha: 0.22 + load * 0.2, width: 0.9 });
+      if (fossil.id === selectedId) this.drawSelection(fossil, radius + 10);
     }
   }
 
