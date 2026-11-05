@@ -129,7 +129,7 @@ export function updateMarlgrubs(world: World, dt: number): void {
   let write = 0;
   for (const grub of world.marlgrubs) {
     if (grub.age >= RULE.lifespan || grub.starvedFor >= RULE.starvationLimit) {
-      settleDeath(world, grub, grub.hue, grub.body + grub.reserve);
+      settleDeath(world, grub, grub.hue, grub.body + grub.reserve, 'marlgrub');
     } else world.marlgrubs[write++] = grub;
   }
   world.marlgrubs.length = write;

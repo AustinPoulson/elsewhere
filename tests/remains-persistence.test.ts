@@ -12,6 +12,7 @@ const remainsLedgerKeys = [
   'remainsDecayed',
   'marlgrubIntake',
   'marlgrubMaintenancePigment',
+  'fossilsFormed',
 ] as const;
 
 function previousRevision(world: World): Record<string, any> {
@@ -22,6 +23,7 @@ function previousRevision(world: World): Record<string, any> {
   delete previous.marlgrubAdmissionAt;
   delete previous.marlgrubCandidateAfterId;
   delete previous.lastSeenAt;
+  delete previous.fossils;
   for (const key of remainsLedgerKeys) delete previous.ecologyLedger[key];
   return previous;
 }
@@ -30,7 +32,7 @@ function inhabited(): World {
   const world = createWorld(51);
   world.elapsed = 80;
   world.tick = 2400;
-  depositRemain(world, { x: 720, y: 500 }, 42, 0.7);
+  depositRemain(world, { x: 720, y: 500 }, 42, 0.7, 'skimmer');
   admitMarlgrub(world);
   world.marlgrubs[0].traits = { drive: 1.04, bulk: 0.96 };
   world.marlgrubAdmissionAt = 140;
@@ -49,7 +51,7 @@ describe('remains snapshot revision', () => {
     const migrated = restoreWorld(source)!;
     expect(migrated).not.toBeNull();
     expect(migrated).toMatchObject({
-      schemaRevision: 11,
+      schemaRevision: 12,
       lastSeenAt: null,
       remains: [],
       marlgrubs: [],
@@ -91,7 +93,7 @@ describe('remains snapshot revision', () => {
         w.schemaRevision = 9;
       },
       (w) => {
-        w.schemaRevision = 12;
+        w.schemaRevision = 13;
       },
       (w) => {
         w.remains[0].pigment = 2.1;
@@ -115,6 +117,7 @@ describe('remains snapshot revision', () => {
         world.remains.push({
           id: world.nextId++,
           species: 'remain',
+          source: 'unknown',
           x: 720,
           y: 500,
           pigment: 0.4,

@@ -118,7 +118,7 @@ export function updateReedwells(world: World, dt: number, allowStandaloneAdmissi
   let write = 0;
   for (const reedwell of world.reedwells) {
     if (reedwell.age >= RULE.lifespan) {
-      settleDeath(world, reedwell, reedwell.hue, reedwell.body);
+      settleDeath(world, reedwell, reedwell.hue, reedwell.body, 'reedwell');
       world.ecologyLedger.reedwellDissipatedLight += reedwell.lightStore;
     } else world.reedwells[write++] = reedwell;
   }

@@ -121,6 +121,7 @@ function revision4(world: World): Record<string, any> {
     marlgrubAdmissionAt: _marlgrubAdmissionAt,
     marlgrubCandidateAfterId: _marlgrubCandidateAfterId,
     lastSeenAt: _lastSeenAt,
+    fossils: _fossils,
     skimmerCandidateAfterId: _skimmerCandidate,
     ...previous
   } = structuredClone(world);
@@ -136,6 +137,7 @@ function revision4(world: World): Record<string, any> {
     'remainsDecayed',
     'marlgrubIntake',
     'marlgrubMaintenancePigment',
+    'fossilsFormed',
   ])
     delete result.ecologyLedger[key];
   return result;
@@ -202,10 +204,11 @@ describe('rainbell snapshot revision', () => {
       marlgrubAdmissionAt: _marlgrubAdmissionAt,
       marlgrubCandidateAfterId: _marlgrubCandidateAfterId,
       lastSeenAt: _lastSeenAt,
+      fossils: _fossils,
       skimmerCandidateAfterId: _skimmerCandidate,
       ...oldFields
     } = restored;
-    expect(restored.schemaRevision).toBe(11);
+    expect(restored.schemaRevision).toBe(12);
     expect(rainbells).toEqual([]);
     expect(rainbellAdmissionAt).toBe(source.elapsed);
     expect(rainbellCandidateAfterId).toBe(0);
@@ -224,6 +227,7 @@ describe('rainbell snapshot revision', () => {
       'remainsDecayed',
       'marlgrubIntake',
       'marlgrubMaintenancePigment',
+      'fossilsFormed',
     ]) {
       expect(oldLedger[key]).toBe(0);
       delete oldLedger[key];
@@ -246,7 +250,7 @@ describe('rainbell snapshot revision', () => {
       const before = JSON.stringify(source);
       const restored = restoreWorld(before)!;
       expect(restored).toMatchObject({
-        schemaRevision: 11,
+        schemaRevision: 12,
         rainbells: [],
         rainbellAdmissionAt: source.elapsed,
         rainbellCandidateAfterId: 0,
@@ -420,7 +424,7 @@ describe('rainbell snapshot revision', () => {
         w.nextId += 5;
       },
       (w) => {
-        w.schemaRevision = 12;
+        w.schemaRevision = 13;
       },
     ];
     for (const target of ['feedTargetSedimentId', 'pumpTargetSedimentId']) {

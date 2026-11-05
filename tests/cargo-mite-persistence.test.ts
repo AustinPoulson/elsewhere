@@ -8,6 +8,7 @@ function previousRevision(world: World): Record<string, any> {
   const previous = structuredClone(world) as Record<string, any>;
   previous.schemaRevision = 7;
   delete previous.lastSeenAt;
+  delete previous.fossils;
   delete previous.cargoMites;
   delete previous.cargoMiteAdmissionAt;
   delete previous.cargoMiteCandidateAfterId;
@@ -24,6 +25,7 @@ function previousRevision(world: World): Record<string, any> {
     'remainsDecayed',
     'marlgrubIntake',
     'marlgrubMaintenancePigment',
+    'fossilsFormed',
   ])
     delete previous.ecologyLedger[key];
   return previous;
@@ -71,7 +73,7 @@ describe('cargo mite snapshot revision', () => {
     const migrated = restoreWorld(source)!;
     expect(migrated).not.toBeNull();
     expect(migrated).toMatchObject({
-      schemaRevision: 11,
+      schemaRevision: 12,
       lastSeenAt: null,
       cargoMites: [],
       cargoMiteAdmissionAt: old.elapsed,

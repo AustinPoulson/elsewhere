@@ -14,7 +14,7 @@ Eventually: several pools linked by slow currents, and the world keeps living wh
 
 - [x] **Catching up on time spent away** — Simulate elapsed time when the user returns; generate a "while you were gone" journal. _Success: reopening after an hour shows the world has advanced; journal summarizes key events._
 
-- [ ] **Fossils, eras, and linked pools** — Fossils in sediment record extinct populations; multiple pools connected by slow currents allow migration. _Success: fossils visible in old sediment; organisms can move between pools._
+- [ ] **Fossils, eras, and linked pools** — Fossils in sediment record extinct populations; multiple pools connected by slow currents allow migration. _Success: fossils visible in old sediment; organisms can move between pools._ **This slice: fossils / world memory in sediment.** Linked pools, currents between pools, camera pan/zoom, and migration remain open.
 
 ## Standing Invariants
 
@@ -84,3 +84,13 @@ _This section records surprising population dynamics, extinctions, or runaway re
 1. Catching up on time away can resume a world that still cycles remains and scavengers, not only lucents and grazers
 2. Nest-funded types still compete with a delay: a third of each corpse is remain rather than immediate sediment, so individual nests sit above the 1.5 founding threshold less often
 3. That is a physics change, not a population gift; later work can concentrate remains rather than grant free bodies
+
+### Fossils in sediment (seeds 1 and 42)
+
+**Extinction leaves paid color in the floor:** When a mortal lineage has no living members, its remains settle as durable fossils instead of fading sediment. They hold already-paid pigment (`fossilsFormed = held`). Opening worlds and revision-11 saves receive none.
+
+**30-day harness, no visitor light:** Both seeds filled the 16-impression cap. Seed 1 held 2.208 fossil pigment (siltstitcher, glass limpet, cargo mite, marlgrub marks); glass limpets ended at 173m 17s and marlgrubs at 110m 37s. Seed 42 held 1.644 (rainbell, siltstitcher, glass limpet, cargo mite, marlgrub); reedwells ended at 16m, rainbells at 10m, glass limpets at 98m, marlgrubs at 109m, siltstitchers at 180m. Remains and fossil ledgers both balanced.
+
+**A later return does not erase the mark:** Cargo mites and siltstitchers can empty and re-found. Fossils from those empty ticks stay in the sediment. Turnover can fill the cap with mite impressions; leftover remain color that cannot join an impression returns as ordinary pigment. That is the budget holding, not a new population.
+
+**Linked pools are still open:** This slice does not add a second pool, currents between pools, camera pan/zoom, or migration.

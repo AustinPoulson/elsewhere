@@ -163,7 +163,7 @@ export function updateSkimmers(world: World, dt: number, allowStandaloneAdmissio
       skimmer.age >= SPECIES_CATALOG.skimmer.lifespan ||
       skimmer.starvedFor >= SPECIES_CATALOG.skimmer.starvationLimit
     )
-      settleDeath(world, skimmer, skimmer.hue, skimmer.body + skimmer.reserve);
+      settleDeath(world, skimmer, skimmer.hue, skimmer.body + skimmer.reserve, 'skimmer');
     else world.skimmers[write++] = skimmer;
   }
   world.skimmers.length = write;

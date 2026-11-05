@@ -9,8 +9,13 @@ export const LIMITS = {
   grazers: 8,
   nests: 16,
   remains: 48,
+  fossils: 16,
 } as const;
 export const REMAIN_CAPACITY = 2;
+export const FOSSIL_CAPACITY = 1.2;
+export type FossilSource =
+  'skimmer' | 'reedwell' | 'rainbell' | 'siltstitcher' | 'glassLimpet' | 'cargoMite' | 'marlgrub';
+export type RemainSource = FossilSource | 'unknown';
 export const GRAZER_CAPACITY = 1.2;
 export const NEST_CAPACITY = 12;
 
@@ -136,10 +141,21 @@ export interface CargoMite extends Point {
 export interface Remain extends Point {
   id: number;
   species: 'remain';
+  source: RemainSource;
   pigment: number;
   hue: number;
   age: number;
   radius: number;
+}
+export interface Fossil extends Point {
+  id: number;
+  species: 'fossil';
+  source: FossilSource;
+  pigment: number;
+  hue: number;
+  age: number;
+  radius: number;
+  formedAt: number;
 }
 export interface Marlgrub extends Point {
   id: number;
@@ -181,6 +197,7 @@ export interface EcologyLedger {
   remainsDecayed: number;
   marlgrubIntake: number;
   marlgrubMaintenancePigment: number;
+  fossilsFormed: number;
 }
 export interface LightSource extends Point {
   id: number;
@@ -217,7 +234,7 @@ export interface Nest extends Point {
 }
 export interface World {
   version: 3;
-  schemaRevision: 11;
+  schemaRevision: 12;
   lastSeenAt: number | null;
   skimmers: Skimmer[];
   skimmerAdmissionAt: number;
@@ -241,6 +258,7 @@ export interface World {
   marlgrubAdmissionAt: number;
   marlgrubCandidateAfterId: number;
   remains: Remain[];
+  fossils: Fossil[];
   nextFoundingTick: number;
   foundingTypeCursor: number;
   ecologyLedger: EcologyLedger;
@@ -275,6 +293,8 @@ export interface WorldStats {
   marlgrubs: number;
   remains: number;
   remainPigment: number;
+  fossils: number;
+  fossilPigment: number;
   nestPigment: number;
 }
 

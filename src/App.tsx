@@ -22,6 +22,7 @@ import { callRain, effectiveWeather } from './world/weather';
 import { getDaylight } from './world/environment/daylight';
 import { describeBulk, describeDrive } from './world/traits';
 import { MAX_CURRENTS } from './world/actions/current';
+import { FOSSIL_LABEL } from './world/species/fossils';
 import { isInPool, LIMITS, WORLD_HEIGHT, WORLD_WIDTH } from './world/types';
 import type { Point, Tool, World } from './world/types';
 
@@ -489,7 +490,15 @@ export function App() {
           distance = d;
         }
       }
-      const chosen = nearest ?? nearestRemain;
+      let nearestFossil = null;
+      for (const fossil of worldRef.current.fossils) {
+        const d = Math.hypot(fossil.x - point.x, fossil.y - point.y);
+        if (d < Math.max(distance, fossil.radius + 14) && d < distance) {
+          nearestFossil = fossil;
+          distance = d;
+        }
+      }
+      const chosen = nearest ?? nearestRemain ?? nearestFossil;
       setSelectedId(chosen?.id ?? null);
       if (chosen) {
         setPanel('specimen');
@@ -512,9 +521,11 @@ export function App() {
                           ? 'A marlgrub, feeding on what death left behind.'
                           : chosen.species === 'remain'
                             ? 'Settled remains, slowly returning to the floor.'
-                            : 'A lucent, briefly known.',
+                            : chosen.species === 'fossil'
+                              ? 'A fossil, color that stayed after a lineage ended.'
+                              : 'A lucent, briefly known.',
         );
-      } else setNotice('Touch a living inhabitant or a remnant on the floor.');
+      } else setNotice('Touch a living inhabitant, a remnant, or a fossil on the floor.');
     }
   }
   function pointerDown(event: PointerEvent<HTMLDivElement>) {
@@ -746,6 +757,7 @@ export function App() {
     ...worldRef.current.marlgrubs,
   ].find((organism) => organism.id === selectedId);
   const selectedRemain = worldRef.current.remains.find((remain) => remain.id === selectedId) ?? null;
+  const selectedFossil = worldRef.current.fossils.find((fossil) => fossil.id === selectedId) ?? null;
   const selectedNest =
     selected?.species === 'grazer' ? worldRef.current.nests.find((nest) => nest.id === selected.nestId) : null;
   const openPanel = (next: Panel) => setPanel((current) => (current === next ? null : next));
@@ -902,11 +914,13 @@ export function App() {
             ◇ {stats.skimmers} prism skimmer{stats.skimmers === 1 ? '' : 's'}
           </div>
         )}
-        {(stats.remains > 0 || stats.marlgrubs > 0) && (
+        {(stats.remains > 0 || stats.marlgrubs > 0 || stats.fossils > 0) && (
           <div className="skimmer-readout">
             {stats.remains > 0 ? `${stats.remains} remain${stats.remains === 1 ? '' : 's'}` : null}
             {stats.remains > 0 && stats.marlgrubs > 0 ? ' · ' : null}
             {stats.marlgrubs > 0 ? `${stats.marlgrubs} marlgrub${stats.marlgrubs === 1 ? '' : 's'}` : null}
+            {(stats.remains > 0 || stats.marlgrubs > 0) && stats.fossils > 0 ? ' · ' : null}
+            {stats.fossils > 0 ? `${stats.fossils} fossil${stats.fossils === 1 ? '' : 's'}` : null}
           </div>
         )}
         <div className={`weather-readout ${weather.raining ? 'is-raining' : ''}`} aria-label="Pool weather">
@@ -1320,6 +1334,17 @@ export function App() {
                 <div className="guide-entry">
                   <span className="entry-number">17</span>
                   <div>
+                    <h3>Fossils in the sediment</h3>
+                    <p>
+                      When a lineage ends, its remaining paid color can settle as a durable impression in the old
+                      sediment. Fossils are not a new population and they invent no pigment; they keep a trace of what
+                      lived here. Observe an impression to name the lineage it remembers. Old saves start with none.
+                    </p>
+                  </div>
+                </div>
+                <div className="guide-entry">
+                  <span className="entry-number">18</span>
+                  <div>
                     <h3>While you were gone</h3>
                     <p>
                       Closing the page lets the pool live on its own, up to eight hours of remembered time. Brief
@@ -1346,7 +1371,13 @@ export function App() {
             {panel === 'specimen' && (
               <>
                 <h2 id="panel-title">
-                  {selectedRemain && !selected ? (
+                  {selectedFossil && !selected ? (
+                    <>
+                      A fossil,
+                      <br />
+                      <em>kept in the sediment.</em>
+                    </>
+                  ) : selectedRemain && !selected ? (
                     <>
                       A remnant,
                       <br />
@@ -1409,7 +1440,30 @@ export function App() {
                   )}
                 </h2>
                 <p className="panel-intro">Every life is part of the same small story.</p>
-                {selectedRemain && !selected ? (
+                {selectedFossil && !selected ? (
+                  <>
+                    <div className="specimen-orb fossil-orb" aria-hidden="true" />
+                    <p className="eyebrow">FOSSIL / {String(selectedFossil.id).padStart(3, '0')}</p>
+                    <dl className="specimen-details">
+                      <div>
+                        <dt>Lineage</dt>
+                        <dd>{FOSSIL_LABEL[selectedFossil.source].singular}</dd>
+                      </div>
+                      <div>
+                        <dt>Settled</dt>
+                        <dd>{timeLabel(selectedFossil.formedAt)}</dd>
+                      </div>
+                      <div>
+                        <dt>Color held</dt>
+                        <dd>{selectedFossil.pigment.toFixed(3)}</dd>
+                      </div>
+                    </dl>
+                    <p className="guide-caption">
+                      This is paid color from a {FOSSIL_LABEL[selectedFossil.source].singular} lineage that ended. It
+                      stays in the old sediment instead of fading back into ordinary pigment.
+                    </p>
+                  </>
+                ) : selectedRemain && !selected ? (
                   <>
                     <div className="specimen-orb remain-orb" aria-hidden="true" />
                     <p className="eyebrow">REMAINS / {String(selectedRemain.id).padStart(3, '0')}</p>
@@ -1692,7 +1746,7 @@ export function App() {
                   <p className="panel-intro">
                     {selectedId !== null
                       ? 'This has left the pool. Choose Observe to meet another.'
-                      : 'Choose Observe and touch a creature or a remnant on the floor.'}
+                      : 'Choose Observe and touch a creature, a remnant, or a fossil on the floor.'}
                   </p>
                 )}
                 {selected?.species === 'grazer' && selectedNest && (
@@ -1731,6 +1785,7 @@ export function App() {
                     {stats.skimmers > 0 ? ` · ${stats.skimmers} SKIMMERS` : ''}
                     {stats.marlgrubs > 0 ? ` · ${stats.marlgrubs} MARLGRUBS` : ''}
                     {stats.remains > 0 ? ` · ${stats.remains} REMAINS` : ''}
+                    {stats.fossils > 0 ? ` · ${stats.fossils} FOSSILS` : ''}
                   </span>
                   <span>SEED {worldRef.current.seed}</span>
                 </div>

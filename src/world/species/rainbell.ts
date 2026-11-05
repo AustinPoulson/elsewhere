@@ -171,7 +171,7 @@ export function updateRainbells(world: World, dt: number, allowStandaloneAdmissi
   let write = 0;
   for (const bell of world.rainbells) {
     if (bell.age >= RULE.lifespan || bell.starvedFor >= RULE.starvationLimit)
-      settleDeath(world, bell, bell.hue, bell.body + bell.reserve);
+      settleDeath(world, bell, bell.hue, bell.body + bell.reserve, 'rainbell');
     else world.rainbells[write++] = bell;
   }
   world.rainbells.length = write;

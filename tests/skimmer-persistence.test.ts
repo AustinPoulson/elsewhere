@@ -33,6 +33,7 @@ function legacy(world: World, version: 1 | 2 | 3, revision = 2) {
     marlgrubAdmissionAt: _marlgrubAdmissionAt,
     marlgrubCandidateAfterId: _marlgrubCandidateAfterId,
     lastSeenAt: _lastSeenAt,
+    fossils: _fossils,
     organisms,
     ...old
   } = structuredClone(world);
@@ -113,7 +114,7 @@ describe('prism snapshot revision', () => {
       expect(restored).not.toBeNull();
       expect(restored).toMatchObject({
         version: 3,
-        schemaRevision: 11,
+        schemaRevision: 12,
         skimmers: [],
         skimmerAdmissionAt: 123,
         elapsed: 123,
@@ -302,7 +303,7 @@ describe('prism snapshot revision', () => {
         w.nextId += 7;
       },
       (w) => {
-        w.schemaRevision = 12;
+        w.schemaRevision = 13;
       },
     ];
     for (const change of changes) {

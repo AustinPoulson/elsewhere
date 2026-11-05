@@ -30,6 +30,10 @@ function balanced(world: World): void {
     heldRemainPigment(world) + world.ecologyLedger.remainsConsumed + world.ecologyLedger.remainsDecayed,
     10,
   );
+  expect(world.ecologyLedger.fossilsFormed).toBeCloseTo(
+    world.fossils.reduce((total, fossil) => total + fossil.pigment, 0),
+    10,
+  );
 }
 
 function remainShare(amount: number): number {
@@ -39,7 +43,7 @@ function remainShare(amount: number): number {
 describe('death remains', () => {
   it('returns a coarse grain from a starved body so shoreline founding can continue', () => {
     const world = empty();
-    settleDeath(world, { x: 1200, y: 500 }, 180, 0.2);
+    settleDeath(world, { x: 1200, y: 500 }, 180, 0.2, 'glassLimpet');
     expect(world.sediment[0].strength).toBeGreaterThanOrEqual(0.12);
     expect(world.remains[0].pigment).toBeCloseTo(remainShare(0.2), 12);
     balanced(world);
@@ -70,7 +74,7 @@ describe('death remains', () => {
 
   it('leaves remains only through consumption or decay into existing pigment pools', () => {
     const world = empty();
-    depositRemain(world, { x: 720, y: 500 }, 40, 0.5);
+    depositRemain(world, { x: 720, y: 500 }, 40, 0.5, 'unknown');
     expect(heldRemainPigment(world)).toBeCloseTo(0.5, 12);
     const remain = world.remains[0];
     expect(takeRemainPigment(world, remain, 0.2)).toBeCloseTo(0.2, 12);
@@ -87,7 +91,7 @@ describe('death remains', () => {
   it('merges tiny decay into nearby sediment instead of spawning dust grains', () => {
     const world = empty();
     world.sediment = [{ id: world.nextId++, x: 720, y: 500, strength: 0.1, hue: 40, radius: 6, age: 0 }];
-    depositRemain(world, { x: 722, y: 500 }, 40, 0.5);
+    depositRemain(world, { x: 722, y: 500 }, 40, 0.5, 'unknown');
     const before = world.sediment[0].strength;
     updateRemains(world, 1 / 30);
     expect(world.sediment).toHaveLength(1);
@@ -99,13 +103,13 @@ describe('death remains', () => {
   it('caps remain cells and leaches the oldest when a new death needs a slot', () => {
     const world = empty();
     for (let i = 0; i < LIMITS.remains; i++) {
-      depositRemain(world, { x: 500 + (i % 12) * 30, y: 400 + Math.floor(i / 12) * 40 }, 80, 0.2);
+      depositRemain(world, { x: 500 + (i % 12) * 30, y: 400 + Math.floor(i / 12) * 40 }, 80, 0.2, 'unknown');
     }
     expect(world.remains).toHaveLength(LIMITS.remains);
     const oldest = world.remains[0];
     oldest.age = 80;
     const created = world.ecologyLedger.remainsCreated;
-    depositRemain(world, { x: 900, y: 500 }, 200, 0.4);
+    depositRemain(world, { x: 900, y: 500 }, 200, 0.4, 'unknown');
     expect(world.remains.length).toBeLessThanOrEqual(LIMITS.remains);
     expect(world.remains.some((entry) => entry.id === oldest.id)).toBe(false);
     expect(world.ecologyLedger.remainsCreated).toBeCloseTo(created + 0.4, 12);
@@ -115,9 +119,25 @@ describe('death remains', () => {
 
   it('never stores more than the remain capacity in one cell', () => {
     const world = empty();
-    depositRemain(world, { x: 720, y: 500 }, 10, REMAIN_CAPACITY);
-    depositRemain(world, { x: 722, y: 500 }, 40, 0.8);
+    depositRemain(world, { x: 720, y: 500 }, 10, REMAIN_CAPACITY, 'unknown');
+    depositRemain(world, { x: 722, y: 500 }, 40, 0.8, 'unknown');
     expect(world.remains[0].pigment).toBeLessThanOrEqual(REMAIN_CAPACITY);
+    balanced(world);
+  });
+
+  it('merges nearby remains only when they share a source', () => {
+    const world = empty();
+    depositRemain(world, { x: 720, y: 500 }, 40, 0.2, 'skimmer');
+    depositRemain(world, { x: 722, y: 500 }, 80, 0.3, 'unknown');
+    expect(world.remains).toHaveLength(2);
+    expect(world.remains.map((remain) => remain.source)).toEqual(['skimmer', 'unknown']);
+    expect(world.remains[0].pigment).toBeCloseTo(0.2, 12);
+    expect(world.remains[1].pigment).toBeCloseTo(0.3, 12);
+    depositRemain(world, { x: 721, y: 501 }, 10, 0.15, 'skimmer');
+    expect(world.remains).toHaveLength(2);
+    expect(world.remains.map((remain) => remain.source)).toEqual(['skimmer', 'unknown']);
+    expect(world.remains[0].pigment).toBeCloseTo(0.35, 12);
+    expect(world.remains[1].pigment).toBeCloseTo(0.3, 12);
     balanced(world);
   });
 });
@@ -128,7 +148,7 @@ describe('marlgrub consumer', () => {
     expect(world.marlgrubs).toEqual([]);
     expect(world.remains).toEqual([]);
     const funded = empty();
-    depositRemain(funded, { x: 720, y: 500 }, 90, 0.5);
+    depositRemain(funded, { x: 720, y: 500 }, 90, 0.5, 'unknown');
     expect(admitMarlgrub(funded)).toBe(true);
     expect(funded.marlgrubs[0]).toMatchObject({ body: 0.1, reserve: 0.1, x: 720, y: 500 });
     expect(heldRemainPigment(funded)).toBeCloseTo(0.3, 12);
@@ -139,7 +159,7 @@ describe('marlgrub consumer', () => {
 
   it('feeds only from remains and returns its body as remains and sediment', () => {
     const world = empty();
-    depositRemain(world, { x: 720, y: 500 }, 90, 0.8);
+    depositRemain(world, { x: 720, y: 500 }, 90, 0.8, 'unknown');
     expect(admitMarlgrub(world)).toBe(true);
     const grub = world.marlgrubs[0];
     world.tick = (6 - (grub.id % 6)) % 6;
@@ -158,7 +178,7 @@ describe('marlgrub consumer', () => {
 
   it('refuses founding when remains cannot pay and does not gift a body', () => {
     const world = empty();
-    depositRemain(world, { x: 720, y: 500 }, 90, 0.19);
+    depositRemain(world, { x: 720, y: 500 }, 90, 0.19, 'unknown');
     const random = world.randomState;
     const id = world.nextId;
     expect(admitMarlgrub(world)).toBe(false);
@@ -171,7 +191,7 @@ describe('marlgrub consumer', () => {
   it('founds through the off-phase event offer without joining the six-type rotation', () => {
     expect(NORMAL_FOUNDER_COUNT).toBe(6);
     const world = empty();
-    depositRemain(world, { x: 720, y: 500 }, 90, 0.5);
+    depositRemain(world, { x: 720, y: 500 }, 90, 0.5, 'unknown');
     world.tick = 1;
     world.nextFoundingTick = 0;
     const cursor = world.foundingTypeCursor;
@@ -180,7 +200,7 @@ describe('marlgrub consumer', () => {
     expect(world.foundingTypeCursor).toBe(cursor);
     expect(world.nextFoundingTick).toBe(7);
     const live = empty();
-    depositRemain(live, { x: 720, y: 500 }, 90, 0.5);
+    depositRemain(live, { x: 720, y: 500 }, 90, 0.5, 'unknown');
     live.tick = 0;
     live.nextFoundingTick = 0;
     stepWorld(live);
@@ -193,6 +213,7 @@ describe('long-run remain budget', () => {
     const world = createWorld(1);
     for (let i = 0; i < 18_000; i++) stepWorld(world);
     expect(world.remains.length).toBeLessThanOrEqual(LIMITS.remains);
+    expect(world.fossils.length).toBeLessThanOrEqual(LIMITS.fossils);
     expect(world.marlgrubs.length).toBeLessThanOrEqual(4);
     balanced(world);
   }, 20_000);

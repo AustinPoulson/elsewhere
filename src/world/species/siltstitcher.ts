@@ -222,7 +222,7 @@ export function updateSiltstitchers(world: World, dt: number, allowStandaloneAdm
   let write = 0;
   for (const body of world.siltstitchers) {
     if (body.age >= RULE.lifespan || body.starvedFor >= RULE.starvationLimit)
-      settleDeath(world, body, body.hue, body.body + body.reserve + body.cargo);
+      settleDeath(world, body, body.hue, body.body + body.reserve + body.cargo, 'siltstitcher');
     else world.siltstitchers[write++] = body;
   }
   world.siltstitchers.length = write;
