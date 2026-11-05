@@ -60,11 +60,11 @@ function oldestRemain(world: World): Remain | undefined {
   return oldest;
 }
 
-function nearestRemain(world: World, point: Point, reach: number): Remain | undefined {
+function nearestRemain(world: World, point: Point, source: RemainSource, reach: number): Remain | undefined {
   let nearest: Remain | undefined;
   let distance = reach;
   for (const remain of world.remains) {
-    if (remain.pigment >= REMAIN_CAPACITY) continue;
+    if (remain.source !== source || remain.pigment >= REMAIN_CAPACITY) continue;
     const candidate = Math.hypot(remain.x - point.x, remain.y - point.y);
     if (candidate < distance || (candidate === distance && (!nearest || remain.id < nearest.id))) {
       distance = candidate;
@@ -89,7 +89,7 @@ export function depositRemain(world: World, point: Point, hue: number, pigment: 
   const location = { x: point.x, y: point.y };
   if (!isInPool(location.x, location.y)) confinePosition(location, 0);
   world.ecologyLedger.remainsCreated += amount;
-  const nearby = nearestRemain(world, location, REMAIN_MERGE_REACH);
+  const nearby = nearestRemain(world, location, source, REMAIN_MERGE_REACH);
   if (nearby) {
     const added = Math.min(amount, REMAIN_CAPACITY - nearby.pigment);
     nearby.hue = blendHue(nearby.hue, hue, nearby.pigment, added);

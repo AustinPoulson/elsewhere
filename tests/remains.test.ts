@@ -124,6 +124,22 @@ describe('death remains', () => {
     expect(world.remains[0].pigment).toBeLessThanOrEqual(REMAIN_CAPACITY);
     balanced(world);
   });
+
+  it('merges nearby remains only when they share a source', () => {
+    const world = empty();
+    depositRemain(world, { x: 720, y: 500 }, 40, 0.2, 'skimmer');
+    depositRemain(world, { x: 722, y: 500 }, 80, 0.3, 'unknown');
+    expect(world.remains).toHaveLength(2);
+    expect(world.remains.map((remain) => remain.source)).toEqual(['skimmer', 'unknown']);
+    expect(world.remains[0].pigment).toBeCloseTo(0.2, 12);
+    expect(world.remains[1].pigment).toBeCloseTo(0.3, 12);
+    depositRemain(world, { x: 721, y: 501 }, 10, 0.15, 'skimmer');
+    expect(world.remains).toHaveLength(2);
+    expect(world.remains.map((remain) => remain.source)).toEqual(['skimmer', 'unknown']);
+    expect(world.remains[0].pigment).toBeCloseTo(0.35, 12);
+    expect(world.remains[1].pigment).toBeCloseTo(0.3, 12);
+    balanced(world);
+  });
 });
 
 describe('marlgrub consumer', () => {
