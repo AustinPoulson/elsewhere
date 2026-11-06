@@ -16,16 +16,11 @@ function currentVelocity(world: World, body: Point, scale: number, out: Point): 
     vy += current.dy * speed;
   }
   const magnitude = Math.hypot(vx, vy);
-  if (magnitude === 0) {
-    const link = channelVelocity(body, world.elapsed, scale);
-    out.x = link.x;
-    out.y = link.y;
-    return out;
-  }
+  if (magnitude === 0) return channelVelocity(body, world.elapsed, scale, out);
   const bounded = Math.min(1, MAX_CURRENT_SPEED / magnitude) * scale;
-  const link = channelVelocity(body, world.elapsed, scale);
-  out.x = vx * bounded + link.x;
-  out.y = vy * bounded + link.y;
+  channelVelocity(body, world.elapsed, scale, out);
+  out.x += vx * bounded;
+  out.y += vy * bounded;
   return out;
 }
 

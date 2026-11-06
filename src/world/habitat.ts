@@ -6,6 +6,7 @@ export const HABITAT_POOLS: readonly HabitatPool[] = [OPENING_POOL, INLET_POOL];
 export const HABITAT_CHANNEL: HabitatChannel = { from: 1, to: 2, width: 72, flow: 4.8 };
 export const CHANNEL_PERIOD = 180;
 export const CHANNEL_INFLUENCE = 28;
+const POOL_RADIUS_EXTENT = 1.11;
 
 function clamp(value: number, low: number, high: number): number {
   return Math.min(high, Math.max(low, value));
@@ -19,7 +20,21 @@ function rimPoint(pool: HabitatPool, ux: number, uy: number): Point {
   return { x: pool.x + ux * t, y: pool.y + uy * t };
 }
 
-function channelAxis(): { ax: number; ay: number; bx: number; by: number; ux: number; uy: number } {
+function channelAxis(): {
+  ax: number;
+  ay: number;
+  bx: number;
+  by: number;
+  ux: number;
+  uy: number;
+  abx: number;
+  aby: number;
+  span: number;
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+} {
   const dx = INLET_POOL.x - OPENING_POOL.x;
   const dy = INLET_POOL.y - OPENING_POOL.y;
   const length = Math.hypot(dx, dy);
@@ -27,7 +42,23 @@ function channelAxis(): { ax: number; ay: number; bx: number; by: number; ux: nu
   const uy = dy / length;
   const start = rimPoint(OPENING_POOL, ux, uy);
   const end = rimPoint(INLET_POOL, -ux, -uy);
-  return { ax: start.x, ay: start.y, bx: end.x, by: end.y, ux, uy };
+  const abx = end.x - start.x;
+  const aby = end.y - start.y;
+  return {
+    ax: start.x,
+    ay: start.y,
+    bx: end.x,
+    by: end.y,
+    ux,
+    uy,
+    abx,
+    aby,
+    span: abx * abx + aby * aby,
+    minX: Math.min(start.x, end.x),
+    maxX: Math.max(start.x, end.x),
+    minY: Math.min(start.y, end.y),
+    maxY: Math.max(start.y, end.y),
+  };
 }
 
 let channelCache: ReturnType<typeof channelAxis> | null = null;
@@ -65,7 +96,8 @@ export function channelSegment(): {
   uy: number;
   width: number;
 } {
-  return { ...channel(), width: HABITAT_CHANNEL.width };
+  const link = channel();
+  return { ax: link.ax, ay: link.ay, bx: link.bx, by: link.by, ux: link.ux, uy: link.uy, width: HABITAT_CHANNEL.width };
 }
 
 function ellipseSdf(x: number, y: number, pool: HabitatPool, margin: number): number {
@@ -79,19 +111,32 @@ function ellipseSdf(x: number, y: number, pool: HabitatPool, margin: number): nu
   return rho - poolRadius(Math.atan2(ny, nx));
 }
 
-function distanceToSegment(x: number, y: number, ax: number, ay: number, bx: number, by: number): number {
-  const abx = bx - ax;
-  const aby = by - ay;
-  const span = abx * abx + aby * aby;
-  const t = span === 0 ? 0 : clamp(((x - ax) * abx + (y - ay) * aby) / span, 0, 1);
-  return Math.hypot(x - (ax + t * abx), y - (ay + t * aby));
+function distanceToSegment(x: number, y: number): number {
+  const link = channel();
+  const t = link.span === 0 ? 0 : clamp(((x - link.ax) * link.abx + (y - link.ay) * link.aby) / link.span, 0, 1);
+  return Math.hypot(x - (link.ax + t * link.abx), y - (link.ay + t * link.aby));
 }
 
 function channelSdf(x: number, y: number, margin: number): number {
   const half = HABITAT_CHANNEL.width / 2 - margin;
   if (half <= 0) return 1;
+  return distanceToSegment(x, y) - half;
+}
+
+function inEllipse(x: number, y: number, pool: HabitatPool, margin: number): boolean {
+  const rx = pool.rx - margin;
+  const ry = pool.ry - margin;
+  if (rx <= 0 || ry <= 0) return false;
+  if (Math.abs(x - pool.x) > rx * POOL_RADIUS_EXTENT || Math.abs(y - pool.y) > ry * POOL_RADIUS_EXTENT) return false;
+  return ellipseSdf(x, y, pool, margin) <= 0;
+}
+
+function inChannel(x: number, y: number, margin: number): boolean {
+  const half = HABITAT_CHANNEL.width / 2 - margin;
+  if (half <= 0) return false;
   const link = channel();
-  return distanceToSegment(x, y, link.ax, link.ay, link.bx, link.by) - half;
+  if (x < link.minX - half || x > link.maxX + half || y < link.minY - half || y > link.maxY + half) return false;
+  return distanceToSegment(x, y) <= half;
 }
 
 export function waterSdf(x: number, y: number, margin = 0): number {
@@ -103,20 +148,20 @@ export function waterSdf(x: number, y: number, margin = 0): number {
 }
 
 export function isInPool(x: number, y: number, margin = 0): boolean {
-  return waterSdf(x, y, margin) <= 0;
+  return inOpeningPool(x, y, margin) || inInletPool(x, y, margin) || inChannel(x, y, margin);
 }
 
 export function inOpeningPool(x: number, y: number, margin = 0): boolean {
-  return ellipseSdf(x, y, OPENING_POOL, margin) <= 0;
+  return inEllipse(x, y, OPENING_POOL, margin);
 }
 
 export function inInletPool(x: number, y: number, margin = 0): boolean {
-  return ellipseSdf(x, y, INLET_POOL, margin) <= 0;
+  return inEllipse(x, y, INLET_POOL, margin);
 }
 
 export function containingPool(x: number, y: number, margin = 0): HabitatPool | null {
   for (const pool of HABITAT_POOLS) {
-    if (ellipseSdf(x, y, pool, margin) <= 0) return pool;
+    if (inEllipse(x, y, pool, margin)) return pool;
   }
   return null;
 }
@@ -146,12 +191,10 @@ function confineToChannel(point: Point, margin: number): void {
   const half = HABITAT_CHANNEL.width / 2 - margin;
   if (half <= 0) return;
   const link = channel();
-  const abx = link.bx - link.ax;
-  const aby = link.by - link.ay;
-  const span = abx * abx + aby * aby;
-  const t = span === 0 ? 0 : clamp(((point.x - link.ax) * abx + (point.y - link.ay) * aby) / span, 0, 1);
-  const cx = link.ax + t * abx;
-  const cy = link.ay + t * aby;
+  const t =
+    link.span === 0 ? 0 : clamp(((point.x - link.ax) * link.abx + (point.y - link.ay) * link.aby) / link.span, 0, 1);
+  const cx = link.ax + t * link.abx;
+  const cy = link.ay + t * link.aby;
   const dx = point.x - cx;
   const dy = point.y - cy;
   const distance = Math.hypot(dx, dy);
@@ -191,15 +234,46 @@ export function confineToWater(point: Point, margin: number): void {
   point.y = bestY;
 }
 
+let flowElapsed = NaN;
+let flowValue = 0;
+
 export function channelFlowAt(elapsed: number): number {
-  return Math.sin((elapsed / CHANNEL_PERIOD) * Math.PI * 2) * HABITAT_CHANNEL.flow;
+  if (elapsed !== flowElapsed) {
+    flowElapsed = elapsed;
+    flowValue = Math.sin((elapsed / CHANNEL_PERIOD) * Math.PI * 2) * HABITAT_CHANNEL.flow;
+  }
+  return flowValue;
 }
 
-export function channelVelocity(body: Point, elapsed: number, scale: number): Point {
-  const sdf = channelSdf(body.x, body.y, 0);
-  if (sdf > CHANNEL_INFLUENCE) return { x: 0, y: 0 };
-  const strength = sdf <= 0 ? 1 : 1 - sdf / CHANNEL_INFLUENCE;
-  const flow = channelFlowAt(elapsed) * strength * scale;
+export function channelVelocity(body: Point, elapsed: number, scale: number, out?: Point): Point {
+  const result = out ?? { x: 0, y: 0 };
   const link = channel();
-  return { x: link.ux * flow, y: link.uy * flow };
+  const reach = HABITAT_CHANNEL.width / 2 + CHANNEL_INFLUENCE;
+  if (
+    body.x < link.minX - reach ||
+    body.x > link.maxX + reach ||
+    body.y < link.minY - reach ||
+    body.y > link.maxY + reach
+  ) {
+    result.x = 0;
+    result.y = 0;
+    return result;
+  }
+  const flow = channelFlowAt(elapsed);
+  if (flow === 0) {
+    result.x = 0;
+    result.y = 0;
+    return result;
+  }
+  const sdf = distanceToSegment(body.x, body.y) - HABITAT_CHANNEL.width / 2;
+  if (sdf > CHANNEL_INFLUENCE) {
+    result.x = 0;
+    result.y = 0;
+    return result;
+  }
+  const strength = sdf <= 0 ? 1 : 1 - sdf / CHANNEL_INFLUENCE;
+  const speed = flow * strength * scale;
+  result.x = link.ux * speed;
+  result.y = link.uy * speed;
+  return result;
 }

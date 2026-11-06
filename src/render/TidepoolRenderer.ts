@@ -12,8 +12,15 @@ import {
   type Tool,
   type World,
 } from '../world/types';
-import { HABITAT_POOLS, channelFlowAt, channelSegment, poolCoastPoint } from '../world/habitat';
-import { createBloom, createBody, createTerrain, poolPoint } from './terrain';
+import {
+  HABITAT_POOLS,
+  INLET_POOL,
+  OPENING_POOL,
+  channelFlowAt,
+  channelSegment,
+  poolCoastPoint,
+} from '../world/habitat';
+import { createBloom, createBody, createTerrain } from './terrain';
 import {
   clampCameraView,
   fitHabitatCamera,
@@ -299,8 +306,8 @@ export class TidepoolRenderer {
     for (const pool of HABITAT_POOLS) this.tracePool(pool);
     const link = channelSegment();
     const half = link.width / 2;
-    const nx = -link.uy;
-    const ny = link.ux;
+    const nx = link.uy;
+    const ny = -link.ux;
     const start = Math.atan2(ny, nx);
     this.mask.moveTo(link.ax + nx * half, link.ay + ny * half);
     this.mask.lineTo(link.bx + nx * half, link.by + ny * half);
@@ -1085,7 +1092,8 @@ export class TidepoolRenderer {
       const progress = phase - cycle;
       const angle = ring * 2.3999632297 + cycle * 0.73;
       const distribution = (ring * 0.41421356237 + cycle * 0.61803398875) % 1;
-      const position = poolPoint(angle, Math.sqrt(distribution) * 0.94);
+      const pool = ring % 5 === 4 ? INLET_POOL : OPENING_POOL;
+      const position = poolCoastPoint(pool, angle, Math.sqrt(distribution) * 0.94);
       const radius = 3 + progress * (18 + (ring % 6) * 3);
       const alpha = intensity * Math.sin(progress * Math.PI) * 0.26;
       this.rain.circle(position.x, position.y, radius).stroke({ color: 0xb2cbc0, width: 1.05, alpha });
