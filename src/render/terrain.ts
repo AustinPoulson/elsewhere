@@ -31,8 +31,8 @@ function coastline(ctx: CanvasRenderingContext2D, scale = 1, depth = 0, pool: Ha
 function channelWater(ctx: CanvasRenderingContext2D, scale = 1): void {
   const link = channelSegment();
   const half = (link.width / 2) * scale;
-  const nx = -link.uy;
-  const ny = link.ux;
+  const nx = link.uy;
+  const ny = -link.ux;
   const start = Math.atan2(ny, nx);
   ctx.beginPath();
   ctx.moveTo(link.ax + nx * half, link.ay + ny * half);
