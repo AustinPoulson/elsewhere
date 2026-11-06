@@ -23,6 +23,7 @@ import { getDaylight } from './world/environment/daylight';
 import { describeBulk, describeDrive } from './world/traits';
 import { MAX_CURRENTS } from './world/actions/current';
 import { FOSSIL_LABEL } from './world/species/fossils';
+import { OPENING_POOL } from './world/habitat';
 import { isInPool, LIMITS, WORLD_HEIGHT, WORLD_WIDTH } from './world/types';
 import type { Point, Tool, World } from './world/types';
 
@@ -112,6 +113,7 @@ export function App() {
   const stirRef = useRef(new StirController());
   const [stirring, setStirring] = useState(false);
   const pointerOwnerRef = useRef<number | null>(null);
+  const lookingRef = useRef<{ x: number; y: number } | null>(null);
   const [carrying, setCarrying] = useState(false);
   const keyboardRef = useRef(false);
   const lastPlaceRef = useRef(0);
@@ -387,6 +389,16 @@ export function App() {
     rendererRef.current?.setReducedMotion(reducedMotion);
   }, [reducedMotion, ready]);
   useEffect(() => {
+    const host = hostRef.current;
+    if (!host || !ready) return;
+    function onWheel(event: WheelEvent): void {
+      event.preventDefault();
+      rendererRef.current?.zoomAt(event.deltaY < 0 ? 1.08 : 1 / 1.08);
+    }
+    host.addEventListener('wheel', onWheel, { passive: false });
+    return () => host.removeEventListener('wheel', onWheel);
+  }, [ready]);
+  useEffect(() => {
     if (!panel) return;
     const previousFocus = document.activeElement as HTMLElement;
     panelRef.current?.querySelector<HTMLButtonElement>('button')?.focus();
@@ -411,6 +423,7 @@ export function App() {
         setPanel(null);
         setSelectedId(null);
         heldRef.current = false;
+        lookingRef.current = null;
         cancelCarry(true);
         return;
       }
@@ -540,7 +553,11 @@ export function App() {
     cursorRef.current = point;
     keyboardRef.current = false;
     hostRef.current?.focus({ preventScroll: true });
-    if (tool === 'stir') {
+    if (tool !== 'stir' && tool !== 'carry' && !isInPool(point.x, point.y)) {
+      lookingRef.current = { x: event.clientX, y: event.clientY };
+      pointerOwnerRef.current = event.pointerId;
+      setHintVisible(false);
+    } else if (tool === 'stir') {
       beginStir(point, 'pointer');
       if (stirRef.current.state) pointerOwnerRef.current = event.pointerId;
     } else if (tool === 'carry') {
@@ -548,7 +565,7 @@ export function App() {
       beginCarry(point, 'pointer');
       if (carryRef.current.state) pointerOwnerRef.current = event.pointerId;
     } else activateAt(point);
-    heldRef.current = tool === 'light';
+    heldRef.current = tool === 'light' && lookingRef.current === null;
     lastPlaceRef.current = performance.now();
     event.currentTarget.setPointerCapture(event.pointerId);
   }
@@ -556,12 +573,41 @@ export function App() {
     if (!ready || !event.isPrimary || (pointerOwnerRef.current !== null && pointerOwnerRef.current !== event.pointerId))
       return;
     keyboardRef.current = false;
+    if (lookingRef.current) {
+      rendererRef.current!.panByScreen(event.clientX - lookingRef.current.x, event.clientY - lookingRef.current.y);
+      lookingRef.current = { x: event.clientX, y: event.clientY };
+      return;
+    }
     cursorRef.current = rendererRef.current!.screenToWorld(event.clientX, event.clientY);
     if (carryRef.current.state) carryRef.current.update(cursorRef.current.x, cursorRef.current.y);
     stirRef.current.update(cursorRef.current);
   }
   function habitatKey(event: KeyboardEvent<HTMLDivElement>) {
-    const point = cursorRef.current ?? { x: WORLD_WIDTH / 2, y: WORLD_HEIGHT / 2 };
+    const point = cursorRef.current ?? { x: OPENING_POOL.x, y: OPENING_POOL.y };
+    const renderer = rendererRef.current;
+    if (event.key === 'Home') {
+      event.preventDefault();
+      renderer?.resetView();
+      return;
+    }
+    if (event.key === '+' || event.key === '=') {
+      event.preventDefault();
+      renderer?.zoomAt(1.08);
+      return;
+    }
+    if (event.key === '-' || event.key === '_') {
+      event.preventDefault();
+      renderer?.zoomAt(1 / 1.08);
+      return;
+    }
+    if (event.shiftKey && event.key.startsWith('Arrow')) {
+      event.preventDefault();
+      if (!renderer) return;
+      const dx = event.key === 'ArrowRight' ? -48 : event.key === 'ArrowLeft' ? 48 : 0;
+      const dy = event.key === 'ArrowDown' ? -48 : event.key === 'ArrowUp' ? 48 : 0;
+      renderer.panByScreen(dx, dy);
+      return;
+    }
     if (event.key.startsWith('Arrow')) {
       event.preventDefault();
       const renderer = rendererRef.current;
@@ -778,12 +824,23 @@ export function App() {
           if (!event.isPrimary || (pointerOwnerRef.current !== null && pointerOwnerRef.current !== event.pointerId))
             return;
           heldRef.current = false;
+          if (lookingRef.current) {
+            lookingRef.current = null;
+            pointerOwnerRef.current = null;
+            return;
+          }
           if (stirRef.current.state?.input === 'pointer')
             finishStir(rendererRef.current!.screenToWorld(event.clientX, event.clientY));
           if (carryRef.current.state?.input === 'pointer')
             finishCarry(rendererRef.current!.screenToWorld(event.clientX, event.clientY));
         }}
         onPointerCancel={(event) => {
+          if (lookingRef.current && pointerOwnerRef.current === event.pointerId) {
+            lookingRef.current = null;
+            pointerOwnerRef.current = null;
+            heldRef.current = false;
+            return;
+          }
           if (tool !== 'carry' && tool !== 'stir') heldRef.current = false;
           else if (pointerOwnerRef.current === event.pointerId) {
             heldRef.current = false;
@@ -791,6 +848,12 @@ export function App() {
           }
         }}
         onLostPointerCapture={(event) => {
+          if (lookingRef.current && pointerOwnerRef.current === event.pointerId) {
+            lookingRef.current = null;
+            pointerOwnerRef.current = null;
+            heldRef.current = false;
+            return;
+          }
           if (tool !== 'carry' && tool !== 'stir') heldRef.current = false;
           else if (pointerOwnerRef.current === event.pointerId) {
             heldRef.current = false;
@@ -802,7 +865,7 @@ export function App() {
             cursorRef.current = null;
         }}
         onFocus={() => {
-          if (!cursorRef.current) cursorRef.current = { x: WORLD_WIDTH / 2, y: WORLD_HEIGHT / 2 };
+          if (!cursorRef.current) cursorRef.current = { x: OPENING_POOL.x, y: OPENING_POOL.y };
         }}
         onBlur={() => {
           heldRef.current = false;
@@ -968,7 +1031,10 @@ export function App() {
                   ? 'Draw a short path · Release or Enter to stir · Escape cancels'
                   : 'Draw a short stroke to carry life and color'
                 : 'Touch a creature to observe'}
-          <span className="keyboard-hint"> · Arrows + Enter when the pool is focused</span>
+          <span className="keyboard-hint">
+            {' '}
+            · Arrows + Enter when the pool is focused · Drag the stone or Shift+arrows to look south
+          </span>
         </div>
         <nav className="tool-dock" aria-label="Tidepool tools">
           <button
@@ -1345,6 +1411,18 @@ export function App() {
                 <div className="guide-entry">
                   <span className="entry-number">18</span>
                   <div>
+                    <h3>A second shore</h3>
+                    <p>
+                      South of the opening tidepool, a narrower inlet waits beyond a slow channel. Drag the surrounding
+                      stone, hold Shift with the arrows, or use + and − to look around; Home returns to the first shore.
+                      A current in the neck carries loose color and drifting bodies without teleporting them. The inlet
+                      begins empty: nothing is granted there. What lives in it arrives by water, or not at all.
+                    </p>
+                  </div>
+                </div>
+                <div className="guide-entry">
+                  <span className="entry-number">19</span>
+                  <div>
                     <h3>While you were gone</h3>
                     <p>
                       Closing the page lets the pool live on its own, up to eight hours of remembered time. Brief
@@ -1363,7 +1441,9 @@ export function App() {
                     <kbd>R</kbd> Call rain <kbd>Space</kbd> Pause
                   </p>
                   <p>
-                    Tab to the pool, move with arrow keys, then press Enter. <kbd>Esc</kbd> closes these notes.
+                    Tab to the pool, move with arrow keys, then press Enter. <kbd>Shift</kbd>+arrows look around.{' '}
+                    <kbd>+</kbd> <kbd>-</kbd> zoom. <kbd>Home</kbd> returns to the first shore. <kbd>Esc</kbd> closes
+                    these notes.
                   </p>
                 </div>
               </>

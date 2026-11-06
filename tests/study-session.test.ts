@@ -58,6 +58,8 @@ describe('safe shower study', () => {
       marlgrubCandidateAfterId: _marlgrubCandidateAfterId,
       lastSeenAt: _lastSeenAt,
       fossils: _fossils,
+      pools: _pools,
+      channel: _channel,
       organisms,
       grazers,
       ...normalizedEcology
@@ -212,6 +214,8 @@ describe('safe shower study', () => {
     delete legacy.foundingTypeCursor;
     delete legacy.lastSeenAt;
     delete legacy.fossils;
+    delete legacy.pools;
+    delete legacy.channel;
     for (const entry of legacy.organisms) delete entry.pigmentCredit;
     expect(session.importSnapshot(JSON.stringify(legacy), session.importToken())).toBe('imported');
     expect(session.world.version).toBe(3);

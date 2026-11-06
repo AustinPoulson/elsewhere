@@ -1,4 +1,5 @@
 import { confinePosition } from './geometry';
+import { channelVelocity } from './habitat';
 import { CURRENT_SPEED, MAX_CURRENT_SPEED, SEDIMENT_DRIFT, currentStrength } from './actions/current';
 import type { Point, World } from './types';
 
@@ -16,13 +17,15 @@ function currentVelocity(world: World, body: Point, scale: number, out: Point): 
   }
   const magnitude = Math.hypot(vx, vy);
   if (magnitude === 0) {
-    out.x = 0;
-    out.y = 0;
+    const link = channelVelocity(body, world.elapsed, scale);
+    out.x = link.x;
+    out.y = link.y;
     return out;
   }
   const bounded = Math.min(1, MAX_CURRENT_SPEED / magnitude) * scale;
-  out.x = vx * bounded;
-  out.y = vy * bounded;
+  const link = channelVelocity(body, world.elapsed, scale);
+  out.x = vx * bounded + link.x;
+  out.y = vy * bounded + link.y;
   return out;
 }
 
@@ -45,7 +48,6 @@ export function applyCurrentDrift(world: World, dt: number): void {
   for (const current of world.currents)
     if (currentStrength(current, world.elapsed) > 0) world.currents[write++] = current;
   world.currents.length = write;
-  if (write === 0) return;
   for (const body of world.organisms) drift(world, body, dt, 1, body.size + 3);
   for (const body of world.grazers) drift(world, body, dt, 1, body.size + 3);
   for (const body of world.skimmers) drift(world, body, dt, 1, body.size + 3);

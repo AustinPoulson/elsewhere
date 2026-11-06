@@ -1,5 +1,6 @@
 import { sedimentCurrentVelocity } from '../currents';
-import { isInPool, poolRadius, WORLD_HEIGHT, WORLD_WIDTH, type GlassLimpet, type Sediment, type World } from '../types';
+import { containingPool, shoreRho } from '../habitat';
+import type { GlassLimpet, Sediment, World } from '../types';
 import { baselineTraits } from '../traits';
 import { activeNewTypePopulation, NEW_TYPE_POPULATION_CAP, SPECIES_CATALOG } from './catalog';
 import { AdmissionSources } from './admission-sources';
@@ -10,10 +11,9 @@ const RULE = SPECIES_CATALOG.glassLimpet;
 const indexes = new WeakMap<World, Map<number, Sediment>>();
 
 function legalShore(x: number, y: number): boolean {
-  if (!isInPool(x, y, RULE.margin)) return false;
-  const nx = (x - WORLD_WIDTH / 2) / 610;
-  const ny = (y - WORLD_HEIGHT / 2) / 400;
-  const rho = Math.hypot(nx, ny) / poolRadius(Math.atan2(ny, nx));
+  const pool = containingPool(x, y, RULE.margin);
+  if (!pool) return false;
+  const rho = shoreRho(x, y, pool);
   return rho >= RULE.shoreMin && rho <= RULE.shoreMax;
 }
 

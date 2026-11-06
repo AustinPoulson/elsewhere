@@ -1,16 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { addLight, createWorld, getStats, initializeGrazers, stepWorld } from '../src/world/simulation';
 import { restoreWorld, serializeWorld } from '../src/world/persistence';
-import {
-  GRAZER_CAPACITY,
-  LIMITS,
-  NEST_CAPACITY,
-  WORLD_HEIGHT,
-  WORLD_WIDTH,
-  isInPool,
-  poolRadius,
-  type World,
-} from '../src/world/types';
+import { GRAZER_CAPACITY, LIMITS, NEST_CAPACITY, isInPool, poolRadius, type World } from '../src/world/types';
 
 function run(world: World, steps: number): void {
   for (let i = 0; i < steps; i++) stepWorld(world);
@@ -81,6 +72,8 @@ function legacyPayload(world: World): string {
     marlgrubCandidateAfterId: _marlgrubCandidateAfterId,
     lastSeenAt: _lastSeenAt,
     fossils: _fossils,
+    pools: _pools,
+    channel: _channel,
     organisms,
     ...legacy
   } = world;
@@ -214,8 +207,8 @@ describe('pigment grazers', () => {
     const radius = poolRadius(angle) * 0.998;
     const margin = grazer.size + 3;
     Object.assign(grazer, {
-      x: WORLD_WIDTH / 2 + Math.cos(angle) * radius * (610 - margin),
-      y: WORLD_HEIGHT / 2 + Math.sin(angle) * radius * (400 - margin),
+      x: 720 + Math.cos(angle) * radius * (610 - margin),
+      y: 500 + Math.sin(angle) * radius * (400 - margin),
       vx: Math.cos(angle) * 80,
       vy: Math.sin(angle) * 80,
     });

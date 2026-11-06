@@ -1,4 +1,5 @@
-import { WORLD_HEIGHT, WORLD_WIDTH, poolRadius } from '../world/types';
+import { channelSegment, INLET_POOL, OPENING_POOL, poolCoastPoint } from '../world/habitat';
+import { WORLD_HEIGHT, WORLD_WIDTH, type HabitatPool } from '../world/types';
 
 const TAU = Math.PI * 2;
 
@@ -11,22 +12,34 @@ function seededRandom(seed: number): () => number {
 }
 
 export function poolPoint(angle: number, scale = 1): { x: number; y: number } {
-  const radius = poolRadius(angle) * scale;
-  return {
-    x: WORLD_WIDTH / 2 + Math.cos(angle) * 610 * radius,
-    y: WORLD_HEIGHT / 2 + Math.sin(angle) * 400 * radius,
-  };
+  return poolCoastPoint(OPENING_POOL, angle, scale);
 }
 
-function coastline(ctx: CanvasRenderingContext2D, scale = 1, depth = 0): void {
+function coastline(ctx: CanvasRenderingContext2D, scale = 1, depth = 0, pool: HabitatPool = OPENING_POOL): void {
   ctx.beginPath();
-  for (let i = 0; i <= 256; i++) {
-    const angle = (i / 256) * TAU;
+  const steps = pool.id === 1 ? 256 : 160;
+  for (let i = 0; i <= steps; i++) {
+    const angle = (i / steps) * TAU;
     const variation = depth * (Math.sin(angle * 4 + scale * 5) * 0.009 + Math.cos(angle * 7) * 0.005);
-    const point = poolPoint(angle, scale + variation);
+    const point = poolCoastPoint(pool, angle, scale + variation);
     if (i === 0) ctx.moveTo(point.x, point.y);
     else ctx.lineTo(point.x, point.y);
   }
+  ctx.closePath();
+}
+
+function channelWater(ctx: CanvasRenderingContext2D, scale = 1): void {
+  const link = channelSegment();
+  const half = (link.width / 2) * scale;
+  const nx = -link.uy;
+  const ny = link.ux;
+  const start = Math.atan2(ny, nx);
+  ctx.beginPath();
+  ctx.moveTo(link.ax + nx * half, link.ay + ny * half);
+  ctx.lineTo(link.bx + nx * half, link.by + ny * half);
+  ctx.arc(link.bx, link.by, half, start, start + Math.PI);
+  ctx.lineTo(link.ax - nx * half, link.ay - ny * half);
+  ctx.arc(link.ax, link.ay, half, start + Math.PI, start);
   ctx.closePath();
 }
 
@@ -174,11 +187,99 @@ export function createTerrain(): HTMLCanvasElement {
     }
   }
 
+  for (let layer = 12; layer >= 0; layer--) {
+    const scale = 1.014 + layer * 0.017;
+    coastline(ctx, scale, layer / 20, INLET_POOL);
+    ctx.strokeStyle = layer % 3 === 0 ? 'rgba(150,160,133,.09)' : 'rgba(91,121,105,.1)';
+    ctx.lineWidth = layer % 4 === 0 ? 1.1 : 0.55;
+    ctx.stroke();
+  }
+  for (let stone = 0; stone < 40; stone++) {
+    const angle = random() * TAU;
+    const position = poolCoastPoint(INLET_POOL, angle, 1.055 + random() * 0.32);
+    const radius = 3 + random() * 14;
+    ctx.save();
+    ctx.translate(position.x, position.y);
+    ctx.rotate(random() * TAU);
+    ctx.beginPath();
+    for (let j = 0; j < 8; j++) {
+      const a = (j / 8) * TAU;
+      const r = radius * (0.7 + random() * 0.35);
+      const x = Math.cos(a) * r * 1.4;
+      const y = Math.sin(a) * r * 0.7;
+      if (j === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fillStyle = `rgba(25,42,36,${0.15 + random() * 0.5})`;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(137,150,119,.15)';
+    ctx.lineWidth = 0.6;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  const inletWater = ctx.createRadialGradient(730, 1240, 40, 760, 1290, 320);
+  inletWater.addColorStop(0, '#071a22');
+  inletWater.addColorStop(0.55, '#0c2a2f');
+  inletWater.addColorStop(1, '#1d403c');
+  channelWater(ctx);
+  ctx.fillStyle = inletWater;
+  ctx.fill();
+  coastline(ctx, 1, 0, INLET_POOL);
+  ctx.fillStyle = inletWater;
+  ctx.fill();
+
+  ctx.save();
+  coastline(ctx, 1, 0, INLET_POOL);
+  ctx.clip();
+  for (let layer = 0; layer < 12; layer++) {
+    const scale = 0.92 - layer * 0.042;
+    coastline(ctx, scale, (1 - scale) * 1.8, INLET_POOL);
+    ctx.strokeStyle = `rgba(94,153,137,${0.02 + scale * 0.055})`;
+    ctx.lineWidth = layer % 4 === 0 ? 0.8 : 0.45;
+    ctx.stroke();
+  }
+  for (let grain = 0; grain < 1600; grain++) {
+    const x = INLET_POOL.x - 280 + random() * 560;
+    const y = INLET_POOL.y - 220 + random() * 440;
+    ctx.fillStyle = grain % 5 === 0 ? 'rgba(177,180,127,.1)' : 'rgba(105,156,134,.06)';
+    ctx.fillRect(x, y, random() * 0.7 + 0.2, random() * 0.7 + 0.2);
+  }
+  ctx.restore();
+
+  coastline(ctx, 1.001, 0, INLET_POOL);
+  ctx.strokeStyle = 'rgba(137,162,126,.3)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  coastline(ctx, 1.018, 0, INLET_POOL);
+  ctx.strokeStyle = 'rgba(130,146,119,.14)';
+  ctx.lineWidth = 0.7;
+  ctx.stroke();
+  for (let grain = 0; grain < 800; grain++) {
+    const angle = random() * TAU;
+    const position = poolCoastPoint(INLET_POOL, angle, 1.006 + Math.pow(random(), 2.7) * 0.19);
+    ctx.fillStyle = `rgba(202,190,147,${0.08 + random() * 0.24})`;
+    ctx.beginPath();
+    ctx.arc(position.x, position.y, 0.25 + random() * 1.1, 0, TAU);
+    ctx.fill();
+  }
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 0, WORLD_WIDTH, 1040);
+  ctx.clip();
   const vignette = ctx.createRadialGradient(720, 480, 350, 720, 480, 780);
   vignette.addColorStop(0, 'rgba(2,13,16,0)');
   vignette.addColorStop(1, 'rgba(2,13,16,.47)');
   ctx.fillStyle = vignette;
-  ctx.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+  ctx.fillRect(0, 0, WORLD_WIDTH, 1040);
+  ctx.restore();
+  const inletVignette = ctx.createRadialGradient(745, 1260, 90, 745, 1275, 420);
+  inletVignette.addColorStop(0, 'rgba(2,13,16,0)');
+  inletVignette.addColorStop(1, 'rgba(2,13,16,.34)');
+  ctx.fillStyle = inletVignette;
+  ctx.fillRect(400, 1040, 700, 520);
 
   // Fade into the renderer clear color on every edge, including portrait letterboxing.
   const fade = 80;

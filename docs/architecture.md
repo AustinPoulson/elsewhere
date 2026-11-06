@@ -1,6 +1,6 @@
 # Architecture
 
-Elsewhere is a browser simulation and an art site. The first habitat uses a fixed overhead camera. Entities already live in world coordinates, so a later camera can pan or zoom without changing their behavior.
+Elsewhere is a browser simulation and an art site. The first habitat opens on a composed overhead frame of the original tidepool. Entities live in world coordinates, so a visitor can pan or zoom to a southern inlet without rewriting organism behavior.
 
 ## Boundaries
 
@@ -16,7 +16,7 @@ The renderer owns the animation loop. It advances the simulation with a fixed `1
 
 The main entry points are `src/world/types.ts`, `src/world/simulation.ts`, `src/world/persistence.ts`, `src/render/TidepoolRenderer.ts`, `src/render/camera.ts`, `src/app/clock.ts`, and `src/App.tsx`.
 
-The world dimensions are `1440 × 1000`. A shared pool boundary keeps organisms, placement hit testing, and the drawn coastline in agreement. Viewport resizing changes the camera fit rather than rewriting organism positions. Narrow portrait screens rotate the habitat 90 degrees; input and keyboard movement use the same inverse camera transform.
+The world dimensions are `1440 × 1560`. The opening tidepool still occupies the original `1440 × 1000` frame centered at `(720, 500)`. A smaller inlet sits south of a 72-unit channel. Shared water tests (`isInPool`) include both basins and the neck, so placement, confinement, and the drawn coastline stay in agreement. The camera opens fitted to that first frame; pan/zoom can look at the inlet. Viewport resizing changes the camera fit rather than rewriting organism positions. Narrow portrait screens rotate the habitat 90 degrees; input and keyboard movement use the same inverse camera transform.
 
 ## The first relationship
 
@@ -32,7 +32,7 @@ One type definition describes the world and its entities. A seeded random state 
 
 ## Directional water
 
-`world/actions/current.ts` validates bounded 24–240-unit strokes and creates at most three fields. `world/currents.ts` applies decaying radial drift after creature locomotion: up to12 units/second per field, combined clamp16; sediment follows at0.35. Physiological velocity, light, homes and resource amounts are unchanged. Shared geometry confines displacement without creating resources. Each field expires after eight simulated seconds; pause and snapshots hold its age.
+`world/actions/current.ts` validates bounded 24–240-unit strokes and creates at most three fields. `world/currents.ts` applies decaying radial drift after creature locomotion: up to12 units/second per field, combined clamp16; sediment follows at0.35. A separate authored channel current, capped at 4.8 units/second and reversing every 180 world seconds from elapsed time, carries pigment and already-drifting bodies through the neck. It does not count against the three visitor fields and grants no bodies or color. Physiological velocity, light, homes and resource amounts are unchanged. Shared geometry confines displacement without creating resources. Each visitor field expires after eight simulated seconds; pause and snapshots hold its age. The channel current is habitat physics, not a stored visitor stroke.
 
 `app/stir.ts` owns ephemeral strokes and refuses cross-world commits. Pointer ownership, keyboard arrows/Enter, cancellation, blur and world transitions keep preview state separate from saved ecology. The renderer uses the same lifetime strength, bounded ribbons/arrows and static reduced-motion directions. No velocity grid, particles, history or background simulation is introduced.
 
@@ -62,18 +62,22 @@ The current explicit budgets are:
 | Successful new-body allocations                           | 1 per 6 ticks across types and event offers |
 | Rain ringlet slots (renderer only)                        |                                          48 |
 | Light floor patches (renderer only)                       |                                          32 |
-| Active currents                                           |                                           3 |
+| Pools                                                     |                                           2 |
+| Habitat links                                             |                                           1 |
+| Active visitor currents                                   |                                           3 |
 | Current arrows, including gesture preview (renderer only) |                                          12 |
+| Channel current arrows (renderer only)                    |                                           4 |
+| Inlet caustic ribbons (renderer only)                     |                                           4 |
 
 New behavior must respect a budget. Accumulated visual history must age, compact, or remain capped. A beautiful trail should not become an unbounded list of draw calls after a long visit. Existing simple rules and loops are easier to inspect than a general plugin or entity framework at this stage.
 
 ## Snapshots and browser saves
 
-World snapshots use version `3` with `schemaRevision: 12`. They include bounded populations and admission cursors/deadlines for skimmers, reedwells, rainbells, siltstitchers, glass limpets, cargo mites and marlgrubs; remain cells; fossils; the shared `nextFoundingTick` and `foundingTypeCursor`; `ecologyLedger`, lucent `pigmentCredit`, heritable traits, `currents`, `weatherCall: { startedAt, nextAllowedAt }`, and `lastSeenAt` (a wall-clock millisecond stamp or `null`). They also include the seed, random state, clock/tick, next entity ID, entities, cumulative light consumption, grazer cargo and home references, and nest pigment. This lets a snapshot resume the world rather than merely reproducing its opening seed. Pause/tool selection and temporary rendering state belong to the interface rather than ecological history. The while-you-were-gone journal is generated at catch-up time and is not stored in the snapshot.
+World snapshots use version `3` with `schemaRevision: 13`. They include two authored pools and one channel; bounded populations and admission cursors/deadlines for skimmers, reedwells, rainbells, siltstitchers, glass limpets, cargo mites and marlgrubs; remain cells; fossils; the shared `nextFoundingTick` and `foundingTypeCursor`; `ecologyLedger`, lucent `pigmentCredit`, heritable traits, `currents`, `weatherCall: { startedAt, nextAllowedAt }`, and `lastSeenAt` (a wall-clock millisecond stamp or `null`). They also include the seed, random state, clock/tick, next entity ID, entities, cumulative light consumption, grazer cargo and home references, and nest pigment. This lets a snapshot resume the world rather than merely reproducing its opening seed. Pause/tool selection and temporary rendering state belong to the interface rather than ecological history. The while-you-were-gone journal is generated at catch-up time and is not stored in the snapshot. Camera pan/zoom is not saved.
 
 Imports check the version, numeric ranges, collection limits, entity shapes, and identifiers before replacing the active world. A rejected import leaves the current world intact and shows visible feedback. A successful import stamps `lastSeenAt` to the present and skips catch-up, so restoring a frozen file is not treated as time away; the existing notice names the return. Local storage failures are visible without preventing play. Future schema changes need either an explicit migration or a clear unsupported-version message.
 
-The current importer accepts a selected JSON file of at most 2 MB and validates a snapshot string of at most 1,000,000 characters. It requires at least one lucent and unique IDs across all collections, with `nextId` larger than every existing ID. The pocket panel explains replacement before the file picker opens. Reset has its own confirmation dialog.
+The current importer accepts a selected JSON file of at most 2 MB and validates a snapshot string of at most 1,000,000 characters. It requires at least one lucent and unique IDs across all collections, with `nextId` larger than every existing ID. Linked-pool saves must match the authored two-basin habitat. The pocket panel explains replacement before the file picker opens. Reset has its own confirmation dialog.
 
 The browser is the runtime and storage owner. Closing the page suspends this ecosystem. There is no server, shared online world, account, or simulation running on GitHub Pages while visitors are away.
 
@@ -143,7 +147,9 @@ World3 revision 10-to-11 adds `lastSeenAt: null` without populations, remains, p
 
 When a mortal lineage has no living members, its remaining paid color stops leaching into ordinary fading sediment and settles as a fossil impression instead. Fossils are located pigment already paid into bodies and remains: they invent no bodies and no new color. Nearby impressions of the same type merge. The collection caps at 16; leftover pigment that cannot join an impression returns through the ordinary bounded grain path. Fossils do not fade, are not food, and drift with currents at the sediment scale. Remains from older saves migrate with `source: 'unknown'` and never fossilize, so a revision 11 world receives an empty fossil record.
 
-World3 revision 11-to-12 adds empty fossils, `fossilsFormed: 0`, and `source: 'unknown'` on existing remains. Present revision 12 requires those fields; hybrids that mix fossils into older revisions, and future revision 13, reject. Observe inspects an impression; the field journal can name a new mark after time away. The headless harness reports fossils by lineage. Linked pools and camera pan/zoom are still later work.
+World3 revision 11-to-12 adds empty fossils, `fossilsFormed: 0`, and `source: 'unknown'` on existing remains. Present revision 12 requires those fields; hybrids that mix fossils into older revisions reject.
+
+World3 revision 12-to-13 adds the authored second pool and channel without organisms, pigment, lights, or energy. Present revision 13 requires that exact habitat; hybrids that mix pools into older revisions, rewritten layouts, and future revision 14 reject. Opening worlds place life only in the first tidepool. The inlet is empty until color or bodies arrive through the neck.
 
 ## A brief for an agent addition
 
