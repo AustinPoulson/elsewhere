@@ -9,6 +9,8 @@ function previousRevision(world: World): Record<string, unknown> {
   previous.schemaRevision = 8;
   delete previous.lastSeenAt;
   delete previous.fossils;
+  delete previous.pools;
+  delete previous.channel;
   delete previous.ecologyLedger.ambientHarvested;
   delete previous.remains;
   delete previous.marlgrubs;
@@ -50,7 +52,7 @@ describe('heritable trait snapshot revision', () => {
     const source = JSON.stringify(old);
     const migrated = restoreWorld(source)!;
     expect(migrated).not.toBeNull();
-    expect(migrated.schemaRevision).toBe(12);
+    expect(migrated.schemaRevision).toBe(13);
     expect(migrated.remains).toEqual([]);
     expect(migrated.marlgrubs).toEqual([]);
     expect(migrated.cargoMites).toEqual([]);
@@ -152,7 +154,7 @@ describe('heritable trait snapshot revision', () => {
         delete w.ecologyLedger.ambientHarvested;
       },
       (w) => {
-        w.schemaRevision = 13;
+        w.schemaRevision = 14;
       },
       (w) => {
         w.schemaRevision = 8;

@@ -106,6 +106,8 @@ function revision3(world: World): Record<string, any> {
     marlgrubCandidateAfterId: _marlgrubCandidateAfterId,
     lastSeenAt: _lastSeenAt,
     fossils: _fossils,
+    pools: _pools,
+    channel: _channel,
     skimmerCandidateAfterId: _skimmerCandidate,
     ...previous
   } = structuredClone(world);
@@ -158,6 +160,8 @@ describe('reedwell snapshot revision', () => {
       marlgrubCandidateAfterId: _marlgrubCandidateAfterId,
       lastSeenAt: _lastSeenAt,
       fossils: _fossils,
+      pools: _pools,
+      channel: _channel,
       skimmerCandidateAfterId: _skimmerCandidate,
       ...oldFields
     } = restored;
@@ -197,7 +201,7 @@ describe('reedwell snapshot revision', () => {
     const before = JSON.stringify(historicalStudy);
     const restored = restoreWorld(before)!;
     expect(restored).toMatchObject({
-      schemaRevision: 12,
+      schemaRevision: 13,
       reedwells: [],
       reedwellAdmissionAt: historicalStudy.elapsed,
       reedwellCandidateAfterId: 0,
@@ -378,7 +382,7 @@ describe('reedwell snapshot revision', () => {
         w.nextId += 7;
       },
       (w) => {
-        w.schemaRevision = 13;
+        w.schemaRevision = 14;
       },
     ];
     for (const key of reedwellLedgerKeys) {

@@ -72,6 +72,8 @@ describe('carry a living light', () => {
       foundingTypeCursor: undefined,
       lastSeenAt: undefined,
       fossils: undefined,
+      pools: undefined,
+      channel: undefined,
       organisms: original.organisms.map(({ pigmentCredit: _credit, traits: _traits, ...entry }) => entry),
     };
     const world = restoreWorld(JSON.stringify(legacy))!;

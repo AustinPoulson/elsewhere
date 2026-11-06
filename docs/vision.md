@@ -14,7 +14,7 @@ Eventually: several pools linked by slow currents, and the world keeps living wh
 
 - [x] **Catching up on time spent away** — Simulate elapsed time when the user returns; generate a "while you were gone" journal. _Success: reopening after an hour shows the world has advanced; journal summarizes key events._
 
-- [ ] **Fossils, eras, and linked pools** — Fossils in sediment record extinct populations; multiple pools connected by slow currents allow migration. _Success: fossils visible in old sediment; organisms can move between pools._ **This slice: fossils / world memory in sediment.** Linked pools, currents between pools, camera pan/zoom, and migration remain open.
+- [x] **Fossils, eras, and linked pools** — Fossils in sediment record extinct populations; multiple pools connected by slow currents allow migration. _Success: fossils visible in old sediment; organisms can move between pools._ **This slice: linked pools, a slow channel current, and gentle pan/zoom.** Fossils already exist. A southern inlet is discoverable from the opening tidepool; pigment and drifting bodies can cross the channel. Named eras / snapshots remain open.
 
 ## Standing Invariants
 
@@ -93,4 +93,14 @@ _This section records surprising population dynamics, extinctions, or runaway re
 
 **A later return does not erase the mark:** Cargo mites and siltstitchers can empty and re-found. Fossils from those empty ticks stay in the sediment. Turnover can fill the cap with mite impressions; leftover remain color that cannot join an impression returns as ordinary pigment. That is the budget holding, not a new population.
 
-**Linked pools are still open:** This slice does not add a second pool, currents between pools, camera pan/zoom, or migration.
+### Linked pools and a southern inlet (seeds 1 and 42)
+
+**The opening shore stays the first scene:** Schema revision 13 stores two authored basins and one channel. The original tidepool is still centered at (720, 500); the camera still opens on that frame. A smaller inlet sits south of a slow neck. Opening worlds and revision-12 saves receive the habitat, not organisms, pigment, lights, or energy.
+
+**Crossing is drift, not a gift:** The neck is ordinary water. A persistent current along it reverses every three minutes from elapsed time, at most 4.8 world units/second for bodies and 0.35 of that for sediment. A grain or lucent placed in the mouth travels along the channel; it is never teleported to the inlet center. Opening worlds start with every lucent, grazer, nest, and grain inside the first pool.
+
+**30-day harness, no visitor light:** Seed 1 ended with 0.33 loose pigment, all of it in the inlet, and 5 mobile bodies there versus 25 still in the opening pool. Nested pigment (0.92) stayed with the opening nests. Seed 42 kept 0.50 loose pigment in the opening pool and sent 0.14 into the inlet, with 4 mobile bodies across versus 27 still in the opening pool. Nested pigment (1.43) stayed with the opening nests. Neither seed received free inlet life at t=0.
+
+**Discovery is looking, not a new tool:** Drag the stone, Shift+arrows, wheel or +/−, and Home to return. Portrait still rotates the same world; reduced motion still starts paused and applies camera changes immediately. Visitor stir currents remain capped at three, with four extra channel arrows.
+
+**Eras stay later:** Named snapshots of earlier worlds are still the open remainder of this roadmap step.

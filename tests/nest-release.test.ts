@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { addLight, createWorld, releaseNestPigment, stepWorld } from '../src/world/simulation';
 import { restoreWorld, serializeWorld } from '../src/world/persistence';
-import { LIMITS, WORLD_HEIGHT, WORLD_WIDTH, isInPool, poolRadius, type World } from '../src/world/types';
+import { LIMITS, isInPool, poolRadius, type World } from '../src/world/types';
 
 function run(world: World, steps: number): void {
   for (let i = 0; i < steps; i++) stepWorld(world);
@@ -79,8 +79,8 @@ describe('nest pigment release', () => {
       const angle = (i * Math.PI) / 6;
       const radius = poolRadius(angle) * 0.999999;
       Object.assign(nest, {
-        x: WORLD_WIDTH / 2 + Math.cos(angle) * radius * (610 - 18),
-        y: WORLD_HEIGHT / 2 + Math.sin(angle) * radius * (400 - 18),
+        x: 720 + Math.cos(angle) * radius * (610 - 18),
+        y: 500 + Math.sin(angle) * radius * (400 - 18),
         pigment: 3,
       });
       world.tick = i * 123;
@@ -254,6 +254,8 @@ describe('nest pigment release', () => {
       marlgrubCandidateAfterId: _marlgrubCandidateAfterId,
       lastSeenAt: _lastSeenAt,
       fossils: _fossils,
+      pools: _pools,
+      channel: _channel,
       organisms,
       ...fields
     } = legacy;

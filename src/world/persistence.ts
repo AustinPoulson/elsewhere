@@ -5,7 +5,6 @@ import {
   NEST_CAPACITY,
   REMAIN_CAPACITY,
   isInPool,
-  poolRadius,
   type Current,
   type Grazer,
   type LightSource,
@@ -25,6 +24,7 @@ import {
   type Traits,
   type World,
 } from './types';
+import { containingPool, isAuthoredHabitat, linkedHabitat, shoreRho } from './habitat';
 import { initializeGrazers } from './simulation';
 import { cargoMiteReserveCapacity } from './species/cargo-mite';
 import { isFossilSource, isRemainSource } from './species/fossils';
@@ -351,9 +351,9 @@ function glassLimpet(value: unknown, nextId: number, withTraits = false): boolea
     (withTraits && !traits(value.traits))
   )
     return false;
-  const nx = (value.x - 720) / 610;
-  const ny = (value.y - 500) / 400;
-  const rho = Math.hypot(nx, ny) / poolRadius(Math.atan2(ny, nx));
+  const pool = containingPool(value.x, value.y, 0);
+  if (!pool) return false;
+  const rho = shoreRho(value.x, value.y, pool);
   return range(rho, policy.shoreMin, policy.shoreMax);
 }
 
@@ -459,7 +459,8 @@ type Revision6Ledger = Omit<Revision7Ledger, (typeof GLASS_LIMPET_LEDGER_KEYS)[n
 type RainbellLedger = Omit<Revision6Ledger, (typeof SILTSTITCHER_LEDGER_KEYS)[number]>;
 type ReedwellLedger = Omit<RainbellLedger, (typeof RAINBELL_LEDGER_KEYS)[number]>;
 type PrismLedger = Omit<ReedwellLedger, (typeof REEDWELL_LEDGER_KEYS)[number]>;
-type Revision11World = Omit<World, 'schemaRevision' | 'fossils' | 'remains' | 'ecologyLedger'> & {
+type Revision12World = Omit<World, 'schemaRevision' | 'pools' | 'channel'> & { schemaRevision: 12 };
+type Revision11World = Omit<Revision12World, 'schemaRevision' | 'fossils' | 'remains' | 'ecologyLedger'> & {
   schemaRevision: 11;
   remains: Revision11Remain[];
   ecologyLedger: Revision11Ledger;
@@ -657,13 +658,23 @@ function migrateRevision10To11(previous: Revision10World): Revision11World {
   return { ...previous, schemaRevision: 11, lastSeenAt: null };
 }
 
-function migrateRevision11To12(previous: Revision11World): World {
+function migrateRevision11To12(previous: Revision11World): Revision12World {
   return {
     ...previous,
     schemaRevision: 12,
     fossils: [],
     remains: previous.remains.map((entry) => ({ ...entry, source: 'unknown' as const })),
     ecologyLedger: { ...previous.ecologyLedger, fossilsFormed: 0 },
+  };
+}
+
+function migrateRevision12To13(previous: Revision12World): World {
+  const habitat = linkedHabitat();
+  return {
+    ...previous,
+    schemaRevision: 13,
+    pools: habitat.pools,
+    channel: habitat.channel,
   };
 }
 
@@ -694,12 +705,12 @@ export function restoreWorld(input: string): World | null {
 
   if (
     (parsed.version === 3 &&
-      (!integer(parsed.schemaRevision, 1, 12) || !weatherCall(parsed.weatherCall, parsed.elapsed))) ||
+      (!integer(parsed.schemaRevision, 1, 13) || !weatherCall(parsed.weatherCall, parsed.elapsed))) ||
     (parsed.version !== 3 && ('schemaRevision' in parsed || 'weatherCall' in parsed || 'currents' in parsed))
   )
     return null;
   let currents: Current[] = [];
-  if (parsed.version === 3 && integer(parsed.schemaRevision, 2, 12)) {
+  if (parsed.version === 3 && integer(parsed.schemaRevision, 2, 13)) {
     if (
       !Array.isArray(parsed.currents) ||
       parsed.currents.length > MAX_CURRENTS ||
@@ -709,7 +720,8 @@ export function restoreWorld(input: string): World | null {
     currents = parsed.currents as Current[];
   } else if ('currents' in parsed) return null;
 
-  const fossilsRevision = parsed.version === 3 && parsed.schemaRevision === 12;
+  const linkedRevision = parsed.version === 3 && parsed.schemaRevision === 13;
+  const fossilsRevision = parsed.version === 3 && (parsed.schemaRevision === 12 || linkedRevision);
   const catchUpRevision = parsed.version === 3 && (parsed.schemaRevision === 11 || fossilsRevision);
   const remainsRevision = parsed.version === 3 && (parsed.schemaRevision === 10 || catchUpRevision);
   const traitRevision = parsed.version === 3 && (parsed.schemaRevision === 9 || remainsRevision);
@@ -947,6 +959,10 @@ export function restoreWorld(input: string): World | null {
       return null;
     fossils = parsed.fossils as Fossil[];
   } else if ('fossils' in parsed) return null;
+
+  if (linkedRevision) {
+    if (!isAuthoredHabitat(parsed.pools, parsed.channel)) return null;
+  } else if ('pools' in parsed || 'channel' in parsed) return null;
 
   if (catchUpRevision) {
     if (!(parsed.lastSeenAt === null || integer(parsed.lastSeenAt, 0))) return null;
@@ -1194,7 +1210,7 @@ export function restoreWorld(input: string): World | null {
     const revision11: Revision11World = catchUpRevision
       ? { ...revision10, schemaRevision: 11, lastSeenAt: parsed.lastSeenAt as number | null }
       : migrateRevision10To11(revision10);
-    return fossilsRevision
+    const revision12: Revision12World = fossilsRevision
       ? {
           ...revision11,
           schemaRevision: 12,
@@ -1203,18 +1219,28 @@ export function restoreWorld(input: string): World | null {
           ecologyLedger: { ...(parsed.ecologyLedger as EcologyLedger) },
         }
       : migrateRevision11To12(revision11);
+    return linkedRevision
+      ? {
+          ...revision12,
+          schemaRevision: 13,
+          pools: parsed.pools as World['pools'],
+          channel: parsed.channel as World['channel'],
+        }
+      : migrateRevision12To13(revision12);
   }
   let legacy: LegacyWorld = { ...ecology, version: parsed.version };
   if (legacy.version === 1) legacy = migrateV1ToV2(legacy);
-  return migrateRevision11To12(
-    migrateRevision10To11(
-      migrateRevision9To10(
-        migrateRevision8To9(
-          migrateRevision7To8(
-            migrateRevision6To7(
-              migrateRevision5To6(
-                migrateRevision4To5(
-                  migrateRevision3To4(migrateRevision2To3(migrateRevision1To2(migrateV2ToV3(legacy)))),
+  return migrateRevision12To13(
+    migrateRevision11To12(
+      migrateRevision10To11(
+        migrateRevision9To10(
+          migrateRevision8To9(
+            migrateRevision7To8(
+              migrateRevision6To7(
+                migrateRevision5To6(
+                  migrateRevision4To5(
+                    migrateRevision3To4(migrateRevision2To3(migrateRevision1To2(migrateV2ToV3(legacy)))),
+                  ),
                 ),
               ),
             ),

@@ -143,6 +143,8 @@ function previous(world: World): Record<string, any> {
     marlgrubCandidateAfterId: _marlgrubCandidateAfterId,
     lastSeenAt: _lastSeenAt,
     fossils: _fossils,
+    pools: _pools,
+    channel: _channel,
     skimmerCandidateAfterId: _skimmerCandidate,
     ...old
   } = structuredClone(world);
@@ -231,10 +233,12 @@ describe('siltstitcher snapshot revision', () => {
       marlgrubCandidateAfterId: _marlgrubCandidateAfterId,
       lastSeenAt: _lastSeenAt,
       fossils: _fossils,
+      pools: _pools,
+      channel: _channel,
       skimmerCandidateAfterId: _skimmerCandidate,
       ...old
     } = restored;
-    expect(restored.schemaRevision).toBe(12);
+    expect(restored.schemaRevision).toBe(13);
     expect(siltstitchers).toEqual([]);
     expect(siltstitcherAdmissionAt).toBe(source.elapsed);
     expect(siltstitcherCandidateAfterId).toBe(0);
@@ -273,7 +277,7 @@ describe('siltstitcher snapshot revision', () => {
       const before = JSON.stringify(source);
       const restored = restoreWorld(before)!;
       expect(restored).toMatchObject({
-        schemaRevision: 12,
+        schemaRevision: 13,
         siltstitchers: [],
         siltstitcherAdmissionAt: source.elapsed,
         siltstitcherCandidateAfterId: 0,
@@ -540,7 +544,7 @@ describe('siltstitcher snapshot revision', () => {
         w.siltstitchers = Array.from({ length: 7 }, () => ({ ...w.siltstitchers[0], id: w.nextId++ }));
       },
       (w) => {
-        w.schemaRevision = 13;
+        w.schemaRevision = 14;
       },
     ];
     for (const other of [

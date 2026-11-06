@@ -3,15 +3,25 @@ import {
   GRAZER_CAPACITY,
   LIMITS,
   NEST_CAPACITY,
+  MAX_CHANNEL_ARROWS,
   WORLD_HEIGHT,
   WORLD_WIDTH,
   isInPool,
+  type HabitatPool,
   type Point,
   type Tool,
   type World,
 } from '../world/types';
+import { HABITAT_POOLS, channelFlowAt, channelSegment, poolCoastPoint } from '../world/habitat';
 import { createBloom, createBody, createTerrain, poolPoint } from './terrain';
-import { fitHabitatCamera, viewportToWorld, type HabitatCamera } from './camera';
+import {
+  clampCameraView,
+  fitHabitatCamera,
+  openingView,
+  viewportToWorld,
+  type CameraView,
+  type HabitatCamera,
+} from './camera';
 import { CALM_LIGHT_REACH, effectiveLightReach, effectiveWeather } from '../world/weather';
 import { currentStrength, MAX_CURRENTS } from '../world/actions/current';
 import { ReedwellRenderer } from './ReedwellRenderer';
@@ -146,6 +156,7 @@ export class TidepoolRenderer {
   private reducedMotion = false;
   private destroyed = false;
   private frame = 0;
+  private view: CameraView = openingView();
   private camera: HabitatCamera = fitHabitatCamera(WORLD_WIDTH, WORLD_HEIGHT);
 
   private constructor(
@@ -170,12 +181,7 @@ export class TidepoolRenderer {
     this.app.stage.addChild(this.root);
     this.root.addChild(new Sprite(terrainTexture));
 
-    for (let i = 0; i <= 256; i++) {
-      const point = poolPoint((i / 256) * TAU);
-      if (i === 0) this.mask.moveTo(point.x, point.y);
-      else this.mask.lineTo(point.x, point.y);
-    }
-    this.mask.closePath().fill(0xffffff);
+    this.traceWaterMask();
     this.root.addChild(this.water, this.mask);
     this.water.mask = this.mask;
     this.water.addChild(
@@ -245,17 +251,71 @@ export class TidepoolRenderer {
     return viewportToWorld(this.camera, { x: clientX - bounds.left, y: clientY - bounds.top });
   }
 
+  cameraView(): CameraView {
+    return { ...this.view };
+  }
+
+  resetView(): void {
+    this.view = openingView();
+    this.applyCamera();
+  }
+
+  panByScreen(deltaX: number, deltaY: number): void {
+    const origin = viewportToWorld(this.camera, { x: 0, y: 0 });
+    const destination = viewportToWorld(this.camera, { x: deltaX, y: deltaY });
+    this.view.lookX -= destination.x - origin.x;
+    this.view.lookY -= destination.y - origin.y;
+    this.applyCamera();
+  }
+
+  zoomAt(factor: number): void {
+    this.view.zoom *= factor;
+    this.applyCamera();
+  }
+
+  private applyCamera(): void {
+    const width = Math.max(1, this.host.clientWidth);
+    const height = Math.max(1, this.host.clientHeight);
+    this.view = clampCameraView(width, height, this.view);
+    this.camera = fitHabitatCamera(width, height, this.view);
+    this.root.pivot.set(this.camera.lookX, this.camera.lookY);
+    this.root.position.set(this.camera.x, this.camera.y);
+    this.root.scale.set(this.camera.scale);
+    this.root.rotation = this.camera.rotation;
+    this.app.render();
+  }
+
+  private tracePool(pool: HabitatPool): void {
+    const steps = pool.id === 1 ? 256 : 160;
+    for (let i = 0; i <= steps; i++) {
+      const point = poolCoastPoint(pool, (i / steps) * TAU);
+      if (i === 0) this.mask.moveTo(point.x, point.y);
+      else this.mask.lineTo(point.x, point.y);
+    }
+    this.mask.closePath().fill(0xffffff);
+  }
+
+  private traceWaterMask(): void {
+    for (const pool of HABITAT_POOLS) this.tracePool(pool);
+    const link = channelSegment();
+    const half = link.width / 2;
+    const nx = -link.uy;
+    const ny = link.ux;
+    const start = Math.atan2(ny, nx);
+    this.mask.moveTo(link.ax + nx * half, link.ay + ny * half);
+    this.mask.lineTo(link.bx + nx * half, link.by + ny * half);
+    this.mask.arc(link.bx, link.by, half, start, start + Math.PI);
+    this.mask.lineTo(link.ax - nx * half, link.ay - ny * half);
+    this.mask.arc(link.ax, link.ay, half, start + Math.PI, start);
+    this.mask.closePath().fill(0xffffff);
+  }
+
   private resize(): void {
     if (this.destroyed) return;
     const width = Math.max(1, this.host.clientWidth);
     const height = Math.max(1, this.host.clientHeight);
     this.app.renderer.resize(width, height);
-    this.camera = fitHabitatCamera(width, height);
-    this.root.pivot.set(WORLD_WIDTH / 2, WORLD_HEIGHT / 2);
-    this.root.position.set(this.camera.x, this.camera.y);
-    this.root.scale.set(this.camera.scale);
-    this.root.rotation = this.camera.rotation;
-    this.app.render();
+    this.applyCamera();
   }
 
   private color(hue: number): number {
@@ -521,6 +581,42 @@ export class TidepoolRenderer {
           this.currentArrowStyle,
         );
       }
+    }
+    this.drawChannelCurrent(world);
+  }
+
+  private drawChannelCurrent(world: World): void {
+    const flow = channelFlowAt(world.elapsed);
+    if (Math.abs(flow) < 0.05) return;
+    const link = channelSegment();
+    const strength = Math.min(1, Math.abs(flow) / world.channel.flow);
+    const dir = flow >= 0 ? 1 : -1;
+    this.currentRibbonStyle.alpha = 0.12 + strength * 0.16;
+    this.currentRibbonStyle.width = 1.4;
+    const midX = (link.ax + link.bx) / 2;
+    const midY = (link.ay + link.by) / 2;
+    const span = Math.hypot(link.bx - link.ax, link.by - link.ay) * 0.42;
+    for (let ribbon = 0; ribbon < 3; ribbon++) {
+      const offset = (ribbon - 1) * link.width * 0.22;
+      const x = midX - link.uy * offset;
+      const y = midY + link.ux * offset;
+      this.indicator
+        .moveTo(x - link.ux * span, y - link.uy * span)
+        .lineTo(x + link.ux * span, y + link.uy * span)
+        .stroke(this.currentRibbonStyle);
+    }
+    this.currentArrowStyle.alpha = 0.28 + strength * 0.28;
+    const phase = this.reducedMotion ? 0.5 : (world.elapsed * 0.08) % 1;
+    for (let arrow = 0; arrow < MAX_CHANNEL_ARROWS; arrow++) {
+      const along = (arrow + phase) / MAX_CHANNEL_ARROWS;
+      const travel = (along - 0.5) * span * 2;
+      this.drawFlowArrow(
+        midX + link.ux * travel,
+        midY + link.uy * travel,
+        link.ux * dir,
+        link.uy * dir,
+        this.currentArrowStyle,
+      );
     }
   }
 
@@ -957,6 +1053,21 @@ export class TidepoolRenderer {
         color: 0x7bb79c,
         width: 0.6,
         alpha: glow + Math.sin(time * 0.3 + ribbon) * 0.015,
+      });
+    }
+    for (let ribbon = 0; ribbon < 4; ribbon++) {
+      const x = 560 + ((ribbon * 97) % 360);
+      const y = 1160 + ((ribbon * 71) % 220);
+      this.caustics.moveTo(x, y);
+      for (let segment = 1; segment <= 7; segment++) {
+        const offset = segment * 14;
+        const wave = Math.sin(time * 0.14 + ribbon + segment * 0.5);
+        this.caustics.lineTo(x + offset, y - offset * 0.2 + wave * 6);
+      }
+      this.caustics.stroke({
+        color: 0x7bb79c,
+        width: 0.55,
+        alpha: glow * 0.85 + Math.sin(time * 0.28 + ribbon) * 0.012,
       });
     }
   }

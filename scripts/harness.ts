@@ -3,6 +3,7 @@ import { addLight, createWorld, getStats, SPRINGS, stepWorld } from '../src/worl
 import { restoreWorld } from '../src/world/persistence';
 import { FOSSIL_LABEL, FOSSIL_SOURCES, fossilsBySource, heldFossilPigment } from '../src/world/species/fossils';
 import { heldRemainPigment } from '../src/world/species/remains';
+import { inInletPool, inOpeningPool } from '../src/world/habitat';
 import { FIXED_STEP, type FossilSource, type Traits, type World } from '../src/world/types';
 import * as fs from 'node:fs';
 
@@ -68,6 +69,10 @@ export interface HarnessReport {
     fossils: number;
     totalConsumed: number;
     ambientHarvested: number;
+    openingPigment: number;
+    inletPigment: number;
+    openingBodies: number;
+    inletBodies: number;
   };
   fossilsBySource: Record<FossilSource, { count: number; pigment: number }>;
   ledger: World['ecologyLedger'];
@@ -322,6 +327,20 @@ export function runHarness(config: HarnessConfig): HarnessReport {
       fossils: stats.fossils,
       totalConsumed: world.consumed,
       ambientHarvested: world.ecologyLedger.ambientHarvested,
+      openingPigment: world.sediment.reduce(
+        (total, grain) => total + (inOpeningPool(grain.x, grain.y) ? grain.strength : 0),
+        0,
+      ),
+      inletPigment: world.sediment.reduce(
+        (total, grain) => total + (inInletPool(grain.x, grain.y) ? grain.strength : 0),
+        0,
+      ),
+      openingBodies: [...world.organisms, ...world.grazers, ...world.skimmers, ...world.siltstitchers].filter((body) =>
+        inOpeningPool(body.x, body.y),
+      ).length,
+      inletBodies: [...world.organisms, ...world.grazers, ...world.skimmers, ...world.siltstitchers].filter((body) =>
+        inInletPool(body.x, body.y),
+      ).length,
     },
     fossilsBySource: fossilsBySource(world),
     ledger: { ...world.ecologyLedger },
@@ -464,6 +483,10 @@ export function printReport(report: HarnessReport): void {
   console.log(`\n💡 Resource Totals`);
   console.log(`   Light energy remaining: ${report.resources.lightEnergy.toFixed(2)}`);
   console.log(`   Loose pigment: ${report.resources.loosePigment.toFixed(2)}`);
+  console.log(`   Opening-pool pigment: ${report.resources.openingPigment.toFixed(2)}`);
+  console.log(`   Inlet pigment: ${report.resources.inletPigment.toFixed(2)}`);
+  console.log(`   Opening-pool mobile bodies: ${report.resources.openingBodies}`);
+  console.log(`   Inlet mobile bodies: ${report.resources.inletBodies}`);
   console.log(`   Nested pigment: ${report.resources.nestedPigment.toFixed(2)}`);
   console.log(`   Remain pigment: ${report.resources.remainPigment.toFixed(2)}`);
   console.log(`   Fossil pigment: ${report.resources.fossilPigment.toFixed(2)}`);

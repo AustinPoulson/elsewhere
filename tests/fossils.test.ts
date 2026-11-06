@@ -149,6 +149,6 @@ describe('opening worlds', () => {
     const world = createWorld(4);
     expect(world.fossils).toEqual([]);
     expect(world.ecologyLedger.fossilsFormed).toBe(0);
-    expect(world.schemaRevision).toBe(12);
+    expect(world.schemaRevision).toBe(13);
   });
 });

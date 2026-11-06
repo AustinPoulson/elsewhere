@@ -3,8 +3,7 @@ import {
   GRAZER_CAPACITY,
   LIMITS,
   NEST_CAPACITY,
-  WORLD_HEIGHT,
-  WORLD_WIDTH,
+  SCHEMA_REVISION,
   isInPool,
   poolRadius,
   type Grazer,
@@ -15,6 +14,7 @@ import {
   type World,
   type WorldStats,
 } from './types';
+import { OPENING_POOL, inOpeningPool, linkedHabitat, waterSdf } from './habitat';
 import { CALM_LIGHT_REACH, effectiveLightReach } from './weather';
 import { applyCurrentDrift } from './currents';
 import { confinePosition } from './geometry';
@@ -54,8 +54,8 @@ function inPoolPoint(world: World, margin = 18): Point {
   const angle = random(world) * TAU;
   const radius = Math.sqrt(random(world)) * poolRadius(angle) * 0.94;
   return {
-    x: WORLD_WIDTH / 2 + Math.cos(angle) * radius * (610 - margin),
-    y: WORLD_HEIGHT / 2 + Math.sin(angle) * radius * (400 - margin),
+    x: OPENING_POOL.x + Math.cos(angle) * radius * (OPENING_POOL.rx - margin),
+    y: OPENING_POOL.y + Math.sin(angle) * radius * (OPENING_POOL.ry - margin),
   };
 }
 
@@ -151,10 +151,13 @@ export function addLight(world: World, x: number, y: number): boolean {
 export function createWorld(seed = 20261006): World {
   if (!Number.isFinite(seed)) throw new RangeError('World seed must be finite.');
   const normalizedSeed = Math.trunc(seed) >>> 0;
+  const habitat = linkedHabitat();
   const world: World = {
     version: 3,
-    schemaRevision: 12,
+    schemaRevision: SCHEMA_REVISION,
     lastSeenAt: null,
+    pools: habitat.pools,
+    channel: habitat.channel,
     currents: [],
     weatherCall: { startedAt: null, nextAllowedAt: 0 },
     skimmers: [],
@@ -232,7 +235,7 @@ export function createWorld(seed = 20261006): World {
     const angle = random(world) * TAU;
     const radius = 50 + random(world) * 140;
     let point = { x: spring.x + Math.cos(angle) * radius, y: spring.y + Math.sin(angle) * radius };
-    if (i >= 16 || !isInPool(point.x, point.y, 24)) point = inPoolPoint(world, 24);
+    if (i >= 16 || !inOpeningPool(point.x, point.y, 24)) point = inPoolPoint(world, 24);
     const heading = random(world) * TAU;
     const size = 5 + random(world) * 4;
     const organism: Organism = {
@@ -296,9 +299,7 @@ function targetLight(organism: Organism, lights: LightSource[]): LightSource | u
 }
 
 function boundaryValue(x: number, y: number, margin: number): number {
-  const nx = (x - WORLD_WIDTH / 2) / (610 - margin);
-  const ny = (y - WORLD_HEIGHT / 2) / (400 - margin);
-  return Math.hypot(nx, ny) - poolRadius(Math.atan2(ny, nx));
+  return waterSdf(x, y, margin);
 }
 
 function moveInPool(organism: Organism | Grazer, dt: number): void {

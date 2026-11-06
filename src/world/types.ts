@@ -1,6 +1,12 @@
+export const OPENING_WIDTH = 1440;
+export const OPENING_HEIGHT = 1000;
 export const WORLD_WIDTH = 1440;
-export const WORLD_HEIGHT = 1000;
+export const WORLD_HEIGHT = 1560;
+export const SCHEMA_REVISION = 13;
 export const FIXED_STEP = 1 / 30;
+export const MAX_POOLS = 2;
+export const MAX_LINKS = 1;
+export const MAX_CHANNEL_ARROWS = 4;
 export const LIMITS = {
   organisms: 42,
   lights: 32,
@@ -10,6 +16,8 @@ export const LIMITS = {
   nests: 16,
   remains: 48,
   fossils: 16,
+  pools: MAX_POOLS,
+  links: MAX_LINKS,
 } as const;
 export const REMAIN_CAPACITY = 2;
 export const FOSSIL_CAPACITY = 1.2;
@@ -22,6 +30,19 @@ export const NEST_CAPACITY = 12;
 export interface Point {
   x: number;
   y: number;
+}
+export interface HabitatPool {
+  id: 1 | 2;
+  x: number;
+  y: number;
+  rx: number;
+  ry: number;
+}
+export interface HabitatChannel {
+  from: 1;
+  to: 2;
+  width: number;
+  flow: number;
 }
 export interface Traits {
   drive: number;
@@ -234,8 +255,10 @@ export interface Nest extends Point {
 }
 export interface World {
   version: 3;
-  schemaRevision: 12;
+  schemaRevision: 13;
   lastSeenAt: number | null;
+  pools: HabitatPool[];
+  channel: HabitatChannel;
   skimmers: Skimmer[];
   skimmerAdmissionAt: number;
   skimmerCandidateAfterId: number;
@@ -298,12 +321,9 @@ export interface WorldStats {
   nestPigment: number;
 }
 
-// One shared coastline for simulation, rendering, and input hit testing.
+// One shared coastline formula; linked pools and the channel live in habitat.ts.
 export function poolRadius(angle: number): number {
   return 1 + 0.058 * Math.sin(angle * 3 + 0.7) + 0.032 * Math.cos(angle * 5 - 0.4) + 0.018 * Math.sin(angle * 9);
 }
-export function isInPool(x: number, y: number, margin = 0): boolean {
-  const nx = (x - WORLD_WIDTH / 2) / (610 - margin);
-  const ny = (y - WORLD_HEIGHT / 2) / (400 - margin);
-  return Math.hypot(nx, ny) <= poolRadius(Math.atan2(ny, nx));
-}
+
+export { isInPool } from './habitat';
