@@ -2,3 +2,4 @@ dist/
 node_modules/
 package-lock.json
 src/app/shower-study.json
+src/world/era-snapshots/*.json

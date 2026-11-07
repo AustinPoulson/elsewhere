@@ -17,6 +17,7 @@ import {
   type CatchUpPlan,
 } from './world/catchup';
 import { addLight, createWorld, getStats, releaseNestPigment, stepWorld } from './world/simulation';
+import { eraById, namedEras } from './world/era-catalog';
 import { restoreWorld, serializeWorld } from './world/persistence';
 import { callRain, effectiveWeather } from './world/weather';
 import { getDaylight } from './world/environment/daylight';
@@ -35,7 +36,7 @@ type PoolControls = {
   cursor: Point | null;
   keyboard: boolean;
 };
-type Panel = 'guide' | 'specimen' | 'pocket' | null;
+type Panel = 'guide' | 'specimen' | 'pocket' | 'eras' | null;
 function loadInitialWorld(): {
   world: World;
   remembered: boolean;
@@ -79,6 +80,9 @@ export function App() {
   const panelReturnFocusRef = useRef<HTMLElement | null>(null);
   const resetRef = useRef<HTMLDialogElement>(null);
   const resetTriggerRef = useRef<HTMLElement | null>(null);
+  const eraRef = useRef<HTMLDialogElement>(null);
+  const eraTriggerRef = useRef<HTMLElement | null>(null);
+  const [pendingEraId, setPendingEraId] = useState<string | null>(null);
   const journalRef = useRef<HTMLDialogElement>(null);
   const catchingUpRef = useRef(initial.catchUpPlan.reason === 'ready');
   const catchUpLockRef = useRef(false);
@@ -385,6 +389,9 @@ export function App() {
     const timer = window.setTimeout(() => setFeedback(''), 4500);
     return () => clearTimeout(timer);
   }, [feedback]);
+  useEffect(() => {
+    if (pendingEraId) eraRef.current?.showModal();
+  }, [pendingEraId]);
   useEffect(() => {
     rendererRef.current?.setReducedMotion(reducedMotion);
   }, [reducedMotion, ready]);
@@ -704,6 +711,50 @@ export function App() {
       setNotice('That file could not be opened. Your tidepool is still here.');
     }
   }
+  function requestEra(id: string, trigger: HTMLElement): void {
+    if (studyMode) {
+      setNotice('Return to your pool before opening an earlier world.');
+      return;
+    }
+    eraTriggerRef.current = trigger;
+    setPendingEraId(id);
+  }
+  function loadPendingEra(): void {
+    if (!pendingEraId) return;
+    const era = eraById(pendingEraId);
+    const token = sessionRef.current.importToken();
+    if (!era || token === null) {
+      eraRef.current?.close();
+      setNotice('Return to your pool before opening an earlier world.');
+      return;
+    }
+    const result = sessionRef.current.importSnapshot(era.snapshot, token);
+    if (result === 'stale') {
+      eraRef.current?.close();
+      setNotice('The visit changed while that world opened. No world was replaced.');
+      return;
+    }
+    if (result === 'invalid') {
+      eraRef.current?.close();
+      setNotice('That remembered world could not be read. Your tidepool is still here.');
+      return;
+    }
+    const restored = sessionRef.current.world;
+    worldRef.current = restored;
+    heldRef.current = false;
+    cancelCarry();
+    setHintVisible(false);
+    setSelectedId(null);
+    setStats(getStats(restored));
+    saveWorld();
+    rendererRef.current?.resetView();
+    panelReturnFocusRef.current = hostRef.current;
+    eraTriggerRef.current = hostRef.current;
+    eraRef.current?.close();
+    setPanel(null);
+    hostRef.current?.focus({ preventScroll: true });
+    setNotice(`${era.name} has returned. That frozen moment is the pool now.`);
+  }
   function resetWorld() {
     sessionRef.current.reset();
     worldRef.current = sessionRef.current.world;
@@ -806,6 +857,7 @@ export function App() {
   const selectedFossil = worldRef.current.fossils.find((fossil) => fossil.id === selectedId) ?? null;
   const selectedNest =
     selected?.species === 'grazer' ? worldRef.current.nests.find((nest) => nest.id === selected.nestId) : null;
+  const pendingEra = pendingEraId ? eraById(pendingEraId) : null;
   const openPanel = (next: Panel) => setPanel((current) => (current === next ? null : next));
   const weather = effectiveWeather(worldRef.current);
 
@@ -1104,16 +1156,27 @@ export function App() {
         </nav>
       </div>
       <footer className="site-footer">
-        <span>A WORLD WE DISCOVER BY BUILDING IT</span>
-        <button
-          className="pocket-button"
-          onClick={() => openPanel('pocket')}
-          aria-expanded={panel === 'pocket'}
-          aria-controls="field-panel"
-        >
-          <Icon name="download" size={15} />
-          <span>Pocket this world</span>
-        </button>
+        <span className="site-motto">A WORLD WE DISCOVER BY BUILDING IT</span>
+        <div className="footer-actions">
+          <button
+            className="pocket-button"
+            onClick={() => openPanel('eras')}
+            aria-expanded={panel === 'eras'}
+            aria-controls="field-panel"
+          >
+            <Icon name="era" size={15} />
+            <span>Earlier worlds</span>
+          </button>
+          <button
+            className="pocket-button"
+            onClick={() => openPanel('pocket')}
+            aria-expanded={panel === 'pocket'}
+            aria-controls="field-panel"
+          >
+            <Icon name="download" size={15} />
+            <span>Pocket this world</span>
+          </button>
+        </div>
       </footer>
 
       {panel && (
@@ -1434,6 +1497,21 @@ export function App() {
                     </p>
                   </div>
                 </div>
+                <div className="guide-entry">
+                  <span className="entry-number">20</span>
+                  <div>
+                    <h3>Earlier worlds</h3>
+                    <p>
+                      Named eras keep reviewed snapshots of earlier experiments, each with a short field note. Opening
+                      one restores that frozen moment as the live pool. Nothing is granted: the organisms and color in
+                      the file are the ones that already paid their way. The camera is not stored; the field journal is
+                      still written only after time away.
+                    </p>
+                  </div>
+                </div>
+                <button className="secondary-button" onClick={() => setPanel('eras')}>
+                  Browse earlier worlds <Icon name="era" />
+                </button>
                 <div className="guide-controls">
                   <p className="eyebrow">WAYS TO VISIT</p>
                   <p>
@@ -1905,6 +1983,56 @@ export function App() {
                   Study provenance: seed {SHOWER_STUDY.seed}, {SHOWER_STUDY.steps} fixed steps, 00:40. Generated from
                   the first shore without visitor actions.
                 </p>
+                <h3>Earlier worlds</h3>
+                <p className="guide-caption">
+                  A small shelf of reviewed snapshots. Each one is an experiment that already happened, with a field
+                  note about how it was made. Opening an era replaces this pool the same way a pocketed file does.
+                </p>
+                <button className="secondary-button" onClick={() => setPanel('eras')}>
+                  Browse earlier worlds <Icon name="era" />
+                </button>
+              </>
+            )}
+            {panel === 'eras' && (
+              <>
+                <h2 id="panel-title">
+                  Earlier
+                  <br />
+                  <em>worlds.</em>
+                </h2>
+                <p className="panel-intro">
+                  These are named snapshots of reviewed experiments. Opening one restores that frozen moment. It is not
+                  treated as time away, and nothing is granted.
+                </p>
+                {namedEras().map((era, index) => (
+                  <article className="era-card" key={era.id}>
+                    <p className="eyebrow">
+                      ERA {String(index + 1).padStart(2, '0')} / SEED {era.provenance.seed}
+                    </p>
+                    <h3>{era.name}</h3>
+                    <p className="era-meta">
+                      {timeLabel(era.world.elapsed)} · {era.world.fossils.length} FOSSIL
+                      {era.world.fossils.length === 1 ? '' : 'S'} · {era.provenance.worldDays} WORLD DAY
+                      {era.provenance.worldDays === 1 ? '' : 'S'}
+                    </p>
+                    <p className="era-note">{era.note}</p>
+                    <button
+                      className="secondary-button"
+                      disabled={studyMode}
+                      onClick={(event) => requestEra(era.id, event.currentTarget)}
+                    >
+                      Open this era <Icon name="arrow" />
+                    </button>
+                  </article>
+                ))}
+                <p className="snapshot-feedback" role="status">
+                  {notice}
+                </p>
+                <p className="guide-caption">
+                  {studyMode
+                    ? 'Return to your pool before opening an earlier world. The study never overwrites its autosave.'
+                    : 'Opening an era replaces the current pool. Save a snapshot first if you would like to keep both.'}
+                </p>
               </>
             )}
             <div className="panel-foot">
@@ -1996,6 +2124,31 @@ export function App() {
           </button>
           <button className="primary-button" onClick={resetWorld}>
             Begin again <Icon name="reset" />
+          </button>
+        </div>
+      </dialog>
+      <dialog
+        ref={eraRef}
+        className="reset-dialog"
+        aria-labelledby="era-title"
+        onClose={() => {
+          setPendingEraId(null);
+          eraTriggerRef.current?.focus();
+        }}
+      >
+        <p className="eyebrow">AN EARLIER WORLD</p>
+        <h2 id="era-title">Open {pendingEra?.name ?? 'this era'}?</h2>
+        <p>
+          {studyMode
+            ? 'Return to your pool before opening an earlier world. The study stays aside.'
+            : 'The pool will become this remembered moment. Save a snapshot first if you would like to keep what is here. Opening it is not treated as time away, and nothing is granted.'}
+        </p>
+        <div className="dialog-actions">
+          <button className="secondary-button" autoFocus onClick={() => eraRef.current?.close()}>
+            Stay here
+          </button>
+          <button className="primary-button" disabled={studyMode} onClick={loadPendingEra}>
+            Open this era <Icon name="era" />
           </button>
         </div>
       </dialog>

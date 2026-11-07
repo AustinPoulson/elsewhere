@@ -35,6 +35,7 @@ npm run preview
 - Watch the weather countdown: a 38-second rain spreads light every three minutes, beginning at 00:30. **Call rain** (R) invites a thirty-second shower now, followed by rest until sixty world seconds after the call. Rain widens existing feeding light; it adds no energy. Pause and snapshots preserve both rain and rest.
 - Reset asks for confirmation, then returns to the opening tidepool with the same seed.
 - **Pocket this world** exports a snapshot to keep an era or transfer it. Opening a snapshot replaces the current pool; save the current one first if you want to keep both.
+- **Earlier worlds** opens a small shelf of named, reviewed snapshots with field notes about the experiment that made each one. Opening an era restores that frozen moment the same way a pocketed file does: it is not treated as time away, and nothing is granted.
 
 The interface includes keyboard controls and a visible shortcut reference. Saves belong to this browser and site address. A local development save and a GitHub Pages save are separate. The world advances while the page is running. When you return after being away, it catches up through at most eight hours of the same simulation rules. Brief absences catch up quietly; after about ten minutes, or if a lineage ended, a short field journal names what happened. Longer absences are recorded as sleep rather than freezing the tab. Opening a saved snapshot restores that frozen moment and is not treated as time away.
 
@@ -99,5 +100,7 @@ npm run harness -- --load mysave.json --days 5
 ```
 
 The harness reports population curves, births, deaths, extinctions, fossils, and resource flow. Use `--json` for machine-readable output.
+
+Named eras are reviewed snapshots of those runs. Capture one with `npm run capture-era -- --id a-name --name "A title" --note "Field note" --days 30 --seed 1 --out src/world/era-snapshots/a-name.json`. The file must pass the `elsewhere-era` format and the ordinary snapshot importer before it can join the shelf.
 
 We can keep adding species, weather, habitats, and artifacts without turning the opening pool into a large game engine first.
