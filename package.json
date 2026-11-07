@@ -14,7 +14,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "validate": "npm run format:check && npm run lint && npm run test && npm run build",
-    "harness": "npx tsx scripts/harness.ts"
+    "harness": "npx tsx scripts/harness.ts",
+    "capture-era": "npx tsx scripts/capture-era.ts"
   },
   "dependencies": {
     "pixi.js": "^8.0.0",

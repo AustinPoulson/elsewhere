@@ -68,6 +68,9 @@ The current explicit budgets are:
 | Current arrows, including gesture preview (renderer only) |                                          12 |
 | Channel current arrows (renderer only)                    |                                           4 |
 | Inlet caustic ribbons (renderer only)                     |                                           4 |
+| Named eras                                                |                                           8 |
+| Era inner snapshot                                        |                        1,000,000 characters |
+| Era catalog                                               |                                   4,000,000 |
 
 New behavior must respect a budget. Accumulated visual history must age, compact, or remain capped. A beautiful trail should not become an unbounded list of draw calls after a long visit. Existing simple rules and loops are easier to inspect than a general plugin or entity framework at this stage.
 
@@ -78,6 +81,8 @@ World snapshots use version `3` with `schemaRevision: 13`. They include two auth
 Imports check the version, numeric ranges, collection limits, entity shapes, and identifiers before replacing the active world. A rejected import leaves the current world intact and shows visible feedback. A successful import stamps `lastSeenAt` to the present and skips catch-up, so restoring a frozen file is not treated as time away; the existing notice names the return. Local storage failures are visible without preventing play. Future schema changes need either an explicit migration or a clear unsupported-version message.
 
 The current importer accepts a selected JSON file of at most 2 MB and validates a snapshot string of at most 1,000,000 characters. It requires at least one lucent and unique IDs across all collections, with `nextId` larger than every existing ID. Linked-pool saves must match the authored two-basin habitat. The pocket panel explains replacement before the file picker opens. Reset has its own confirmation dialog.
+
+Named eras are a separate curated shelf, not a live-snapshot field and not a schema bump. Each era file is `{ format: "elsewhere-era", formatRevision: 1, id, name, note, provenance, world }`. `world` is an ordinary snapshot; `parseEraFile` runs it through `restoreWorld` rather than a parallel importer. Provenance records seed, world-days, visitor-light, capture-time schema revision, and a short source line. `capturedAt` is not stored, and any `lastSeenAt` inside `world` is ignored on open: loading stamps presence to now and skips catch-up, the same as pocket import. Camera and the while-you-were-gone journal stay out of both the inner snapshot and the era wrapper. The static catalog currently holds three reviewed files under `src/world/era-snapshots/`. At most eight named eras and 4 MB of catalog JSON; each inner snapshot still respects the 1,000,000-character save cap. `npm run capture-era` writes a reviewed file in this format for later automation. Opening an era replaces the active world after confirmation, resets the unsaved camera to the opening shore, and grants no organisms, pigment, lights, or energy.
 
 The browser is the runtime and storage owner. Closing the page suspends this ecosystem. There is no server, shared online world, account, or simulation running on GitHub Pages while visitors are away.
 

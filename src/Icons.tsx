@@ -1,5 +1,5 @@
 export type IconName =
-  'spark' | 'eye' | 'pause' | 'play' | 'book' | 'reset' | 'close' | 'download' | 'upload' | 'arrow' | 'current';
+  'spark' | 'eye' | 'pause' | 'play' | 'book' | 'reset' | 'close' | 'download' | 'upload' | 'arrow' | 'current' | 'era';
 export function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
   const paths: Record<IconName, React.ReactNode> = {
     spark: (
@@ -47,6 +47,14 @@ export function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
       </>
     ),
     arrow: <path d="M4 12h16m-6-6 6 6-6 6" />,
+    era: (
+      <>
+        <ellipse cx="12" cy="7" rx="8" ry="2.4" />
+        <path d="M4 7v4c0 1.3 3.6 2.4 8 2.4s8-1.1 8-2.4V7" />
+        <path d="M4 11v4c0 1.3 3.6 2.4 8 2.4s8-1.1 8-2.4v-4" />
+        <path d="M4 15v2c0 1.3 3.6 2.4 8 2.4s8-1.1 8-2.4v-2" />
+      </>
+    ),
   };
   return (
     <svg

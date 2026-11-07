@@ -14,7 +14,7 @@ Eventually: several pools linked by slow currents, and the world keeps living wh
 
 - [x] **Catching up on time spent away** — Simulate elapsed time when the user returns; generate a "while you were gone" journal. _Success: reopening after an hour shows the world has advanced; journal summarizes key events._
 
-- [x] **Fossils, eras, and linked pools** — Fossils in sediment record extinct populations; multiple pools connected by slow currents allow migration. _Success: fossils visible in old sediment; organisms can move between pools._ **This slice: linked pools, a slow channel current, and gentle pan/zoom.** Fossils already exist. A southern inlet is discoverable from the opening tidepool; pigment and drifting bodies can cross the channel. Named eras / snapshots remain open.
+- [x] **Fossils, eras, and linked pools** — Fossils in sediment record extinct populations; multiple pools connected by slow currents allow migration; named eras keep reviewed snapshots of earlier worlds. _Success: fossils visible in old sediment; organisms can move between pools; a visitor can open a named era, read its field note, and restore that frozen moment without gifts._ Fossils and linked pools already exist. Named eras are a static collection of three reviewed snapshots (`elsewhere-era` format, cap 8, 4 MB catalog). Automated capture is the format and `npm run capture-era`; replay uses the ordinary snapshot importer.
 
 ## Standing Invariants
 
@@ -103,4 +103,12 @@ _This section records surprising population dynamics, extinctions, or runaway re
 
 **Discovery is looking, not a new tool:** Drag the stone, Shift+arrows, wheel or +/−, and Home to return. Portrait still rotates the same world; reduced motion still starts paused and applies camera changes immediately. Visitor stir currents remain capped at three, with four extra channel arrows.
 
-**Eras stay later:** Named snapshots of earlier worlds are still the open remainder of this roadmap step.
+### Named eras (seeds 1 and 42)
+
+**The world keeps a visitor-facing memory:** Earlier worlds is a shelf of three reviewed snapshots, each with a field note about the experiment that made it. Opening an era uses the same importer as a pocketed file: restore the frozen moment, stamp `lastSeenAt` to now, skip catch-up, grant nothing. Camera pan/zoom is still unsaved. The field journal is still generated only after time away.
+
+**Thirty unwatched days still match the linked-pool harness:** Seed 1's era holds 16 fossils, 3 skimmers, 4 cargo mites at cap, nested pigment 0.92, and 0.33 loose pigment — all of it in the inlet. Seed 42's era holds 16 fossils, 4 skimmers, 1 mite, nested pigment 1.43, 0.50 opening pigment and 0.14 inlet pigment. An hour on seed 1 already has 12 fossils, 3 skimmers and 3 mites; no loose pigment has crossed the neck yet.
+
+**Storage stays bounded:** Three compact era files total about 101 KB, well under the 8-era / 4 MB catalog budget. Each inner world still passes the 1,000,000-character snapshot cap. Schema revision stays 13; eras live beside the live save, not inside it.
+
+**What remains later:** Automated capture of a visitor's own pool into this shelf, and replay tools beyond opening a named era as the live world. The format and `npm run capture-era` are the contract for that work.

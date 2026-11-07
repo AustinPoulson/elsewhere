@@ -397,6 +397,11 @@ h1 em {
   letter-spacing: 1.7px;
   color: #78917e;
 }
+.footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
 .pocket-button {
   display: flex;
   align-items: center;
@@ -558,6 +563,39 @@ h1 em {
   line-height: 1.9;
   color: #95a98b;
   margin-top: 20px;
+}
+.era-card {
+  padding: 22px 0;
+  border-bottom: 1px solid var(--line);
+}
+.era-card .eyebrow {
+  font-size: 8px;
+  letter-spacing: 1.6px;
+}
+.era-card h3 {
+  font-family: Georgia, serif;
+  font-weight: 400;
+  font-size: 22px;
+  color: #d7e2c5;
+  margin-top: 8px;
+}
+.era-meta {
+  margin-top: 8px;
+  font-size: 8px;
+  letter-spacing: 1.5px;
+  color: #7f9a84;
+}
+.era-note {
+  margin-top: 10px;
+  font-size: 11px;
+  line-height: 1.8;
+  color: #a1b498;
+}
+.era-card .secondary-button {
+  margin-top: 14px;
+}
+.era-card .secondary-button svg:last-child {
+  margin-left: auto;
 }
 .snapshot-stamp {
   border: 1px solid #a9c69a35;
@@ -921,6 +959,14 @@ h1 em {
     bottom: 21px;
     font-size: 6px;
     letter-spacing: 1px;
+  }
+  .site-motto {
+    display: none;
+  }
+  .footer-actions {
+    width: 100%;
+    justify-content: space-between;
+    gap: 12px;
   }
   .pocket-button {
     font-size: 9px;

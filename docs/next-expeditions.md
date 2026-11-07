@@ -16,15 +16,15 @@ Rain briefly spreads light across the water, widening the area where lucents can
 
 Before expanding the camera, [Expedition 003](expedition-003-borrowed-color.md) closes another relationship inside this pool: the visitor can return a nest's stored color as six visible grains, and the grazers gather it home again. Observe this resource loop before adding another habitat.
 
-Add a second pool and a gentle pan/zoom camera. Organisms or resources cross a connection between the pools. Exploration then discovers a new ecological relationship rather than empty map area. Keep the original tidepool as a composed opening scene. **Implemented in this linked-pools slice:** a southern inlet joined by a slow reversing channel, with pan/zoom from the original opening frame. Named eras remain later work.
+Add a second pool and a gentle pan/zoom camera. Organisms or resources cross a connection between the pools. Exploration then discovers a new ecological relationship rather than empty map area. Keep the original tidepool as a composed opening scene. **Implemented in this linked-pools slice:** a southern inlet joined by a slow reversing channel, with pan/zoom from the original opening frame. Named eras are implemented as the remainder of roadmap step 5.
 
 ## 4. Become an inhabitant
 
 Let the visitor pilot a luminous organism. Movement leaves or transports a resource already used by the ecosystem. Compare the experience with direct cultivation before making embodiment the default. A small movement model may be enough; choose a full physics/game engine only when collisions and character systems demand it.
 
-## 5. Preserve eras
+## 5. Preserve eras — implemented as named eras
 
-Curate named snapshots of earlier worlds alongside short field notes about the experiment that created each one. The first version can be a static collection of reviewed snapshots. Automated capture and replay should follow a clear data format and storage budget.
+Curate named snapshots of earlier worlds alongside short field notes about the experiment that created each one. **This slice:** a static collection of three reviewed snapshots (an hour unwatched, thirty days of faint daylight, another seed's sediment). Each file is `elsewhere-era` format revision 1: identity, field note, provenance, and a world snapshot validated by `restoreWorld`. Opening an era restores that frozen moment the same way pocket import does. Catalog budget: at most 8 eras, 1,000,000 characters per inner snapshot, 4 MB for the shelf. `npm run capture-era` writes a file in that format. Automated capture of a live pool onto the shelf, and replay beyond loading an era as the active world, remain later work.
 
 ## How to pick
 
