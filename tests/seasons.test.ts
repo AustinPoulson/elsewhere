@@ -6,13 +6,17 @@ import {
   channelScaleAt,
   dayStrengthAt,
   describeSeasonChange,
+  getSeason,
   nightBiasAt,
   rainSpanAt,
+  SEASON_NOTE,
   seasonName,
   SEASON_SECONDS,
   YEAR_DAYS,
   YEAR_SECONDS,
 } from '../src/world/environment/seasons';
+import { channelFlowAt, HABITAT_CHANNEL } from '../src/world/habitat';
+import { SPECIES_CATALOG } from '../src/world/species/catalog';
 import { restoreWorld, serializeWorld } from '../src/world/persistence';
 import { createWorld, stepWorld } from '../src/world/simulation';
 import { SCHEMA_REVISION, FIXED_STEP } from '../src/world/types';
@@ -94,6 +98,47 @@ describe('season math', () => {
     expect(daylight(winterNoon)).toBeLessThan(1);
     expect(daylight({ elapsed: 180, seed: 90 })).toBe(0);
     expect(daylight({ elapsed: YEAR_SECONDS, seed: 90 })).toBe(1);
+  });
+
+  it('peaks at the start of summer and bottoms at the start of winter', () => {
+    expect(seasonName(SEASON_SECONDS)).toBe('summer');
+    expect(seasonName((YEAR_SECONDS * 3) / 4)).toBe('winter');
+    expect(dayStrengthAt(SEASON_SECONDS)).toBeCloseTo(1.2, 10);
+    expect(dayStrengthAt((YEAR_SECONDS * 3) / 4)).toBeCloseTo(0.8, 10);
+    expect(dayStrengthAt(SEASON_SECONDS / 2)).toBeGreaterThan(dayStrengthAt(0));
+    expect(dayStrengthAt(SEASON_SECONDS / 2)).toBeLessThan(dayStrengthAt(SEASON_SECONDS));
+    expect(dayStrengthAt(YEAR_SECONDS / 2 + SEASON_SECONDS / 2)).toBeLessThan(dayStrengthAt(YEAR_SECONDS / 2));
+    expect(dayStrengthAt(YEAR_SECONDS / 2 + SEASON_SECONDS / 2)).toBeGreaterThan(dayStrengthAt((YEAR_SECONDS * 3) / 4));
+    expect(SEASON_NOTE.spring).toBe("Days lengthen toward summer's start.");
+    expect(SEASON_NOTE.summer).toBe('Brightest at the start, then easing; rain is brief.');
+    expect(SEASON_NOTE.autumn).toBe("Days shorten toward winter's start.");
+    expect(SEASON_NOTE.winter).toBe('Dimmest at the start, then easing; rain stays longer.');
+    expect(getSeason(0).note).toBe(SEASON_NOTE.spring);
+    expect(getSeason(SEASON_SECONDS).note).toBe(SEASON_NOTE.summer);
+    const summerStartNoon = { elapsed: SEASON_SECONDS, seed: 270 };
+    const winterStartNoon = { elapsed: (YEAR_SECONDS * 3) / 4, seed: 270 };
+    expect(daylight(summerStartNoon)).toBeCloseTo(1.2, 10);
+    expect(daylight(winterStartNoon)).toBeCloseTo(0.8, 10);
+    expect(SPECIES_CATALOG.reedwell.harvestRate).toBe(0.18);
+    expect(SPECIES_CATALOG.reedwell.harvestRate * daylight(summerStartNoon)).toBeCloseTo(0.216, 10);
+    expect(SPECIES_CATALOG.reedwell.harvestRate * daylight(winterStartNoon)).toBeCloseTo(0.144, 10);
+    expect(SPECIES_CATALOG.reedwell.harvestRate * daylight({ elapsed: 0, seed: 90 })).toBeCloseTo(0.18, 10);
+  });
+
+  it('bounds authored channel flow at 4.8 times seasonal scale', () => {
+    expect(HABITAT_CHANNEL.flow).toBe(4.8);
+    expect(HABITAT_CHANNEL.flow * 1.18).toBeCloseTo(5.664, 10);
+    expect(channelScaleAt(SEASON_SECONDS)).toBeCloseTo(0.82, 10);
+    expect(channelScaleAt((YEAR_SECONDS * 3) / 4)).toBeCloseTo(1.18, 10);
+    let peak = 0;
+    for (let elapsed = 0; elapsed <= YEAR_SECONDS; elapsed += 1) {
+      const flow = Math.abs(channelFlowAt(elapsed));
+      const envelope = Math.abs(HABITAT_CHANNEL.flow * channelScaleAt(elapsed));
+      expect(flow).toBeLessThanOrEqual(envelope + 1e-12);
+      if (flow > peak) peak = flow;
+    }
+    expect(peak).toBeGreaterThan(5.65);
+    expect(peak).toBeLessThanOrEqual(5.664 + 1e-12);
   });
 
   it('holds the first rain cycle at 38 seconds and then dries in summer, wets in winter', () => {

@@ -474,6 +474,9 @@ export function printReport(report: HarnessReport): void {
   }
 
   console.log(`\n🔄 Births & Deaths`);
+  console.log(
+    '   Per-step net census change, not complete genealogical counts; opposite events in one 1/30s step cancel.',
+  );
   for (const [species, ev] of Object.entries(report.events)) {
     if (ev.births > 0 || ev.deaths > 0) {
       console.log(`   ${species.padEnd(14)}: +${ev.births} births, -${ev.deaths} deaths`);
