@@ -125,6 +125,7 @@ describe('catch-up journal copy', () => {
     );
     expect(journal.lines[0]).toBe('You were away for about two hours.');
     expect(journal.lines).toContain('The last glass limpet died about two hours ago.');
+    expect(journal.lines).toContain('The shore passed from spring into summer.');
     expect(describeSpan(8 * 3600)).toBe('about eight hours');
   });
 

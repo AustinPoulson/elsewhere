@@ -39,6 +39,7 @@ import { CargoMiteRenderer } from './CargoMiteRenderer';
 import { MarlgrubRenderer } from './MarlgrubRenderer';
 import { cargoMiteDisplayPoint } from './cargoMiteDisplay';
 import { daylight } from '../world/environment/daylight';
+import { seasonCausticColor, seasonWashColor } from '../world/environment/seasons';
 import { appearanceGlow, appearanceScale } from '../world/traits';
 
 interface SpriteVisual {
@@ -134,6 +135,7 @@ export class TidepoolRenderer {
   private readonly lightPatchLayer = new Container();
   private readonly tendrils = new Graphics();
   private readonly trails = new Graphics();
+  private readonly seasonWash = new Graphics();
   private readonly caustics = new Graphics();
   private readonly rain = new Graphics();
   private readonly indicator = new Graphics();
@@ -192,6 +194,7 @@ export class TidepoolRenderer {
     this.root.addChild(this.water, this.mask);
     this.water.mask = this.mask;
     this.water.addChild(
+      this.seasonWash,
       this.lightPatchLayer,
       this.sedimentLayer,
       this.sedimentCores,
@@ -357,7 +360,7 @@ export class TidepoolRenderer {
     const weather = effectiveWeather(world);
     const lightReach = effectiveLightReach(world);
     const lightReachScale = lightReach / CALM_LIGHT_REACH;
-    this.drawWater(time, daylight(world));
+    this.drawWater(time, daylight(world), world.elapsed);
     // The first held ringlets acknowledge a paused call; feeding reach still uses actual intensity.
     this.drawRain(world.elapsed, weather.called ? Math.max(0.12, weather.intensity) : weather.intensity);
     this.trails.clear();
@@ -1044,9 +1047,15 @@ export class TidepoolRenderer {
     }
   }
 
-  private drawWater(time: number, daylightIntensity = 0): void {
+  private drawWater(time: number, daylightIntensity = 0, elapsed = 0): void {
+    this.seasonWash.clear();
+    this.seasonWash.rect(0, 0, WORLD_WIDTH, WORLD_HEIGHT).fill({
+      color: seasonWashColor(elapsed),
+      alpha: 0.045 + daylightIntensity * 0.035,
+    });
     this.caustics.clear();
     const glow = 0.028 + daylightIntensity * 0.04;
+    const caustic = seasonCausticColor(elapsed);
     for (let ribbon = 0; ribbon < 13; ribbon++) {
       const x = 210 + ((ribbon * 173) % 1000);
       const y = 190 + ((ribbon * 127) % 640);
@@ -1057,7 +1066,7 @@ export class TidepoolRenderer {
         this.caustics.lineTo(x + offset, y - offset * 0.24 + wave * 7);
       }
       this.caustics.stroke({
-        color: 0x7bb79c,
+        color: caustic,
         width: 0.6,
         alpha: glow + Math.sin(time * 0.3 + ribbon) * 0.015,
       });
@@ -1072,7 +1081,7 @@ export class TidepoolRenderer {
         this.caustics.lineTo(x + offset, y - offset * 0.2 + wave * 6);
       }
       this.caustics.stroke({
-        color: 0x7bb79c,
+        color: caustic,
         width: 0.55,
         alpha: glow * 0.85 + Math.sin(time * 0.28 + ribbon) * 0.012,
       });

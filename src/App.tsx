@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { KeyboardEvent, PointerEvent, ChangeEvent } from 'react';
+import type { CSSProperties, KeyboardEvent, PointerEvent, ChangeEvent } from 'react';
 import { Icon } from './Icons';
 import { CarryController } from './app/carry';
 import { StirController } from './app/stir';
@@ -21,6 +21,7 @@ import { eraById, namedEras } from './world/era-catalog';
 import { restoreWorld, serializeWorld } from './world/persistence';
 import { callRain, effectiveWeather } from './world/weather';
 import { getDaylight } from './world/environment/daylight';
+import { getSeason } from './world/environment/seasons';
 import { describeBulk, describeDrive } from './world/traits';
 import { MAX_CURRENTS } from './world/actions/current';
 import { FOSSIL_LABEL } from './world/species/fossils';
@@ -860,9 +861,13 @@ export function App() {
   const pendingEra = pendingEraId ? eraById(pendingEraId) : null;
   const openPanel = (next: Panel) => setPanel((current) => (current === next ? null : next));
   const weather = effectiveWeather(worldRef.current);
+  const season = getSeason(worldRef.current.elapsed);
 
   return (
-    <main className="elsewhere">
+    <main
+      className={`elsewhere season-${season.name}`}
+      style={{ '--season-mid': season.mid, '--season-edge': season.edge } as CSSProperties}
+    >
       <div
         ref={hostRef}
         className={`habitat tool-${tool}`}
@@ -1038,6 +1043,9 @@ export function App() {
             {stats.fossils > 0 ? `${stats.fossils} fossil${stats.fossils === 1 ? '' : 's'}` : null}
           </div>
         )}
+        <div className={`season-readout season-${season.name}`} aria-live="polite">
+          The year is in {season.label.toLowerCase()}. {season.note}
+        </div>
         <div className={`weather-readout ${weather.raining ? 'is-raining' : ''}`} aria-label="Pool weather">
           <span aria-hidden="true">◌</span>
           <span>
@@ -1303,8 +1311,8 @@ export function App() {
                       Watch for ringlets on the water. During rain, golden patches of light widen over six seconds.
                       Lucents can feed across that larger patch and leave color across a wider floor. Leave a fresh
                       light during the shower to see it; rain cannot bring back a spent light. Grazers follow the traces
-                      home. The shower passes after 38 seconds and returns every three minutes. Pause holds the weather,
-                      too.
+                      home. A shower still returns every three minutes; winter holds the rain longer, summer lets it
+                      pass sooner. Pause holds the weather, too.
                     </p>
                   </div>
                 </div>
@@ -1506,6 +1514,21 @@ export function App() {
                       one restores that frozen moment as the live pool. Nothing is granted: the organisms and color in
                       the file are the ones that already paid their way. The camera is not stored; the field journal is
                       still written only after time away.
+                    </p>
+                  </div>
+                </div>
+                <div className="guide-entry">
+                  <span className="entry-number">21</span>
+                  <div>
+                    <h3>The turning year</h3>
+                    <p>
+                      A slow year of six world days shifts the pool&apos;s conditions. Daylight is longest and brightest
+                      at the start of summer, shortest and dimmest at the start of winter; spring lengthens toward that
+                      peak and autumn shortens toward that floor. Passing rain stays longer in winter than in summer,
+                      and the channel current runs a little harder near winter&apos;s start. Seasons come from elapsed
+                      world time, so a returning visitor, a named era, and the headless harness all see the same year.
+                      The water takes a quiet tint; the observations list names the season for everyone, including a
+                      screen reader. Nothing is granted when the year turns.
                     </p>
                   </div>
                 </div>
@@ -1936,7 +1959,7 @@ export function App() {
                 </p>
                 <div className="snapshot-stamp">
                   <Icon name="spark" size={38} />
-                  <span>THE FIRST SHORE</span>
+                  <span>THE FIRST SHORE · {season.label.toUpperCase()}</span>
                   <strong>{timeLabel(stats.elapsed)}</strong>
                   <span>
                     {stats.population} LUCENTS · {stats.grazers} GRAZERS

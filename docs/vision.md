@@ -16,6 +16,11 @@ Eventually: several pools linked by slow currents, and the world keeps living wh
 
 - [x] **Fossils, eras, and linked pools** — Fossils in sediment record extinct populations; multiple pools connected by slow currents allow migration; named eras keep reviewed snapshots of earlier worlds. _Success: fossils visible in old sediment; organisms can move between pools; a visitor can open a named era, read its field note, and restore that frozen moment without gifts._ Fossils and linked pools already exist. Named eras are a static collection of three reviewed snapshots (`elsewhere-era` format, cap 8, 4 MB catalog). Automated capture is the format and `npm run capture-era`; replay uses the ordinary snapshot importer.
 
+- [ ] **New conditions** — Author physics and habitat, not species. A slow year, a deeper pool, or a mineral seam should create variety; life sorts itself out and extinction is allowed. No free populations, pigment, or energy.
+  - [x] **Seasons** — first slice. A six-world-day year (2160 seconds) derived from elapsed time shifts daylight length and strength, rain span, and channel current. Opening climate matches the previous yearless world. Catch-up, eras, and the harness see the same year. Schema revision stays 13. _Success: a 30-day harness covers five complete years; the UI names the season; a while-you-were-gone journal can mention a season change._
+  - [ ] A deeper pool
+  - [ ] A mineral seam
+
 ## Standing Invariants
 
 These hold across all changes:
@@ -97,7 +102,7 @@ _This section records surprising population dynamics, extinctions, or runaway re
 
 **The opening shore stays the first scene:** Schema revision 13 stores two authored basins and one channel. The original tidepool is still centered at (720, 500); the camera still opens on that frame. A smaller inlet sits south of a slow neck. Opening worlds and revision-12 saves receive the habitat, not organisms, pigment, lights, or energy.
 
-**Crossing is drift, not a gift:** The neck is ordinary water. A persistent current along it reverses every three minutes from elapsed time, at most 4.8 world units/second for bodies and 0.35 of that for sediment. A grain or lucent placed in the mouth travels along the channel; it is never teleported to the inlet center. Opening worlds start with every lucent, grazer, nest, and grain inside the first pool.
+**Crossing is drift, not a gift:** The neck is ordinary water. A persistent current along it reverses every three minutes from elapsed time, base 4.8 world units/second for bodies (seasonally scaled 0.82–1.18, envelope 5.664) and 0.35 of that for sediment. A grain or lucent placed in the mouth travels along the channel; it is never teleported to the inlet center. Opening worlds start with every lucent, grazer, nest, and grain inside the first pool.
 
 **30-day harness, no visitor light:** Seed 1 ended with 0.33 loose pigment, all of it in the inlet, and 5 mobile bodies there versus 25 still in the opening pool. Nested pigment (0.92) stayed with the opening nests. Seed 42 kept 0.50 loose pigment in the opening pool and sent 0.14 into the inlet, with 4 mobile bodies across versus 27 still in the opening pool. Nested pigment (1.43) stayed with the opening nests. Neither seed received free inlet life at t=0.
 
@@ -112,3 +117,29 @@ _This section records surprising population dynamics, extinctions, or runaway re
 **Storage stays bounded:** Three compact era files total about 101 KB, well under the 8-era / 4 MB catalog budget. Each inner world still passes the 1,000,000-character snapshot cap. Schema revision stays 13; eras live beside the live save, not inside it.
 
 **What remains later:** Automated capture of a visitor's own pool into this shelf, and replay tools beyond opening a named era as the live world. The format and `npm run capture-era` are the contract for that work.
+
+### Seasons (seeds 1 and 42)
+
+**A year is six world days so the harness can see it turn:** Each season lasts 1.5 world days (540 seconds): three rain cycles and about one mortal generation (skimmer, limpet, and mite lives are 480 seconds). A 30-day run is exactly five years, so first-year and last-year samples line up. An hour away is 10 world days, so catch-up always crosses a season. Schema revision stays 13; season is `elapsed` plus a sine, not a saved field. Existing eras load as they were and pick up the year of their frozen clock.
+
+**The opening climate is still the old climate:** At t=0 (spring) daylight, rain span (38 seconds), and channel scale match the yearless world. Strength and photoperiod peak at the start of summer and bottom at the start of winter; spring lengthens toward that peak and autumn shortens toward that floor. Rain is brief near summer's start and stays longer near winter's start; the channel envelope is 4.8×1.18 = 5.664. Ambient harvest over 30 days rose from 7425.53 to 7486.73 on both seeds — photoperiod is not a symmetric wash, and no pigment was granted.
+
+**Harness census is net turnover:** Birth and death totals in these runs are per-step net population change, not complete genealogical event counts. Opposite events in the same 1/30-second step cancel. Population curves are separately downsampled. Reedwell harvest still uses the 0.18 base times current daylight, so the noon offer is 0.216 at summer's start and 0.144 at winter's start.
+
+**Conservation, 30 unwatched days, reused from the seasons PR harness (not rerun):** Remains and fossils balanced on main and seasons for both seeds.
+
+|                                             | Seed 1 main                 | Seed 1 seasons              | Seed 42 main                    | Seed 42 seasons             |
+| ------------------------------------------- | --------------------------- | --------------------------- | ------------------------------- | --------------------------- |
+| Ambient harvest                             | 7425.53                     | 7486.73                     | 7425.53                         | 7486.73                     |
+| Remains created = held + consumed + decayed | 25.624 = 0 + 2.230 + 23.394 | 25.875 = 0 + 2.507 + 23.368 | 21.512 = 0.082 + 2.125 + 19.305 | 26.451 = 0 + 5.789 + 20.663 |
+| Fossils formed = held                       | 1.476                       | 1.453                       | 1.320                           | 1.338                       |
+| Nested pigment                              | 0.92                        | 1.05                        | 1.43                            | 1.19                        |
+| Loose pigment (inlet)                       | 0.33 (0.33)                 | 0.80 (0.71)                 | 0.64 (0.14)                     | 1.71 (1.00)                 |
+
+**Seed 1, 30 unwatched days:** Lucents and grazers still hold. Skimmers ended at 1 (43 / 42) versus 3 (46 / 43) on main. Cargo mites stayed at cap 4 (119 / 115 versus 123 / 119). They emptied in the first winter (Year 1 winter sample car 0 at 30m 36s) and re-founded; a later winter sample at 135m was also empty, and the close was 4. Grazers never left, so paid host founding stayed possible. Siltstitchers had more births (11 versus 8) and went extinct earlier (132m versus 175m). Glass limpets also turned over more (17 / 17, extinct 168m versus 14 / 14 at 180m). The brief rainbell on main did not found.
+
+**Seed 42, 30 unwatched days:** Skimmers ended at 2 (45 / 43) versus 4 (65 / 61) on main. Cargo mites hit 0 at 179m 48s (123 / 123) after surviving on main with one body. That close is not proof of permanent extinction: four grazers were still present, Year 5 winter still had 2 mites at 174m 36s, and mites re-founded after the first-year winter empty (Year 5 spring car 4). Paid host founding still exists. Marlgrubs had a real pulse (25 / 25 versus 10 / 10) and lasted until 177m versus 145m. Siltstitchers lasted to 94m with 6 births versus dying at 10m with 3. Reedwells and rainbells still boom-bust in the first half-hour.
+
+**Seed 42, 36 unwatched days:** Recovery occurs. After the 30-day close at 0 (last empty at 179m 48s), Year 6 spring re-founded to cap 4 by 183m 36s. Mites held at 4 through summer and autumn, then emptied again in Year 6 winter (last empty at 210m 27s; the close was still 0). Four grazers were present the whole time. Remains 31.363 = 0 + 6.556 + 24.807; fossils 1.338 = 1.338. That is paid host founding after a seasonal bottleneck, not a gift, and not a permanent seed-42 extinction.
+
+**What the year did, honestly:** It did not save reedwells or rainbells, and it did not guarantee mites. It changed when nest-funded and shoreline types found and emptied, and it moved more loose color through the neck. First-year winters on both seeds emptied cargo mites; later years sometimes re-founded them. Seasonal bottlenecks are real; they are not a reason to grant bodies. Remaining new-condition candidates are a deeper pool and a mineral seam.

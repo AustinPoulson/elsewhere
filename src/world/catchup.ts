@@ -1,3 +1,4 @@
+import { describeSeasonChange } from './environment/seasons';
 import { heldFossilPigment } from './species/fossils';
 import { heldRemainPigment } from './species/remains';
 import { stepWorld } from './simulation';
@@ -230,6 +231,9 @@ export function composeJournal(
     if (plan.sleptSeconds >= CATCH_UP_MIN_SECONDS) {
       lines.push(`The pool lived through ${describeSpan(plan.simulateSeconds)} of that time. The rest, it slept.`);
     }
+    const startedAt = Math.max(0, nowElapsed - plan.simulateSeconds);
+    const seasonLine = describeSeasonChange(startedAt, nowElapsed);
+    if (seasonLine) lines.push(seasonLine);
   }
 
   for (const species of SPECIES) {

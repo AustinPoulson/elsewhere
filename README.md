@@ -32,7 +32,7 @@ npm run preview
 - Use **Carry light** (M) to drag existing light to a new feeding ground without adding energy. With the keyboard, Enter picks up and sets down; Escape cancels.
 - Use **Stir water** (S) to draw a short directional stroke. An eight-world-second current carries lucents, grazers and loose pigment; light and nests stay anchored. Up to three currents can overlap. With the keyboard: Enter marks the start, arrows shape the stroke, Enter commits, Escape cancels.
 - Pause to study a moment; resume to let the ecosystem continue.
-- Watch the weather countdown: a 38-second rain spreads light every three minutes, beginning at 00:30. **Call rain** (R) invites a thirty-second shower now, followed by rest until sixty world seconds after the call. Rain widens existing feeding light; it adds no energy. Pause and snapshots preserve both rain and rest.
+- Watch the weather countdown: passing rain still returns every three minutes, beginning around 00:30 in spring; winter holds the shower longer and summer lets it pass sooner. **Call rain** (R) invites a thirty-second shower now, followed by rest until sixty world seconds after the call. Rain widens existing feeding light; it adds no energy. Pause and snapshots preserve both rain and rest. The observations list names the season of a six-world-day year.
 - Reset asks for confirmation, then returns to the opening tidepool with the same seed.
 - **Pocket this world** exports a snapshot to keep an era or transfer it. Opening a snapshot replaces the current pool; save the current one first if you want to keep both.
 - **Earlier worlds** opens a small shelf of named, reviewed snapshots with field notes about the experiment that made each one. Opening an era restores that frozen moment the same way a pocketed file does: it is not treated as time away, and nothing is granted.
@@ -99,7 +99,7 @@ npm run harness -- --days 10 --seed 42 --json results.json
 npm run harness -- --load mysave.json --days 5
 ```
 
-The harness reports population curves, births, deaths, extinctions, fossils, and resource flow. Use `--json` for machine-readable output.
+The harness reports population curves, births, deaths, extinctions, fossils, and resource flow. Birth and death totals are per-step net census change, not complete genealogical counts. Use `--json` for machine-readable output.
 
 Named eras are reviewed snapshots of those runs. Capture one with `npm run capture-era -- --id a-name --name "A title" --note "Field note" --days 30 --seed 1 --out src/world/era-snapshots/a-name.json`. The file must pass the `elsewhere-era` format and the ordinary snapshot importer before it can join the shelf.
 

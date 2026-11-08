@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { addLight, createWorld, getStats, stepWorld } from '../src/world/simulation';
 import { restoreWorld, serializeWorld } from '../src/world/persistence';
+import { YEAR_SECONDS } from '../src/world/environment/seasons';
 import { CALM_LIGHT_REACH, getLightReach, getWeather } from '../src/world/weather';
 import { FIXED_STEP, GRAZER_CAPACITY, LIMITS, NEST_CAPACITY, isInPool, type World } from '../src/world/types';
 
@@ -35,11 +36,18 @@ describe('derived rain', () => {
     expect(getWeather(63.5).intensity).toBeCloseTo(0.84375, 12);
     expect(getWeather(65).intensity).toBe(0.5);
     expect(getWeather(66.5).intensity).toBeCloseTo(0.15625, 12);
-    expect(getWeather(68)).toEqual({ intensity: 0, raining: false, secondsUntilChange: 142 });
-    expect(getWeather(179.5)).toEqual({ intensity: 0, raining: false, secondsUntilChange: 30.5 });
+    expect(getWeather(68)).toMatchObject({ intensity: 0, raining: false });
+    expect(getWeather(68).secondsUntilChange).toBeCloseTo(145.5, 5);
+    expect(getWeather(179.5)).toMatchObject({ intensity: 0, raining: false });
+    expect(getWeather(179.5).secondsUntilChange).toBeCloseTo(34, 5);
     for (const elapsed of [0, 14.5, 30, 33, 45, 65, 68, 179.5]) {
-      expect(getWeather(elapsed + 180)).toEqual(getWeather(elapsed));
-      expect(getWeather(elapsed + 360)).toEqual(getWeather(elapsed));
+      for (const later of [elapsed + YEAR_SECONDS, elapsed + YEAR_SECONDS * 2]) {
+        const now = getWeather(elapsed);
+        const wrapped = getWeather(later);
+        expect(wrapped.raining).toBe(now.raining);
+        expect(wrapped.intensity).toBeCloseTo(now.intensity, 10);
+        expect(wrapped.secondsUntilChange).toBeCloseTo(now.secondsUntilChange, 10);
+      }
     }
     expect(getLightReach(0)).toBe(CALM_LIGHT_REACH);
     expect(getLightReach(33)).toBe(88);
