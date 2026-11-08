@@ -66,7 +66,9 @@ em {
   height: 100svh;
   min-height: 620px;
   overflow: hidden;
-  background: radial-gradient(ellipse at 55% 50%, #15302b, #081817 72%);
+  --season-mid: #15302b;
+  --season-edge: #081817;
+  background: radial-gradient(ellipse at 55% 50%, var(--season-mid), var(--season-edge) 72%);
 }
 .habitat {
   position: absolute;
@@ -791,6 +793,23 @@ h1 em {
   letter-spacing: 0;
   color: #b7ad88;
 }
+.season-readout {
+  margin-top: 7px;
+  font-size: 10px;
+  letter-spacing: 0;
+  line-height: 1.45;
+  max-width: 280px;
+  color: #a3b89a;
+}
+.season-readout.season-summer {
+  color: #c3c48c;
+}
+.season-readout.season-autumn {
+  color: #c3b089;
+}
+.season-readout.season-winter {
+  color: #8fb4b4;
+}
 .weather-readout {
   display: flex;
   gap: 7px;
@@ -912,6 +931,10 @@ h1 em {
     left: 24px;
     font-size: 7px;
     letter-spacing: 1px;
+  }
+  .season-readout {
+    font-size: 9px;
+    max-width: min(280px, calc(100vw - 48px));
   }
   .readout-values {
     font-size: 10px;

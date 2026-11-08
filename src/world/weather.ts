@@ -1,3 +1,4 @@
+import { rainSpanAt } from './environment/seasons';
 import type { World } from './types';
 
 export interface Weather {
@@ -9,8 +10,7 @@ export interface Weather {
 export const CALM_LIGHT_REACH = 64;
 const RAIN_LIGHT_EXTENSION = 48;
 const CYCLE_SECONDS = 180;
-const RAIN_START = 30;
-const RAIN_END = 68;
+const RAIN_MID = 49;
 const FADE_SECONDS = 6;
 export const CALLED_RAIN_SECONDS = 30;
 export const RAIN_CALL_COOLDOWN = 60;
@@ -26,21 +26,27 @@ function ease(value: number): number {
   return t * t * (3 - 2 * t);
 }
 
-// Weather belongs to simulated time, so pause and restored saves keep its phase.
+function rainWindow(elapsed: number): { start: number; end: number } {
+  const half = rainSpanAt(elapsed) / 2;
+  return { start: RAIN_MID - half, end: RAIN_MID + half };
+}
+
 export function getWeather(elapsed: number): Weather {
   if (!Number.isFinite(elapsed) || elapsed < 0) throw new RangeError('Weather time must be finite and nonnegative.');
-  const phase = elapsed % CYCLE_SECONDS;
-  const raining = phase >= RAIN_START && phase < RAIN_END;
+  const cycleStart = Math.floor(elapsed / CYCLE_SECONDS) * CYCLE_SECONDS;
+  const phase = elapsed - cycleStart;
+  const window = rainWindow(cycleStart);
+  const raining = phase >= window.start && phase < window.end;
   return {
     intensity: raining
-      ? Math.min(ease((phase - RAIN_START) / FADE_SECONDS), ease((RAIN_END - phase) / FADE_SECONDS))
+      ? Math.min(ease((phase - window.start) / FADE_SECONDS), ease((window.end - phase) / FADE_SECONDS))
       : 0,
     raining,
     secondsUntilChange: raining
-      ? RAIN_END - phase
-      : phase < RAIN_START
-        ? RAIN_START - phase
-        : CYCLE_SECONDS - phase + RAIN_START,
+      ? window.end - phase
+      : phase < window.start
+        ? window.start - phase
+        : CYCLE_SECONDS - phase + rainWindow(cycleStart + CYCLE_SECONDS).start,
   };
 }
 

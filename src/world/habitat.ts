@@ -1,3 +1,4 @@
+import { channelScaleAt } from './environment/seasons';
 import { poolRadius, type HabitatChannel, type HabitatPool, type Point } from './types';
 
 export const OPENING_POOL: HabitatPool = { id: 1, x: 720, y: 500, rx: 610, ry: 400 };
@@ -240,7 +241,7 @@ let flowValue = 0;
 export function channelFlowAt(elapsed: number): number {
   if (elapsed !== flowElapsed) {
     flowElapsed = elapsed;
-    flowValue = Math.sin((elapsed / CHANNEL_PERIOD) * Math.PI * 2) * HABITAT_CHANNEL.flow;
+    flowValue = Math.sin((elapsed / CHANNEL_PERIOD) * Math.PI * 2) * HABITAT_CHANNEL.flow * channelScaleAt(elapsed);
   }
   return flowValue;
 }

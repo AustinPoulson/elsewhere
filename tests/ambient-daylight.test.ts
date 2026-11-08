@@ -16,7 +16,7 @@ describe('faint ambient daylight', () => {
     expect(world.organisms).toHaveLength(24);
 
     const night = createWorld(1);
-    night.elapsed = 180;
+    night.elapsed = 270;
     night.lights = [];
     const before = night.ecologyLedger.ambientHarvested;
     expect(daylight(night)).toBe(0);

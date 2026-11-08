@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { applyCurrent } from '../src/world/actions/current';
 import { daylight } from '../src/world/environment/daylight';
+import { seasonName } from '../src/world/environment/seasons';
 import { accrueFeedingPigment } from '../src/world/feeding';
 import { restoreWorld, serializeWorld } from '../src/world/persistence';
 import { addLight, createWorld, stepWorld } from '../src/world/simulation';
@@ -48,13 +49,15 @@ describe('rain-rooted daylight reedwell', () => {
     expect(world.skimmers).toEqual([]);
     expect(SPECIES_CATALOG.reedwell.cap).toBe(6);
     expect(NEW_TYPE_POPULATION_CAP).toBe(24);
+    expect(seasonName(world.elapsed)).toBe('spring');
     expect(daylight(world)).toBe(1);
-    world.elapsed = 90;
-    expect(daylight(world)).toBeCloseTo(0, 12);
     world.elapsed = 180;
     expect(daylight(world)).toBe(0);
-    world.elapsed = 360;
-    expect(daylight(world)).toBe(1);
+    world.elapsed = 720;
+    expect(daylight(world)).toBeGreaterThan(1);
+    world.elapsed = 1800;
+    expect(daylight(world)).toBeGreaterThan(0);
+    expect(daylight(world)).toBeLessThan(1);
     expect(world.ecologyLedger.daylightHarvested).toBe(0);
   });
 
@@ -231,19 +234,20 @@ describe('rain-rooted daylight reedwell', () => {
   it('harvests only daylight at .18/second, names saturation overflow and emits exactly 1.5 without pigment conversion', () => {
     const { world, reedwell } = born();
     world.elapsed = 90;
+    const noonOffer = SPECIES_CATALOG.reedwell.harvestRate * daylight(world) * 0.25;
     updateReedwells(world, 0.25);
-    expect(reedwell.lightStore).toBe(0.045);
-    expect(world.ecologyLedger.daylightHarvested).toBe(0.045);
+    expect(reedwell.lightStore).toBeCloseTo(noonOffer, 12);
+    expect(world.ecologyLedger.daylightHarvested).toBeCloseTo(noonOffer, 12);
     world.elapsed = 270;
     updateReedwells(world, 0.25);
-    expect(reedwell.lightStore).toBe(0.045);
+    expect(reedwell.lightStore).toBeCloseTo(noonOffer, 12);
     world.elapsed = 90;
     reedwell.lightStore = 2.99;
     reedwell.emissionNextAllowedAt = 100;
     world.ecologyLedger.daylightHarvested = 2.99;
     updateReedwells(world, 0.25);
     expect(reedwell.lightStore).toBe(3);
-    expect(world.ecologyLedger.daylightUnharvested).toBeCloseTo(0.035, 12);
+    expect(world.ecologyLedger.daylightUnharvested).toBeCloseTo(noonOffer - 0.01, 12);
     world.elapsed = 105;
     updateReedwells(world, 0.25);
     expect(world.lights).toHaveLength(1);

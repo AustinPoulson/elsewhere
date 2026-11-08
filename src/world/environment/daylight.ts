@@ -1,9 +1,15 @@
 import type { World } from '../types';
+import { dayStrengthAt, nightBiasAt } from './seasons';
 
 export const AMBIENT_FEED_RATE = 0.09;
+const DAY_SECONDS = 360;
 
 export function daylight(world: Pick<World, 'elapsed' | 'seed'>): number {
-  return Math.max(0, Math.sin((2 * Math.PI * ((world.elapsed + (world.seed % 360)) % 360)) / 360));
+  const raw = Math.sin((2 * Math.PI * ((world.elapsed + (world.seed % DAY_SECONDS)) % DAY_SECONDS)) / DAY_SECONDS);
+  const nightBias = nightBiasAt(world.elapsed);
+  const span = 1 - nightBias;
+  if (span <= 0) return 0;
+  return Math.max(0, ((raw - nightBias) / span) * dayStrengthAt(world.elapsed));
 }
 
 export function ambientOffer(world: Pick<World, 'elapsed' | 'seed'>, dt: number): number {

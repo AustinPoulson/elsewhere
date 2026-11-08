@@ -4,6 +4,7 @@ import { restoreWorld } from '../src/world/persistence';
 import { FOSSIL_LABEL, FOSSIL_SOURCES, fossilsBySource, heldFossilPigment } from '../src/world/species/fossils';
 import { heldRemainPigment } from '../src/world/species/remains';
 import { inInletPool, inOpeningPool } from '../src/world/habitat';
+import { seasonName, YEAR_DAYS, YEAR_SECONDS, type SeasonName } from '../src/world/environment/seasons';
 import { FIXED_STEP, type FossilSource, type Traits, type World } from '../src/world/types';
 import * as fs from 'node:fs';
 
@@ -11,6 +12,7 @@ const DAY_SECONDS = 360;
 
 interface PopulationSample {
   worldTime: number;
+  season: SeasonName;
   lucents: number;
   grazers: number;
   skimmers: number;
@@ -216,6 +218,7 @@ export function runHarness(config: HarnessConfig): HarnessReport {
   function samplePopulation(): PopulationSample {
     return {
       worldTime: world.elapsed,
+      season: seasonName(world.elapsed),
       lucents: world.organisms.length,
       grazers: world.grazers.length,
       skimmers: world.skimmers.length,
@@ -388,6 +391,9 @@ export function printReport(report: HarnessReport): void {
   console.log(`\n📊 Run Configuration`);
   console.log(`   Seed: ${report.seed}`);
   console.log(`   Simulated: ${report.simulatedDays} world days (${formatTime(report.worldSeconds)})`);
+  console.log(`   Year: ${YEAR_DAYS} world days (${YEAR_SECONDS}s); season from elapsed time`);
+  console.log(`   Opening season: ${report.populations[0]?.season ?? 'spring'}`);
+  console.log(`   Closing season: ${report.populations[report.populations.length - 1]?.season ?? 'spring'}`);
   console.log(`   Visitor light: ${report.visitorLight ? 'on (one spring light / day)' : 'off'}`);
   console.log(`   Steps: ${report.totalSteps.toLocaleString()}`);
   console.log(`   Wall time: ${(report.wallTimeMs / 1000).toFixed(2)}s`);
@@ -415,13 +421,35 @@ export function printReport(report: HarnessReport): void {
     Math.floor((3 * report.populations.length) / 4),
     report.populations.length - 1,
   ];
-  console.log('   Time       | Luc | Grz | Ski | Ree | Rai | Sil | Gla | Car | Mar | Rem | Fos');
-  console.log('   ' + '-'.repeat(74));
+  console.log('   Time       | Season  | Luc | Grz | Ski | Ree | Rai | Sil | Gla | Car | Mar | Rem | Fos');
+  console.log('   ' + '-'.repeat(84));
   for (const i of samples) {
     const p = report.populations[i];
     console.log(
-      `   ${formatTime(p.worldTime).padEnd(10)} | ${String(p.lucents).padStart(3)} | ${String(p.grazers).padStart(3)} | ${String(p.skimmers).padStart(3)} | ${String(p.reedwells).padStart(3)} | ${String(p.rainbells).padStart(3)} | ${String(p.siltstitchers).padStart(3)} | ${String(p.glassLimpets).padStart(3)} | ${String(p.cargoMites).padStart(3)} | ${String(p.marlgrubs).padStart(3)} | ${String(p.remains).padStart(3)} | ${String(p.fossils).padStart(3)}`,
+      `   ${formatTime(p.worldTime).padEnd(10)} | ${p.season.padEnd(7)} | ${String(p.lucents).padStart(3)} | ${String(p.grazers).padStart(3)} | ${String(p.skimmers).padStart(3)} | ${String(p.reedwells).padStart(3)} | ${String(p.rainbells).padStart(3)} | ${String(p.siltstitchers).padStart(3)} | ${String(p.glassLimpets).padStart(3)} | ${String(p.cargoMites).padStart(3)} | ${String(p.marlgrubs).padStart(3)} | ${String(p.remains).padStart(3)} | ${String(p.fossils).padStart(3)}`,
     );
+  }
+
+  console.log(`\n🌿 Seasons by year`);
+  const years = Math.max(1, Math.floor(report.simulatedDays / YEAR_DAYS));
+  for (const year of [0, years - 1]) {
+    if (year < 0) continue;
+    console.log(`   Year ${year + 1}`);
+    for (let slot = 0; slot < 4; slot++) {
+      const target = year * YEAR_SECONDS + (slot + 0.5) * (YEAR_SECONDS / 4);
+      let best = report.populations[0];
+      let bestDelta = Math.abs(best.worldTime - target);
+      for (const sample of report.populations) {
+        const delta = Math.abs(sample.worldTime - target);
+        if (delta < bestDelta) {
+          best = sample;
+          bestDelta = delta;
+        }
+      }
+      console.log(
+        `   ${best.season.padEnd(7)} @ ${formatTime(best.worldTime).padEnd(10)} | ski ${best.skimmers} car ${best.cargoMites} sil ${best.siltstitchers} gla ${best.glassLimpets} mar ${best.marlgrubs} rem ${best.remains} fos ${best.fossils}`,
+      );
+    }
   }
 
   console.log(`\n🧬 Trait Drift`);

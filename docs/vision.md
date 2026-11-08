@@ -16,6 +16,11 @@ Eventually: several pools linked by slow currents, and the world keeps living wh
 
 - [x] **Fossils, eras, and linked pools** — Fossils in sediment record extinct populations; multiple pools connected by slow currents allow migration; named eras keep reviewed snapshots of earlier worlds. _Success: fossils visible in old sediment; organisms can move between pools; a visitor can open a named era, read its field note, and restore that frozen moment without gifts._ Fossils and linked pools already exist. Named eras are a static collection of three reviewed snapshots (`elsewhere-era` format, cap 8, 4 MB catalog). Automated capture is the format and `npm run capture-era`; replay uses the ordinary snapshot importer.
 
+- [ ] **New conditions** — Author physics and habitat, not species. A slow year, a deeper pool, or a mineral seam should create variety; life sorts itself out and extinction is allowed. No free populations, pigment, or energy.
+  - [x] **Seasons** — first slice. A six-world-day year (2160 seconds) derived from elapsed time shifts daylight length and strength, rain span, and channel current. Opening climate matches the previous yearless world. Catch-up, eras, and the harness see the same year. Schema revision stays 13. _Success: a 30-day harness covers five complete years; the UI names the season; a while-you-were-gone journal can mention a season change._
+  - [ ] A deeper pool
+  - [ ] A mineral seam
+
 ## Standing Invariants
 
 These hold across all changes:
@@ -112,3 +117,15 @@ _This section records surprising population dynamics, extinctions, or runaway re
 **Storage stays bounded:** Three compact era files total about 101 KB, well under the 8-era / 4 MB catalog budget. Each inner world still passes the 1,000,000-character snapshot cap. Schema revision stays 13; eras live beside the live save, not inside it.
 
 **What remains later:** Automated capture of a visitor's own pool into this shelf, and replay tools beyond opening a named era as the live world. The format and `npm run capture-era` are the contract for that work.
+
+### Seasons (seeds 1 and 42)
+
+**A year is six world days so the harness can see it turn:** Each season lasts 1.5 world days (540 seconds): three rain cycles and about one mortal generation (skimmer, limpet, and mite lives are 480 seconds). A 30-day run is exactly five years, so first-year and last-year samples line up. An hour away is 10 world days, so catch-up always crosses a season. Schema revision stays 13; season is `elapsed` plus a sine, not a saved field. Existing eras load as they were and pick up the year of their frozen clock.
+
+**The opening climate is still the old climate:** At t=0 (spring) daylight, rain span (38 seconds), and channel scale match the yearless world. Summer lengthens and brightens the 360-second daylight sine and shortens rain; winter does the reverse and runs the channel a little harder. Ambient harvest over 30 days rose from 7425.53 to 7486.73 on both seeds — photoperiod is not a symmetric wash, and no pigment was granted.
+
+**Seed 1, 30 unwatched days:** Lucents and grazers still hold. Skimmers ended at 1 (43 births / 42 deaths) versus 3 (46 / 43) on main. Cargo mites stayed at cap 4 (119 / 115 versus 123 / 119) after emptying in the first winter and re-founding. Siltstitchers had more births (11 versus 8) and went extinct earlier (132m versus 175m). Glass limpets also turned over more (17 / 17, extinct 168m versus 14 / 14 at 180m). The brief rainbell on main did not found. Nested pigment 1.05 versus 0.92; loose pigment 0.80 versus 0.33, with more of it in the inlet (0.71 versus 0.33). Remains and fossils still balance.
+
+**Seed 42, 30 unwatched days:** Skimmers ended at 2 (45 / 43) versus 4 (65 / 61) on main. Cargo mites went extinct at 180m (123 / 123) after surviving on main with one body. Marlgrubs had a real pulse (25 / 25 versus 10 / 10) and lasted until 177m versus 145m. Siltstitchers lasted to 94m with 6 births versus dying at 10m with 3. Reedwells and rainbells still boom-bust in the first half-hour. Nested pigment 1.19 versus 1.43; loose pigment 1.71 versus 0.64, with more crossing into the inlet (1.00 versus 0.14). Extinction is still allowed: mites did not survive this seed.
+
+**What the year did, honestly:** It did not save reedwells or rainbells, and it did not guarantee mites. It changed when nest-funded and shoreline types found and emptied, and it moved more loose color through the neck. First-year winters on both seeds emptied cargo mites; later years sometimes re-founded them. That is selection under a new climate, not a population gift. Remaining new-condition candidates are a deeper pool and a mineral seam.
