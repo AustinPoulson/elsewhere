@@ -14,10 +14,10 @@ export const SEASON_LABEL: Record<SeasonName, string> = {
 };
 
 export const SEASON_NOTE: Record<SeasonName, string> = {
-  spring: 'Days are lengthening.',
-  summer: 'Daylight runs long and bright; rain is brief.',
-  autumn: 'Days are shortening.',
-  winter: 'Days are short and dim; rain stays longer.',
+  spring: "Days lengthen toward summer's start.",
+  summer: 'Brightest at the start, then easing; rain is brief.',
+  autumn: "Days shorten toward winter's start.",
+  winter: 'Dimmest at the start, then easing; rain stays longer.',
 };
 
 function assertTime(elapsed: number): void {

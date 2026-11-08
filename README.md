@@ -99,7 +99,7 @@ npm run harness -- --days 10 --seed 42 --json results.json
 npm run harness -- --load mysave.json --days 5
 ```
 
-The harness reports population curves, births, deaths, extinctions, fossils, and resource flow. Use `--json` for machine-readable output.
+The harness reports population curves, births, deaths, extinctions, fossils, and resource flow. Birth and death totals are per-step net census change, not complete genealogical counts. Use `--json` for machine-readable output.
 
 Named eras are reviewed snapshots of those runs. Capture one with `npm run capture-era -- --id a-name --name "A title" --note "Field note" --days 30 --seed 1 --out src/world/era-snapshots/a-name.json`. The file must pass the `elsewhere-era` format and the ordinary snapshot importer before it can join the shelf.
 

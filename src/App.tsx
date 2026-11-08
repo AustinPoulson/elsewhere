@@ -1522,12 +1522,13 @@ export function App() {
                   <div>
                     <h3>The turning year</h3>
                     <p>
-                      A slow year of six world days shifts the pool&apos;s conditions: summer lengthens and brightens
-                      the daylight sine, winter shortens and dims it, and passing rain stays longer in winter than in
-                      summer. The channel current runs a little harder in winter. Seasons come from elapsed world time,
-                      so a returning visitor, a named era, and the headless harness all see the same year. The water
-                      takes a quiet tint; the observations list names the season for everyone, including a screen
-                      reader. Nothing is granted when the year turns.
+                      A slow year of six world days shifts the pool&apos;s conditions. Daylight is longest and brightest
+                      at the start of summer, shortest and dimmest at the start of winter; spring lengthens toward that
+                      peak and autumn shortens toward that floor. Passing rain stays longer in winter than in summer,
+                      and the channel current runs a little harder near winter&apos;s start. Seasons come from elapsed
+                      world time, so a returning visitor, a named era, and the headless harness all see the same year.
+                      The water takes a quiet tint; the observations list names the season for everyone, including a
+                      screen reader. Nothing is granted when the year turns.
                     </p>
                   </div>
                 </div>
