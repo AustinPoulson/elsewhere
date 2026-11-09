@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { restoreWorld, serializeWorld } from '../src/world/persistence';
 import { createWorld, stepWorld } from '../src/world/simulation';
 import { baselineTraits } from '../src/world/traits';
-import type { World } from '../src/world/types';
+import { SCHEMA_REVISION, type World } from '../src/world/types';
 
 function previousRevision(world: World): Record<string, unknown> {
   const previous = structuredClone(world) as Record<string, any>;
@@ -10,6 +10,7 @@ function previousRevision(world: World): Record<string, unknown> {
   delete previous.lastSeenAt;
   delete previous.fossils;
   delete previous.pools;
+  delete previous.seamAccrued;
   delete previous.channel;
   delete previous.ecologyLedger.ambientHarvested;
   delete previous.remains;
@@ -23,6 +24,7 @@ function previousRevision(world: World): Record<string, unknown> {
     'marlgrubIntake',
     'marlgrubMaintenancePigment',
     'fossilsFormed',
+    'seamDissolved',
   ])
     delete previous.ecologyLedger[key];
   for (const collection of [
@@ -52,7 +54,7 @@ describe('heritable trait snapshot revision', () => {
     const source = JSON.stringify(old);
     const migrated = restoreWorld(source)!;
     expect(migrated).not.toBeNull();
-    expect(migrated.schemaRevision).toBe(13);
+    expect(migrated.schemaRevision).toBe(SCHEMA_REVISION);
     expect(migrated.remains).toEqual([]);
     expect(migrated.marlgrubs).toEqual([]);
     expect(migrated.cargoMites).toEqual([]);
@@ -154,7 +156,7 @@ describe('heritable trait snapshot revision', () => {
         delete w.ecologyLedger.ambientHarvested;
       },
       (w) => {
-        w.schemaRevision = 14;
+        w.schemaRevision = 15;
       },
       (w) => {
         w.schemaRevision = 8;

@@ -108,6 +108,7 @@ function revision3(world: World): Record<string, any> {
     fossils: _fossils,
     pools: _pools,
     channel: _channel,
+    seamAccrued: _seamAccrued,
     skimmerCandidateAfterId: _skimmerCandidate,
     ...previous
   } = structuredClone(world);
@@ -125,6 +126,7 @@ function revision3(world: World): Record<string, any> {
     'marlgrubIntake',
     'marlgrubMaintenancePigment',
     'fossilsFormed',
+    'seamDissolved',
   ])
     delete result.ecologyLedger[key];
   return result;
@@ -162,6 +164,7 @@ describe('reedwell snapshot revision', () => {
       fossils: _fossils,
       pools: _pools,
       channel: _channel,
+      seamAccrued: _seamAccrued,
       skimmerCandidateAfterId: _skimmerCandidate,
       ...oldFields
     } = restored;
@@ -188,6 +191,7 @@ describe('reedwell snapshot revision', () => {
       'marlgrubIntake',
       'marlgrubMaintenancePigment',
       'fossilsFormed',
+      'seamDissolved',
     ]) {
       expect(oldLedger[key]).toBe(0);
       delete oldLedger[key];
@@ -201,7 +205,7 @@ describe('reedwell snapshot revision', () => {
     const before = JSON.stringify(historicalStudy);
     const restored = restoreWorld(before)!;
     expect(restored).toMatchObject({
-      schemaRevision: 13,
+      schemaRevision: 14,
       reedwells: [],
       reedwellAdmissionAt: historicalStudy.elapsed,
       reedwellCandidateAfterId: 0,
@@ -382,7 +386,7 @@ describe('reedwell snapshot revision', () => {
         w.nextId += 7;
       },
       (w) => {
-        w.schemaRevision = 14;
+        w.schemaRevision = 15;
       },
     ];
     for (const key of reedwellLedgerKeys) {

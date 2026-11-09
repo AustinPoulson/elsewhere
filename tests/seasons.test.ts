@@ -44,6 +44,8 @@ const quietResources: ResourceSnapshot = {
   remainPigment: 0,
   fossilPigment: 0,
   fossils: 0,
+  seamRemaining: 24,
+  seamDissolved: 0,
 };
 
 describe('season math', () => {
@@ -157,17 +159,17 @@ describe('season math', () => {
     }
   });
 
-  it('does not store a season field and keeps schema revision 13', () => {
+  it('does not store a season field and follows the current schema revision', () => {
     const world = createWorld(1);
     world.elapsed = YEAR_SECONDS / 2;
     const parsed = JSON.parse(serializeWorld(world)) as { schemaRevision: number; season?: unknown };
     expect(parsed.schemaRevision).toBe(SCHEMA_REVISION);
-    expect(parsed.schemaRevision).toBe(13);
+    expect(parsed.schemaRevision).toBe(14);
     expect(parsed).not.toHaveProperty('season');
     const restored = restoreWorld(serializeWorld(world));
     expect(restored).not.toBeNull();
     expect(seasonName(restored!.elapsed)).toBe('autumn');
-    expect(restoreWorld(serializeWorld(createWorld(1)))?.schemaRevision).toBe(13);
+    expect(restoreWorld(serializeWorld(createWorld(1)))?.schemaRevision).toBe(14);
   });
 });
 

@@ -124,6 +124,7 @@ function revision4(world: World): Record<string, any> {
     fossils: _fossils,
     pools: _pools,
     channel: _channel,
+    seamAccrued: _seamAccrued,
     skimmerCandidateAfterId: _skimmerCandidate,
     ...previous
   } = structuredClone(world);
@@ -140,6 +141,7 @@ function revision4(world: World): Record<string, any> {
     'marlgrubIntake',
     'marlgrubMaintenancePigment',
     'fossilsFormed',
+    'seamDissolved',
   ])
     delete result.ecologyLedger[key];
   return result;
@@ -209,10 +211,11 @@ describe('rainbell snapshot revision', () => {
       fossils: _fossils,
       pools: _pools,
       channel: _channel,
+      seamAccrued: _seamAccrued,
       skimmerCandidateAfterId: _skimmerCandidate,
       ...oldFields
     } = restored;
-    expect(restored.schemaRevision).toBe(13);
+    expect(restored.schemaRevision).toBe(14);
     expect(rainbells).toEqual([]);
     expect(rainbellAdmissionAt).toBe(source.elapsed);
     expect(rainbellCandidateAfterId).toBe(0);
@@ -232,6 +235,7 @@ describe('rainbell snapshot revision', () => {
       'marlgrubIntake',
       'marlgrubMaintenancePigment',
       'fossilsFormed',
+      'seamDissolved',
     ]) {
       expect(oldLedger[key]).toBe(0);
       delete oldLedger[key];
@@ -254,7 +258,7 @@ describe('rainbell snapshot revision', () => {
       const before = JSON.stringify(source);
       const restored = restoreWorld(before)!;
       expect(restored).toMatchObject({
-        schemaRevision: 13,
+        schemaRevision: 14,
         rainbells: [],
         rainbellAdmissionAt: source.elapsed,
         rainbellCandidateAfterId: 0,
@@ -428,7 +432,7 @@ describe('rainbell snapshot revision', () => {
         w.nextId += 5;
       },
       (w) => {
-        w.schemaRevision = 14;
+        w.schemaRevision = 15;
       },
     ];
     for (const target of ['feedTargetSedimentId', 'pumpTargetSedimentId']) {

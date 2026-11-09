@@ -1,3 +1,4 @@
+import { describeSeamChange, seamRemaining } from './environment/mineral-seam';
 import { describeSeasonChange } from './environment/seasons';
 import { heldFossilPigment } from './species/fossils';
 import { heldRemainPigment } from './species/remains';
@@ -45,6 +46,8 @@ export interface ResourceSnapshot {
   remainPigment: number;
   fossilPigment: number;
   fossils: number;
+  seamRemaining: number;
+  seamDissolved: number;
 }
 
 export interface CatchUpJournal {
@@ -124,6 +127,8 @@ export function resourceSnapshot(world: World): ResourceSnapshot {
     remainPigment: heldRemainPigment(world),
     fossilPigment: heldFossilPigment(world),
     fossils: world.fossils.length,
+    seamRemaining: seamRemaining(world),
+    seamDissolved: world.ecologyLedger.seamDissolved,
   };
 }
 
@@ -234,6 +239,12 @@ export function composeJournal(
     const startedAt = Math.max(0, nowElapsed - plan.simulateSeconds);
     const seasonLine = describeSeasonChange(startedAt, nowElapsed);
     if (seasonLine) lines.push(seasonLine);
+    const seamLine = describeSeamChange(
+      before.seamRemaining,
+      after.seamRemaining,
+      after.seamDissolved - before.seamDissolved,
+    );
+    if (seamLine) lines.push(seamLine);
   }
 
   for (const species of SPECIES) {

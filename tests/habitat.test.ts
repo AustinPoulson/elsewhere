@@ -170,7 +170,7 @@ describe('linked habitat', () => {
 
   it('keeps paired current-drift trajectories identical across both pools and the channel', () => {
     const world = createWorld(29);
-    expect(world.schemaRevision).toBe(13);
+    expect(world.schemaRevision).toBe(SCHEMA_REVISION);
     world.elapsed = 45;
     const link = channelSegment();
     const grain = world.sediment[0];

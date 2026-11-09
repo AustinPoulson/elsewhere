@@ -31,6 +31,7 @@ import { runNormalFounding, tryEventFounding } from './species/founding';
 import { nextRandom } from './rng';
 import { baselineTraits, traitMobility } from './traits';
 import { ambientOffer } from './environment/daylight';
+import { dissolveMineralSeam, seamRemaining } from './environment/mineral-seam';
 
 const TAU = Math.PI * 2;
 const ENERGY_FLOOR = 0.12;
@@ -156,6 +157,7 @@ export function createWorld(seed = 20261006): World {
     version: 3,
     schemaRevision: SCHEMA_REVISION,
     lastSeenAt: null,
+    seamAccrued: 0,
     pools: habitat.pools,
     channel: habitat.channel,
     currents: [],
@@ -213,6 +215,7 @@ export function createWorld(seed = 20261006): World {
       marlgrubIntake: 0,
       marlgrubMaintenancePigment: 0,
       fossilsFormed: 0,
+      seamDissolved: 0,
     },
     seed: normalizedSeed,
     randomState: normalizedSeed,
@@ -476,6 +479,7 @@ export function stepWorld(world: World, dt = FIXED_STEP): void {
   }
   world.elapsed += dt;
   world.tick++;
+  dissolveMineralSeam(world, dt);
   const lightReach = effectiveLightReach(world);
   for (const organism of world.organisms) updateLucent(world, organism, dt, lightReach);
   for (const grazer of world.grazers) updateGrazer(world, grazer, dt);
@@ -531,5 +535,7 @@ export function getStats(world: World): WorldStats {
     fossils: world.fossils.length,
     fossilPigment: world.fossils.reduce((total, fossil) => total + fossil.pigment, 0),
     nestPigment: world.nests.reduce((total, nest) => total + nest.pigment, 0),
+    seamRemaining: seamRemaining(world),
+    seamDissolved: world.ecologyLedger.seamDissolved,
   };
 }

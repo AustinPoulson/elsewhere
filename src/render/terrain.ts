@@ -1,3 +1,4 @@
+import { MINERAL_SEAM } from '../world/environment/mineral-seam';
 import { channelSegment, INLET_POOL, OPENING_POOL, poolCoastPoint } from '../world/habitat';
 import { WORLD_HEIGHT, WORLD_WIDTH, type HabitatPool } from '../world/types';
 
@@ -143,6 +144,24 @@ export function createTerrain(): HTMLCanvasElement {
     ctx.fillStyle = grain % 5 === 0 ? 'rgba(177,180,127,.11)' : 'rgba(105,156,134,.07)';
     const radius = random() * 0.7 + 0.2;
     ctx.fillRect(x, y, radius, radius);
+  }
+  ctx.beginPath();
+  ctx.moveTo(MINERAL_SEAM.ax, MINERAL_SEAM.ay);
+  ctx.quadraticCurveTo(MINERAL_SEAM.x - 12, MINERAL_SEAM.y + 18, MINERAL_SEAM.bx, MINERAL_SEAM.by);
+  ctx.strokeStyle = 'rgba(168,112,58,.28)';
+  ctx.lineWidth = 5.5;
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(196,138,74,.18)';
+  ctx.lineWidth = 2.2;
+  ctx.stroke();
+  for (let grain = 0; grain < 70; grain++) {
+    const t = random();
+    const x = MINERAL_SEAM.ax + (MINERAL_SEAM.bx - MINERAL_SEAM.ax) * t + (random() - 0.5) * 18;
+    const y = MINERAL_SEAM.ay + (MINERAL_SEAM.by - MINERAL_SEAM.ay) * t + (random() - 0.5) * 10;
+    ctx.fillStyle = `rgba(186,124,62,${0.12 + random() * 0.22})`;
+    ctx.beginPath();
+    ctx.arc(x, y, 0.6 + random() * 1.4, 0, TAU);
+    ctx.fill();
   }
   ctx.restore();
 

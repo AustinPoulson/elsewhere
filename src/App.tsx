@@ -21,6 +21,7 @@ import { eraById, namedEras } from './world/era-catalog';
 import { restoreWorld, serializeWorld } from './world/persistence';
 import { callRain, effectiveWeather } from './world/weather';
 import { getDaylight } from './world/environment/daylight';
+import { MINERAL_SEAM } from './world/environment/mineral-seam';
 import { getSeason } from './world/environment/seasons';
 import { describeBulk, describeDrive } from './world/traits';
 import { MAX_CURRENTS } from './world/actions/current';
@@ -1046,6 +1047,11 @@ export function App() {
         <div className={`season-readout season-${season.name}`} aria-live="polite">
           The year is in {season.label.toLowerCase()}. {season.note}
         </div>
+        <div className="seam-readout" aria-live="polite">
+          {stats.seamRemaining <= 0
+            ? 'The mineral seam is spent. Its ochre streak still marks the floor.'
+            : `A mineral seam is leaching into the western floor. ${stats.seamRemaining.toFixed(1)} of ${MINERAL_SEAM.capacity} remains.`}
+        </div>
         <div className={`weather-readout ${weather.raining ? 'is-raining' : ''}`} aria-label="Pool weather">
           <span aria-hidden="true">◌</span>
           <span>
@@ -1529,6 +1535,19 @@ export function App() {
                       world time, so a returning visitor, a named era, and the headless harness all see the same year.
                       The water takes a quiet tint; the observations list names the season for everyone, including a
                       screen reader. Nothing is granted when the year turns.
+                    </p>
+                  </div>
+                </div>
+                <div className="guide-entry">
+                  <span className="entry-number">22</span>
+                  <div>
+                    <h3>A mineral seam</h3>
+                    <p>
+                      An ochre vein lies in the opening pool&apos;s western sediment. Water dissolves it slowly; rain
+                      leaches a little faster. The color that leaves the rock is ordinary pigment, already counted, and
+                      it appears near the streak rather than everywhere at once. Grazers and later feeders may gather
+                      there. The vein is finite. Opening worlds and old saves receive the geology, not a pile of loose
+                      color. Catch-up, named eras, and the headless harness dissolve the same rock.
                     </p>
                   </div>
                 </div>

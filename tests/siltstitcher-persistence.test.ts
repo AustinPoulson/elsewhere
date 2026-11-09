@@ -145,6 +145,7 @@ function previous(world: World): Record<string, any> {
     fossils: _fossils,
     pools: _pools,
     channel: _channel,
+    seamAccrued: _seamAccrued,
     skimmerCandidateAfterId: _skimmerCandidate,
     ...old
   } = structuredClone(world);
@@ -160,6 +161,7 @@ function previous(world: World): Record<string, any> {
     'marlgrubIntake',
     'marlgrubMaintenancePigment',
     'fossilsFormed',
+    'seamDissolved',
   ])
     delete result.ecologyLedger[key];
   return result;
@@ -235,10 +237,11 @@ describe('siltstitcher snapshot revision', () => {
       fossils: _fossils,
       pools: _pools,
       channel: _channel,
+      seamAccrued: _seamAccrued,
       skimmerCandidateAfterId: _skimmerCandidate,
       ...old
     } = restored;
-    expect(restored.schemaRevision).toBe(13);
+    expect(restored.schemaRevision).toBe(14);
     expect(siltstitchers).toEqual([]);
     expect(siltstitcherAdmissionAt).toBe(source.elapsed);
     expect(siltstitcherCandidateAfterId).toBe(0);
@@ -254,6 +257,7 @@ describe('siltstitcher snapshot revision', () => {
       'marlgrubIntake',
       'marlgrubMaintenancePigment',
       'fossilsFormed',
+      'seamDissolved',
     ]) {
       expect(oldLedger[key]).toBe(0);
       delete oldLedger[key];
@@ -277,7 +281,7 @@ describe('siltstitcher snapshot revision', () => {
       const before = JSON.stringify(source);
       const restored = restoreWorld(before)!;
       expect(restored).toMatchObject({
-        schemaRevision: 13,
+        schemaRevision: 14,
         siltstitchers: [],
         siltstitcherAdmissionAt: source.elapsed,
         siltstitcherCandidateAfterId: 0,
@@ -544,7 +548,7 @@ describe('siltstitcher snapshot revision', () => {
         w.siltstitchers = Array.from({ length: 7 }, () => ({ ...w.siltstitchers[0], id: w.nextId++ }));
       },
       (w) => {
-        w.schemaRevision = 14;
+        w.schemaRevision = 15;
       },
     ];
     for (const other of [

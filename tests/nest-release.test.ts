@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { MINERAL_SEAM } from '../src/world/environment/mineral-seam';
 import { addLight, createWorld, releaseNestPigment, stepWorld } from '../src/world/simulation';
 import { restoreWorld, serializeWorld } from '../src/world/persistence';
 import { LIMITS, isInPool, poolRadius, type World } from '../src/world/types';
@@ -165,6 +166,8 @@ describe('nest pigment release', () => {
     const nest = world.nests[0];
     Object.assign(nest, { x: 720, y: 500, pigment: 3, hue: 276 });
     Object.assign(world.grazers[0], { x: nest.x, y: nest.y, vx: 0, vy: 0, cargo: 0, returning: false });
+    world.seamAccrued = 0;
+    world.ecologyLedger.seamDissolved = MINERAL_SEAM.capacity;
     const randomState = world.randomState;
     expect(releaseNestPigment(world, nest.id)).toEqual({ status: 'released', amount: 3 });
     expect(nest.pigment).toBe(0);
@@ -256,6 +259,7 @@ describe('nest pigment release', () => {
       fossils: _fossils,
       pools: _pools,
       channel: _channel,
+      seamAccrued: _seamAccrued,
       organisms,
       ...fields
     } = legacy;

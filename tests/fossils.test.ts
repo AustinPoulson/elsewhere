@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { composeJournal } from '../src/world/catchup';
+import { MINERAL_SEAM } from '../src/world/environment/mineral-seam';
 import { createWorld, stepWorld } from '../src/world/simulation';
 import { FOSSIL_CAPACITY, LIMITS, type World } from '../src/world/types';
 import { depositFossil, heldFossilPigment } from '../src/world/species/fossils';
@@ -21,6 +22,8 @@ function empty(): World {
   world.sediment = [];
   world.skimmers = [];
   world.fossils = [];
+  world.seamAccrued = 0;
+  world.ecologyLedger.seamDissolved = MINERAL_SEAM.capacity;
   return world;
 }
 
@@ -135,8 +138,24 @@ describe('fossil burial', () => {
         cargoMites: { births: 0, deaths: 0, extinctAt: null },
         marlgrubs: { births: 0, deaths: 0, extinctAt: null },
       },
-      { loosePigment: 1, nestedPigment: 1, remainPigment: 0, fossilPigment: 0, fossils: 0 },
-      { loosePigment: 1, nestedPigment: 1, remainPigment: 0, fossilPigment: 0.2, fossils: 1 },
+      {
+        loosePigment: 1,
+        nestedPigment: 1,
+        remainPigment: 0,
+        fossilPigment: 0,
+        fossils: 0,
+        seamRemaining: 24,
+        seamDissolved: 0,
+      },
+      {
+        loosePigment: 1,
+        nestedPigment: 1,
+        remainPigment: 0,
+        fossilPigment: 0.2,
+        fossils: 1,
+        seamRemaining: 24,
+        seamDissolved: 0,
+      },
       80,
     );
     expect(journal.lines).toContain('The last glass limpet died about a minute ago.');
@@ -149,6 +168,6 @@ describe('opening worlds', () => {
     const world = createWorld(4);
     expect(world.fossils).toEqual([]);
     expect(world.ecologyLedger.fossilsFormed).toBe(0);
-    expect(world.schemaRevision).toBe(13);
+    expect(world.schemaRevision).toBe(14);
   });
 });
