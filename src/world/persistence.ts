@@ -24,6 +24,7 @@ import {
   type Traits,
   type World,
 } from './types';
+import { MINERAL_SEAM } from './environment/mineral-seam';
 import { containingPool, isAuthoredHabitat, linkedHabitat, shoreRho } from './habitat';
 import { initializeGrazers } from './simulation';
 import { cargoMiteReserveCapacity } from './species/cargo-mite';
@@ -221,6 +222,7 @@ const REMAINS_LEDGER_KEYS = [
   'marlgrubMaintenancePigment',
 ] as const;
 const FOSSIL_LEDGER_KEYS = ['fossilsFormed'] as const;
+const SEAM_LEDGER_KEYS = ['seamDissolved'] as const;
 
 function ledger(
   value: unknown,
@@ -232,6 +234,7 @@ function ledger(
   ambient: boolean,
   remains: boolean,
   fossils: boolean,
+  seam: boolean,
 ): boolean {
   return (
     record(value) &&
@@ -259,7 +262,10 @@ function ledger(
       : REMAINS_LEDGER_KEYS.every((key) => !(key in value))) &&
     (fossils
       ? FOSSIL_LEDGER_KEYS.every((key) => range(value[key], 0, MAX_NUMBER))
-      : FOSSIL_LEDGER_KEYS.every((key) => !(key in value)))
+      : FOSSIL_LEDGER_KEYS.every((key) => !(key in value))) &&
+    (seam
+      ? SEAM_LEDGER_KEYS.every((key) => range(value[key], 0, MINERAL_SEAM.capacity))
+      : SEAM_LEDGER_KEYS.every((key) => !(key in value)))
   );
 }
 
@@ -450,7 +456,8 @@ function marlgrub(value: unknown, nextId: number, withTraits = false): boolean {
 }
 
 type PrePrismOrganism = Omit<Organism, 'pigmentCredit'>;
-type Revision11Ledger = Omit<EcologyLedger, (typeof FOSSIL_LEDGER_KEYS)[number]>;
+type Revision13Ledger = Omit<EcologyLedger, (typeof SEAM_LEDGER_KEYS)[number]>;
+type Revision11Ledger = Omit<Revision13Ledger, (typeof FOSSIL_LEDGER_KEYS)[number]>;
 type Revision11Remain = Omit<Remain, 'source'>;
 type Revision9Ledger = Omit<Revision11Ledger, (typeof REMAINS_LEDGER_KEYS)[number]>;
 type Revision8Ledger = Omit<Revision9Ledger, (typeof AMBIENT_LEDGER_KEYS)[number]>;
@@ -459,7 +466,11 @@ type Revision6Ledger = Omit<Revision7Ledger, (typeof GLASS_LIMPET_LEDGER_KEYS)[n
 type RainbellLedger = Omit<Revision6Ledger, (typeof SILTSTITCHER_LEDGER_KEYS)[number]>;
 type ReedwellLedger = Omit<RainbellLedger, (typeof RAINBELL_LEDGER_KEYS)[number]>;
 type PrismLedger = Omit<ReedwellLedger, (typeof REEDWELL_LEDGER_KEYS)[number]>;
-type Revision12World = Omit<World, 'schemaRevision' | 'pools' | 'channel'> & { schemaRevision: 12 };
+type Revision13World = Omit<World, 'schemaRevision' | 'seamAccrued' | 'ecologyLedger'> & {
+  schemaRevision: 13;
+  ecologyLedger: Revision13Ledger;
+};
+type Revision12World = Omit<Revision13World, 'schemaRevision' | 'pools' | 'channel'> & { schemaRevision: 12 };
 type Revision11World = Omit<Revision12World, 'schemaRevision' | 'fossils' | 'remains' | 'ecologyLedger'> & {
   schemaRevision: 11;
   remains: Revision11Remain[];
@@ -668,13 +679,22 @@ function migrateRevision11To12(previous: Revision11World): Revision12World {
   };
 }
 
-function migrateRevision12To13(previous: Revision12World): World {
+function migrateRevision12To13(previous: Revision12World): Revision13World {
   const habitat = linkedHabitat();
   return {
     ...previous,
     schemaRevision: 13,
     pools: habitat.pools,
     channel: habitat.channel,
+  };
+}
+
+function migrateRevision13To14(previous: Revision13World): World {
+  return {
+    ...previous,
+    schemaRevision: 14,
+    seamAccrued: 0,
+    ecologyLedger: { ...previous.ecologyLedger, seamDissolved: 0 },
   };
 }
 
@@ -705,12 +725,12 @@ export function restoreWorld(input: string): World | null {
 
   if (
     (parsed.version === 3 &&
-      (!integer(parsed.schemaRevision, 1, 13) || !weatherCall(parsed.weatherCall, parsed.elapsed))) ||
+      (!integer(parsed.schemaRevision, 1, 14) || !weatherCall(parsed.weatherCall, parsed.elapsed))) ||
     (parsed.version !== 3 && ('schemaRevision' in parsed || 'weatherCall' in parsed || 'currents' in parsed))
   )
     return null;
   let currents: Current[] = [];
-  if (parsed.version === 3 && integer(parsed.schemaRevision, 2, 13)) {
+  if (parsed.version === 3 && integer(parsed.schemaRevision, 2, 14)) {
     if (
       !Array.isArray(parsed.currents) ||
       parsed.currents.length > MAX_CURRENTS ||
@@ -720,7 +740,8 @@ export function restoreWorld(input: string): World | null {
     currents = parsed.currents as Current[];
   } else if ('currents' in parsed) return null;
 
-  const linkedRevision = parsed.version === 3 && parsed.schemaRevision === 13;
+  const seamRevision = parsed.version === 3 && parsed.schemaRevision === 14;
+  const linkedRevision = parsed.version === 3 && (parsed.schemaRevision === 13 || seamRevision);
   const fossilsRevision = parsed.version === 3 && (parsed.schemaRevision === 12 || linkedRevision);
   const catchUpRevision = parsed.version === 3 && (parsed.schemaRevision === 11 || fossilsRevision);
   const remainsRevision = parsed.version === 3 && (parsed.schemaRevision === 10 || catchUpRevision);
@@ -765,6 +786,7 @@ export function restoreWorld(input: string): World | null {
         traitRevision,
         remainsRevision,
         fossilsRevision,
+        seamRevision,
       )
     )
       return null;
@@ -963,6 +985,20 @@ export function restoreWorld(input: string): World | null {
   if (linkedRevision) {
     if (!isAuthoredHabitat(parsed.pools, parsed.channel)) return null;
   } else if ('pools' in parsed || 'channel' in parsed) return null;
+
+  if (seamRevision) {
+    if (
+      !range(parsed.seamAccrued, 0, 1) ||
+      !range(
+        MINERAL_SEAM.capacity -
+          (parsed.seamAccrued as number) -
+          ((parsed.ecologyLedger as EcologyLedger).seamDissolved ?? 0),
+        0,
+        MINERAL_SEAM.capacity,
+      )
+    )
+      return null;
+  } else if ('seamAccrued' in parsed) return null;
 
   if (catchUpRevision) {
     if (!(parsed.lastSeenAt === null || integer(parsed.lastSeenAt, 0))) return null;
@@ -1216,10 +1252,10 @@ export function restoreWorld(input: string): World | null {
           schemaRevision: 12,
           fossils,
           remains,
-          ecologyLedger: { ...(parsed.ecologyLedger as EcologyLedger) },
+          ecologyLedger: { ...(parsed.ecologyLedger as Revision13Ledger) },
         }
       : migrateRevision11To12(revision11);
-    return linkedRevision
+    const revision13: Revision13World = linkedRevision
       ? {
           ...revision12,
           schemaRevision: 13,
@@ -1227,19 +1263,29 @@ export function restoreWorld(input: string): World | null {
           channel: parsed.channel as World['channel'],
         }
       : migrateRevision12To13(revision12);
+    return seamRevision
+      ? {
+          ...revision13,
+          schemaRevision: 14,
+          seamAccrued: parsed.seamAccrued as number,
+          ecologyLedger: { ...(parsed.ecologyLedger as EcologyLedger) },
+        }
+      : migrateRevision13To14(revision13);
   }
   let legacy: LegacyWorld = { ...ecology, version: parsed.version };
   if (legacy.version === 1) legacy = migrateV1ToV2(legacy);
-  return migrateRevision12To13(
-    migrateRevision11To12(
-      migrateRevision10To11(
-        migrateRevision9To10(
-          migrateRevision8To9(
-            migrateRevision7To8(
-              migrateRevision6To7(
-                migrateRevision5To6(
-                  migrateRevision4To5(
-                    migrateRevision3To4(migrateRevision2To3(migrateRevision1To2(migrateV2ToV3(legacy)))),
+  return migrateRevision13To14(
+    migrateRevision12To13(
+      migrateRevision11To12(
+        migrateRevision10To11(
+          migrateRevision9To10(
+            migrateRevision8To9(
+              migrateRevision7To8(
+                migrateRevision6To7(
+                  migrateRevision5To6(
+                    migrateRevision4To5(
+                      migrateRevision3To4(migrateRevision2To3(migrateRevision1To2(migrateV2ToV3(legacy)))),
+                    ),
                   ),
                 ),
               ),

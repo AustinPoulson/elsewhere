@@ -40,6 +40,7 @@ function ecology(world: World) {
     fossils: _fossils,
     pools: _pools,
     channel: _channel,
+    seamAccrued: _seamAccrued,
     organisms,
     grazers,
     ...rest
@@ -161,7 +162,7 @@ describe('versioned weather calls', () => {
     expect(ecology(migrated)).toEqual(original);
     expect(migrated).toMatchObject({
       version: 3,
-      schemaRevision: 13,
+      schemaRevision: 14,
       weatherCall: { startedAt: null, nextAllowedAt: 0 },
     });
     expect(JSON.stringify(fixture)).toBe(old);
@@ -177,7 +178,7 @@ describe('versioned weather calls', () => {
         delete world.schemaRevision;
       },
       (world) => {
-        world.schemaRevision = 14;
+        world.schemaRevision = 15;
       },
       (world) => {
         world.weatherCall = null;

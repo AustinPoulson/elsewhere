@@ -810,6 +810,14 @@ h1 em {
 .season-readout.season-winter {
   color: #8fb4b4;
 }
+.seam-readout {
+  margin-top: 6px;
+  font-size: 10px;
+  letter-spacing: 0;
+  line-height: 1.45;
+  max-width: 280px;
+  color: #c4a078;
+}
 .weather-readout {
   display: flex;
   gap: 7px;
@@ -932,7 +940,8 @@ h1 em {
     font-size: 7px;
     letter-spacing: 1px;
   }
-  .season-readout {
+  .season-readout,
+  .seam-readout {
     font-size: 9px;
     max-width: min(280px, calc(100vw - 48px));
   }

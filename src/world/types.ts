@@ -2,7 +2,7 @@ export const OPENING_WIDTH = 1440;
 export const OPENING_HEIGHT = 1000;
 export const WORLD_WIDTH = 1440;
 export const WORLD_HEIGHT = 1560;
-export const SCHEMA_REVISION = 13;
+export const SCHEMA_REVISION = 14;
 export const FIXED_STEP = 1 / 30;
 export const MAX_POOLS = 2;
 export const MAX_LINKS = 1;
@@ -219,6 +219,7 @@ export interface EcologyLedger {
   marlgrubIntake: number;
   marlgrubMaintenancePigment: number;
   fossilsFormed: number;
+  seamDissolved: number;
 }
 export interface LightSource extends Point {
   id: number;
@@ -255,8 +256,9 @@ export interface Nest extends Point {
 }
 export interface World {
   version: 3;
-  schemaRevision: 13;
+  schemaRevision: 14;
   lastSeenAt: number | null;
+  seamAccrued: number;
   pools: HabitatPool[];
   channel: HabitatChannel;
   skimmers: Skimmer[];
@@ -319,6 +321,8 @@ export interface WorldStats {
   fossils: number;
   fossilPigment: number;
   nestPigment: number;
+  seamRemaining: number;
+  seamDissolved: number;
 }
 
 // One shared coastline formula; linked pools and the channel live in habitat.ts.

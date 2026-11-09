@@ -74,6 +74,7 @@ function legacyPayload(world: World): string {
     fossils: _fossils,
     pools: _pools,
     channel: _channel,
+    seamAccrued: _seamAccrued,
     organisms,
     ...legacy
   } = world;

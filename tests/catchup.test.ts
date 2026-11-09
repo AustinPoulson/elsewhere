@@ -39,6 +39,8 @@ const quietResources: ResourceSnapshot = {
   remainPigment: 0,
   fossilPigment: 0,
   fossils: 0,
+  seamRemaining: 24,
+  seamDissolved: 0,
 };
 
 describe('catch-up planning', () => {

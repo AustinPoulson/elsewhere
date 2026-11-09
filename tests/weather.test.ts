@@ -242,6 +242,7 @@ describe('weather and existing snapshots', () => {
       fossils: _fossils,
       pools: _pools,
       channel: _channel,
+      seamAccrued: _seamAccrued,
       organisms,
       ...fields
     } = legacy;

@@ -43,6 +43,8 @@ With the habitat focused, arrow keys move an interaction cursor and **Enter** ap
 
 A slow current in the channel between the opening tidepool and the southern inlet can carry loose pigment and already-drifting bodies. The inlet starts empty; old saves receive the habitat, not a free population.
 
+An ochre mineral seam lies in the opening pool's western sediment. Water dissolves it slowly into ordinary pigment near the streak; rain leaches a little faster. The vein is finite. Opening worlds and old saves receive the rock, not a pile of loose color. The observations list names how much remains.
+
 The pigment readout measures the combined strength of sediment in the water. The second line shows the grazer population and color stored in nests. These are resource amounts rather than counts of individual marks. Lucents become dimmer when light is scarce and persist so there is always a population to feed when you return. Open the Field guide and choose **Follow a grazer** to inspect its cargo and nest, or touch its amber shell with Observe. Earlier snapshots and browser saves migrate into the expanded ecosystem.
 
 Prism skimmers may emerge naturally from well-fed nests. Look for translucent diamonds gathering pigment, then releasing a small feeding light. They compete with grazers, spend stored color to live, and return their remaining material when they starve or reach eight minutes. Empty nests support none; existing saves receive no free arrivals. Observe a diamond to inspect its reserve. Lucent pigment deposits are now funded by actual light intake, so this recycling loop cannot amplify tiny light remnants into large grains. Reproduction remains a later expedition.

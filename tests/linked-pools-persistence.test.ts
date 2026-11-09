@@ -8,7 +8,9 @@ function previousRevision(world: World): Record<string, unknown> {
   const previous = structuredClone(world) as unknown as Record<string, unknown>;
   previous.schemaRevision = 12;
   delete previous.pools;
+  delete previous.seamAccrued;
   delete previous.channel;
+  delete (previous.ecologyLedger as { seamDissolved?: number }).seamDissolved;
   return previous;
 }
 
@@ -45,7 +47,7 @@ describe('linked habitat snapshot revision', () => {
 
   it('round-trips a present habitat and continues identically', () => {
     const world = createWorld(51);
-    expect(world.schemaRevision).toBe(13);
+    expect(world.schemaRevision).toBe(SCHEMA_REVISION);
     const resumed = restoreWorld(serializeWorld(world))!;
     expect(resumed).toEqual(world);
     for (let step = 0; step < 180; step++) {
@@ -67,7 +69,7 @@ describe('linked habitat snapshot revision', () => {
         w.schemaRevision = 12;
       },
       (w) => {
-        w.schemaRevision = 14;
+        w.schemaRevision = 15;
       },
       (w) => {
         (w.pools as { x: number }[])[1].x = 900;

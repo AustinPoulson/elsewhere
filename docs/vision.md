@@ -19,7 +19,7 @@ Eventually: several pools linked by slow currents, and the world keeps living wh
 - [ ] **New conditions** — Author physics and habitat, not species. A slow year, a deeper pool, or a mineral seam should create variety; life sorts itself out and extinction is allowed. No free populations, pigment, or energy.
   - [x] **Seasons** — first slice. A six-world-day year (2160 seconds) derived from elapsed time shifts daylight length and strength, rain span, and channel current. Opening climate matches the previous yearless world. Catch-up, eras, and the harness see the same year. Schema revision stays 13. _Success: a 30-day harness covers five complete years; the UI names the season; a while-you-were-gone journal can mention a season change._
   - [ ] A deeper pool
-  - [ ] A mineral seam
+  - [x] **A mineral seam** — second slice. An ochre vein in the opening pool's western sediment holds 24 pigment and dissolves at 0.00072 per second (faster in rain) into ordinary grains near the streak. Placement uses tick phase, not the PRNG. Opening worlds start with the rock, not extra loose color. Schema revision 14; revision-13 saves receive a full unused vein and no pigment. Catch-up, eras, and the harness dissolve the same rock. _Success: a 30-day harness leaves the vein partly spent and balanced; nearby life can use the color; extinction is still allowed; the UI names the seam._
 
 ## Standing Invariants
 
@@ -142,4 +142,25 @@ _This section records surprising population dynamics, extinctions, or runaway re
 
 **Seed 42, 36 unwatched days:** Recovery occurs. After the 30-day close at 0 (last empty at 179m 48s), Year 6 spring re-founded to cap 4 by 183m 36s. Mites held at 4 through summer and autumn, then emptied again in Year 6 winter (last empty at 210m 27s; the close was still 0). Four grazers were present the whole time. Remains 31.363 = 0 + 6.556 + 24.807; fossils 1.338 = 1.338. That is paid host founding after a seasonal bottleneck, not a gift, and not a permanent seed-42 extinction.
 
-**What the year did, honestly:** It did not save reedwells or rainbells, and it did not guarantee mites. It changed when nest-funded and shoreline types found and emptied, and it moved more loose color through the neck. First-year winters on both seeds emptied cargo mites; later years sometimes re-founded them. Seasonal bottlenecks are real; they are not a reason to grant bodies. Remaining new-condition candidates are a deeper pool and a mineral seam.
+**What the year did, honestly:** It did not save reedwells or rainbells, and it did not guarantee mites. It changed when nest-funded and shoreline types found and emptied, and it moved more loose color through the neck. First-year winters on both seeds emptied cargo mites; later years sometimes re-founded them. Seasonal bottlenecks are real; they are not a reason to grant bodies.
+
+### Mineral seam (seeds 1 and 42)
+
+**Geology, not a gift:** The vein is authored habitat in the opening pool at (575, 570). It holds 24 pigment and dissolves from elapsed time plus rain, the same clock catch-up, eras, and the harness already share. Opening worlds have the rock and the same 48 spring grains as before; none of the dissolved color is present at t=0. Revision-13 saves migrate with `seamAccrued: 0` and `seamDissolved: 0`. Placement uses tick phase, so the world PRNG is untouched.
+
+**Thirty unwatched days, seeds 1 and 42:** Both seeds dissolved 8.300 and kept 15.671 in the rock plus 0.029 accrued (`24 = 15.671 + 0.029 + 8.300`). Ambient harvest stayed 7486.73. The extra color is ordinary pigment near the streak; grazers can carry it home, and fade plus gathering keep it from flooding the floor.
+
+|                                             | Seed 1 seasons              | Seed 1 seam                 | Seed 42 seasons             | Seed 42 seam                     |
+| ------------------------------------------- | --------------------------- | --------------------------- | --------------------------- | -------------------------------- |
+| Ambient harvest                             | 7486.73                     | 7486.73                     | 7486.73                     | 7486.73                          |
+| Seam dissolved / remaining                  | —                           | 8.300 / 15.671              | —                           | 8.300 / 15.671                   |
+| Remains created = held + consumed + decayed | 25.875 = 0 + 2.507 + 23.368 | 20.863 = 0 + 1.162 + 19.701 | 26.451 = 0 + 5.789 + 20.663 | 34.488 = 0.125 + 10.792 + 23.571 |
+| Fossils formed = held                       | 1.453                       | 1.699                       | 1.338                       | 1.166                            |
+| Nested pigment                              | 1.05                        | 1.39                        | 1.19                        | 1.24                             |
+| Loose pigment (inlet)                       | 0.80 (0.71)                 | 0.00 (0.00)                 | 1.71 (1.00)                 | 1.17 (0.65)                      |
+
+**Seed 1, 30 unwatched days:** Lucents and grazers still hold. Skimmers ended at 3 (58 / 55) versus 1 (43 / 42) on seasons. A siltstitcher was still alive (10 / 9) instead of going extinct at 132m. Cargo mites closed at 2 (98 / 96) rather than cap 4. Glass limpets turned over less and ended earlier (3 / 3 at 52m versus 17 / 17 at 168m). Nested color rose to 1.39; loose color on the floor went quiet. Grazers had gathered the leach. Marlgrubs still died (5 / 5 at 168m).
+
+**Seed 42, 30 unwatched days:** Skimmers ended at 2 (24 / 22) versus 2 (45 / 43) on seasons. Cargo mites closed at 2 (147 / 145) instead of emptying at 179m 48s. Siltstitchers lasted to 170m with 4 births versus 94m with 6. Reedwells and rainbells still boom-bust in the first quarter-hour. Marlgrubs had a larger pulse (43 / 43 versus 25 / 25) and still went extinct at 173m. A little loose color (0.047) remained within 90 of the seam.
+
+**What the seam did, honestly:** It did not save reedwells or rainbells, and it did not freeze anyone in place. The same 8.3 units left the rock on both seeds; what happened next was seed-shaped gathering and founding. Nested color rose. Some nest-funded lives lasted longer. Shoreline glass limpets on seed 1 ended sooner. Extinction is still allowed. The remaining new-condition candidate is a deeper pool.

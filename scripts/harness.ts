@@ -3,6 +3,7 @@ import { addLight, createWorld, getStats, SPRINGS, stepWorld } from '../src/worl
 import { restoreWorld } from '../src/world/persistence';
 import { FOSSIL_LABEL, FOSSIL_SOURCES, fossilsBySource, heldFossilPigment } from '../src/world/species/fossils';
 import { heldRemainPigment } from '../src/world/species/remains';
+import { MINERAL_SEAM, pigmentNearSeam, seamRemaining } from '../src/world/environment/mineral-seam';
 import { inInletPool, inOpeningPool } from '../src/world/habitat';
 import { seasonName, YEAR_DAYS, YEAR_SECONDS, type SeasonName } from '../src/world/environment/seasons';
 import { FIXED_STEP, type FossilSource, type Traits, type World } from '../src/world/types';
@@ -75,6 +76,9 @@ export interface HarnessReport {
     inletPigment: number;
     openingBodies: number;
     inletBodies: number;
+    seamRemaining: number;
+    seamDissolved: number;
+    seamPigment: number;
   };
   fossilsBySource: Record<FossilSource, { count: number; pigment: number }>;
   ledger: World['ecologyLedger'];
@@ -89,6 +93,10 @@ export interface HarnessReport {
     fossilsFormed: number;
     fossilsHeld: number;
     fossilsBalanced: boolean;
+    seamDissolved: number;
+    seamRemaining: number;
+    seamAccrued: number;
+    seamBalanced: boolean;
     note: string;
   };
 }
@@ -344,6 +352,9 @@ export function runHarness(config: HarnessConfig): HarnessReport {
       inletBodies: [...world.organisms, ...world.grazers, ...world.skimmers, ...world.siltstitchers].filter((body) =>
         inInletPool(body.x, body.y),
       ).length,
+      seamRemaining: seamRemaining(world),
+      seamDissolved: world.ecologyLedger.seamDissolved,
+      seamPigment: pigmentNearSeam(world),
     },
     fossilsBySource: fossilsBySource(world),
     ledger: { ...world.ecologyLedger },
@@ -367,7 +378,14 @@ export function runHarness(config: HarnessConfig): HarnessReport {
       fossilsFormed: world.ecologyLedger.fossilsFormed,
       fossilsHeld: heldFossilPigment(world),
       fossilsBalanced: Math.abs(world.ecologyLedger.fossilsFormed - heldFossilPigment(world)) < 1e-6,
-      note: 'Remains created equal held plus consumed plus decayed. Fossil pigment equals fossils formed; it is paid remain color, not a new population. Daylight and visitor light correlate with pigment rather than matching because of the energy floor, fade, and night.',
+      seamDissolved: world.ecologyLedger.seamDissolved,
+      seamRemaining: seamRemaining(world),
+      seamAccrued: world.seamAccrued,
+      seamBalanced:
+        Math.abs(
+          MINERAL_SEAM.capacity - (seamRemaining(world) + world.seamAccrued + world.ecologyLedger.seamDissolved),
+        ) < 1e-6,
+      note: 'Remains created equal held plus consumed plus decayed. Fossil pigment equals fossils formed; it is paid remain color, not a new population. Seam remaining plus accrued plus dissolved equals the finite vein. Daylight and visitor light correlate with pigment rather than matching because of the energy floor, fade, and night.',
     },
   };
 }
@@ -523,6 +541,9 @@ export function printReport(report: HarnessReport): void {
   console.log(`   Fossil pigment: ${report.resources.fossilPigment.toFixed(2)}`);
   console.log(`   Total light consumed: ${report.resources.totalConsumed.toFixed(2)}`);
   console.log(`   Ambient daylight harvested: ${report.resources.ambientHarvested.toFixed(2)}`);
+  console.log(`   Mineral seam remaining: ${report.resources.seamRemaining.toFixed(3)} / ${MINERAL_SEAM.capacity}`);
+  console.log(`   Mineral seam dissolved: ${report.resources.seamDissolved.toFixed(3)}`);
+  console.log(`   Pigment within ${MINERAL_SEAM.reach} of the seam: ${report.resources.seamPigment.toFixed(3)}`);
 
   console.log(`\n📒 Ecology Ledger`);
   console.log(`   Mineralized pigment: ${report.ledger.mineralizedPigment.toFixed(2)}`);
@@ -538,6 +559,7 @@ export function printReport(report: HarnessReport): void {
   console.log(`   Remains decayed: ${report.ledger.remainsDecayed.toFixed(2)}`);
   console.log(`   Marlgrub intake: ${report.ledger.marlgrubIntake.toFixed(2)}`);
   console.log(`   Fossils formed: ${report.ledger.fossilsFormed.toFixed(2)}`);
+  console.log(`   Seam dissolved: ${report.ledger.seamDissolved.toFixed(3)}`);
 
   console.log(`\n⚖️  Conservation Check`);
   console.log(`   Input (consumed + remaining + ambient): ${report.conservationCheck.inputLight.toFixed(2)}`);
@@ -547,6 +569,9 @@ export function printReport(report: HarnessReport): void {
   );
   console.log(
     `   Fossils (formed = held): ${report.conservationCheck.fossilsFormed.toFixed(3)} = ${report.conservationCheck.fossilsHeld.toFixed(3)} ${report.conservationCheck.fossilsBalanced ? '✓' : '✗'}`,
+  );
+  console.log(
+    `   Seam (capacity = remaining + accrued + dissolved): ${MINERAL_SEAM.capacity} = ${report.conservationCheck.seamRemaining.toFixed(3)} + ${report.conservationCheck.seamAccrued.toFixed(3)} + ${report.conservationCheck.seamDissolved.toFixed(3)} ${report.conservationCheck.seamBalanced ? '✓' : '✗'}`,
   );
   console.log(`   Note: ${report.conservationCheck.note}`);
 

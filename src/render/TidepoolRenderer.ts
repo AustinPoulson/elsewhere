@@ -39,6 +39,7 @@ import { CargoMiteRenderer } from './CargoMiteRenderer';
 import { MarlgrubRenderer } from './MarlgrubRenderer';
 import { cargoMiteDisplayPoint } from './cargoMiteDisplay';
 import { daylight } from '../world/environment/daylight';
+import { MINERAL_SEAM, seamRemaining } from '../world/environment/mineral-seam';
 import { seasonCausticColor, seasonWashColor } from '../world/environment/seasons';
 import { appearanceGlow, appearanceScale } from '../world/traits';
 
@@ -136,6 +137,7 @@ export class TidepoolRenderer {
   private readonly tendrils = new Graphics();
   private readonly trails = new Graphics();
   private readonly seasonWash = new Graphics();
+  private readonly seamVein = new Graphics();
   private readonly caustics = new Graphics();
   private readonly rain = new Graphics();
   private readonly indicator = new Graphics();
@@ -195,6 +197,7 @@ export class TidepoolRenderer {
     this.water.mask = this.mask;
     this.water.addChild(
       this.seasonWash,
+      this.seamVein,
       this.lightPatchLayer,
       this.sedimentLayer,
       this.sedimentCores,
@@ -361,6 +364,7 @@ export class TidepoolRenderer {
     const lightReach = effectiveLightReach(world);
     const lightReachScale = lightReach / CALM_LIGHT_REACH;
     this.drawWater(time, daylight(world), world.elapsed);
+    this.drawMineralSeam(world, time);
     // The first held ringlets acknowledge a paused call; feeding reach still uses actual intensity.
     this.drawRain(world.elapsed, weather.called ? Math.max(0.12, weather.intensity) : weather.intensity);
     this.trails.clear();
@@ -1045,6 +1049,30 @@ export class TidepoolRenderer {
         this.grazers.delete(id);
       }
     }
+  }
+
+  private drawMineralSeam(world: World, time: number): void {
+    this.seamVein.clear();
+    const remaining = Math.max(0, Math.min(1, seamRemaining(world) / MINERAL_SEAM.capacity));
+    const pulse = time === 0 ? 0 : Math.sin(time * 0.15) * 0.04;
+    const glow = 0.1 + remaining * 0.32 + pulse;
+    for (let i = 0; i <= 8; i++) {
+      const t = i / 8;
+      const x = MINERAL_SEAM.ax + (MINERAL_SEAM.bx - MINERAL_SEAM.ax) * t;
+      const y = MINERAL_SEAM.ay + (MINERAL_SEAM.by - MINERAL_SEAM.ay) * t;
+      this.seamVein.ellipse(x, y, 16 + Math.sin(i * 1.3) * 5, 6.5 + Math.cos(i * 0.9) * 1.8).fill({
+        color: 0xc48a4a,
+        alpha: glow * (0.42 + remaining * 0.38),
+      });
+    }
+    this.seamVein
+      .moveTo(MINERAL_SEAM.ax, MINERAL_SEAM.ay)
+      .lineTo(MINERAL_SEAM.bx, MINERAL_SEAM.by)
+      .stroke({
+        color: 0x8a5a32,
+        width: 2.2,
+        alpha: 0.2 + remaining * 0.38,
+      });
   }
 
   private drawWater(time: number, daylightIntensity = 0, elapsed = 0): void {
