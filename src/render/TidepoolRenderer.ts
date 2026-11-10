@@ -29,7 +29,7 @@ import {
   type CameraView,
   type HabitatCamera,
 } from './camera';
-import { CALM_LIGHT_REACH, effectiveLightReach, effectiveWeather } from '../world/weather';
+import { CALM_LIGHT_REACH, effectiveWeather, lightReachAt } from '../world/weather';
 import { currentStrength, MAX_CURRENTS } from '../world/actions/current';
 import { ReedwellRenderer } from './ReedwellRenderer';
 import { RainbellRenderer } from './RainbellRenderer';
@@ -39,6 +39,7 @@ import { CargoMiteRenderer } from './CargoMiteRenderer';
 import { MarlgrubRenderer } from './MarlgrubRenderer';
 import { cargoMiteDisplayPoint } from './cargoMiteDisplay';
 import { daylight } from '../world/environment/daylight';
+import { DEEP_BASIN, depthAt, lightScale, rainScale } from '../world/environment/depth';
 import { MINERAL_SEAM, seamRemaining } from '../world/environment/mineral-seam';
 import { seasonCausticColor, seasonWashColor } from '../world/environment/seasons';
 import { appearanceGlow, appearanceScale } from '../world/traits';
@@ -137,6 +138,7 @@ export class TidepoolRenderer {
   private readonly tendrils = new Graphics();
   private readonly trails = new Graphics();
   private readonly seasonWash = new Graphics();
+  private readonly deepBasin = new Graphics();
   private readonly seamVein = new Graphics();
   private readonly caustics = new Graphics();
   private readonly rain = new Graphics();
@@ -197,6 +199,7 @@ export class TidepoolRenderer {
     this.water.mask = this.mask;
     this.water.addChild(
       this.seasonWash,
+      this.deepBasin,
       this.seamVein,
       this.lightPatchLayer,
       this.sedimentLayer,
@@ -361,9 +364,8 @@ export class TidepoolRenderer {
     this.frame++;
     const time = this.reducedMotion ? 0 : world.elapsed;
     const weather = effectiveWeather(world);
-    const lightReach = effectiveLightReach(world);
-    const lightReachScale = lightReach / CALM_LIGHT_REACH;
     this.drawWater(time, daylight(world), world.elapsed);
+    this.drawDeepBasin(time);
     this.drawMineralSeam(world, time);
     // The first held ringlets acknowledge a paused call; feeding reach still uses actual intensity.
     this.drawRain(world.elapsed, weather.called ? Math.max(0.12, weather.intensity) : weather.intensity);
@@ -438,16 +440,24 @@ export class TidepoolRenderer {
       }
       visual.frame = this.frame;
       const remaining = Math.max(0, Math.min(1, light.energy / light.initialEnergy));
+      const localReach = lightReachAt(world, light);
+      const harvest = lightScale(depthAt(light.x, light.y));
       if (light.energy > 0 && patchCount < LIMITS.lights) {
-        this.drawLightPatch(light.id, light, lightReach, weather.intensity, remaining);
+        this.drawLightPatch(
+          light.id,
+          light,
+          localReach,
+          weather.intensity * rainScale(depthAt(light.x, light.y)),
+          remaining,
+        );
         patchCount++;
       }
       const breath = 1 + Math.sin(time * 1.2 + light.id) * 0.04;
       visual.sprite.position.set(light.x, light.y);
-      visual.sprite.width = (46 + remaining * 51) * breath * lightReachScale;
+      visual.sprite.width = (46 + remaining * 51) * breath * (localReach / CALM_LIGHT_REACH);
       visual.sprite.height = visual.sprite.width;
       visual.sprite.tint = 0xefdb9d;
-      visual.sprite.alpha = 0.12 + remaining * 0.53;
+      visual.sprite.alpha = (0.12 + remaining * 0.53) * (0.4 + 0.6 * harvest);
       this.indicator
         .circle(light.x, light.y, 1.15 + remaining * 0.65)
         .fill({ color: 0xf4e8b7, alpha: 0.45 + remaining * 0.45 });
@@ -536,7 +546,7 @@ export class TidepoolRenderer {
     if (tool === 'stir') {
       this.drawStirPreview(cursor, stirPreview);
     } else if (tool === 'carry') {
-      this.drawCarryPreview(world, cursor, carriedLightId, lightReach);
+      this.drawCarryPreview(world, cursor, carriedLightId);
     } else if (cursor && isInPool(cursor.x, cursor.y)) {
       const radius = tool === 'light' ? 18 : 10;
       this.indicator
@@ -669,7 +679,7 @@ export class TidepoolRenderer {
         .stroke(this.stirPreviewStyle);
     }
   }
-  private drawCarryPreview(world: World, cursor: Point | null, carriedLightId: number | null, reach: number): void {
+  private drawCarryPreview(world: World, cursor: Point | null, carriedLightId: number | null): void {
     let source: World['lights'][number] | undefined;
     if (carriedLightId !== null) {
       for (const light of world.lights) {
@@ -716,7 +726,9 @@ export class TidepoolRenderer {
     // One presentation-only ghost: it neither feeds inhabitants nor changes source energy.
     // Fixed shapes remain legible when paused or reduced motion is enabled.
     this.indicator.moveTo(source.x, source.y).lineTo(cursor.x, cursor.y).stroke({ color, alpha: 0.5, width: 1 });
-    this.indicator.circle(cursor.x, cursor.y, reach).stroke({ color, alpha: valid ? 0.28 : 0.16, width: 1.2 });
+    this.indicator
+      .circle(cursor.x, cursor.y, lightReachAt(world, cursor))
+      .stroke({ color, alpha: valid ? 0.28 : 0.16, width: 1.2 });
     this.indicator
       .circle(cursor.x, cursor.y, 19)
       .fill({ color, alpha: 0.14 })
@@ -1051,6 +1063,19 @@ export class TidepoolRenderer {
     }
   }
 
+  private drawDeepBasin(time: number): void {
+    this.deepBasin.clear();
+    const pulse = time === 0 ? 0 : Math.sin(time * 0.11) * 0.02;
+    this.deepBasin.ellipse(DEEP_BASIN.x, DEEP_BASIN.y, DEEP_BASIN.rx, DEEP_BASIN.ry).fill({
+      color: 0x06141c,
+      alpha: 0.2 + pulse,
+    });
+    this.deepBasin.ellipse(DEEP_BASIN.x, DEEP_BASIN.y, DEEP_BASIN.rx * 0.46, DEEP_BASIN.ry * 0.46).fill({
+      color: 0x030b10,
+      alpha: 0.16 + pulse,
+    });
+  }
+
   private drawMineralSeam(world: World, time: number): void {
     this.seamVein.clear();
     const remaining = Math.max(0, Math.min(1, seamRemaining(world) / MINERAL_SEAM.capacity));
@@ -1096,7 +1121,7 @@ export class TidepoolRenderer {
       this.caustics.stroke({
         color: caustic,
         width: 0.6,
-        alpha: glow + Math.sin(time * 0.3 + ribbon) * 0.015,
+        alpha: (glow + Math.sin(time * 0.3 + ribbon) * 0.015) * (1 - 0.72 * depthAt(x, y)),
       });
     }
     for (let ribbon = 0; ribbon < 4; ribbon++) {
@@ -1132,7 +1157,7 @@ export class TidepoolRenderer {
       const pool = ring % 5 === 4 ? INLET_POOL : OPENING_POOL;
       const position = poolCoastPoint(pool, angle, Math.sqrt(distribution) * 0.94);
       const radius = 3 + progress * (18 + (ring % 6) * 3);
-      const alpha = intensity * Math.sin(progress * Math.PI) * 0.26;
+      const alpha = intensity * rainScale(depthAt(position.x, position.y)) * Math.sin(progress * Math.PI) * 0.26;
       this.rain.circle(position.x, position.y, radius).stroke({ color: 0xb2cbc0, width: 1.05, alpha });
     }
     // Reduced motion keeps these positions and radii fixed while weather still changes reach.

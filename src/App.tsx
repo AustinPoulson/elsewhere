@@ -21,6 +21,7 @@ import { eraById, namedEras } from './world/era-catalog';
 import { restoreWorld, serializeWorld } from './world/persistence';
 import { callRain, effectiveWeather } from './world/weather';
 import { getDaylight } from './world/environment/daylight';
+import { inDeepWater } from './world/environment/depth';
 import { MINERAL_SEAM } from './world/environment/mineral-seam';
 import { getSeason } from './world/environment/seasons';
 import { describeBulk, describeDrive } from './world/traits';
@@ -68,6 +69,10 @@ function loadInitialWorld(): {
 function timeLabel(seconds: number): string {
   const mins = Math.floor(seconds / 60);
   return `${String(mins).padStart(2, '0')}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
+}
+
+function waterPlace(x: number, y: number): string | null {
+  return inDeepWater(x, y) ? 'In the deeper water' : null;
 }
 
 export function App() {
@@ -1052,6 +1057,11 @@ export function App() {
             ? 'The mineral seam is spent. Its ochre streak still marks the floor.'
             : `A mineral seam is leaching into the western floor. ${stats.seamRemaining.toFixed(1)} of ${MINERAL_SEAM.capacity} remains.`}
         </div>
+        <div className="deep-readout" aria-live="polite">
+          {stats.deepPigment >= 0.05
+            ? `A deeper basin lies in the northeastern water. ${stats.deepPigment.toFixed(1)} pigment has settled there.`
+            : 'A deeper basin lies in the northeastern water. Light thins there; color settles.'}
+        </div>
         <div className={`weather-readout ${weather.raining ? 'is-raining' : ''}`} aria-label="Pool weather">
           <span aria-hidden="true">◌</span>
           <span>
@@ -1551,6 +1561,19 @@ export function App() {
                     </p>
                   </div>
                 </div>
+                <div className="guide-entry">
+                  <span className="entry-number">23</span>
+                  <div>
+                    <h3>A deeper basin</h3>
+                    <p>
+                      Northeastern water in the opening pool falls away into a small deep basin. Light harvest thins
+                      with depth, rain barely widens feeding reach there, and currents go still, so sediment and remains
+                      settle into the floor. Nothing is granted: the basin is habitat, not a species. Opening worlds and
+                      old saves receive the depth, not extra life or color. Observe a body or stain in that water to
+                      name it; the observations list keeps the line for everyone, including a screen reader.
+                    </p>
+                  </div>
+                </div>
                 <button className="secondary-button" onClick={() => setPanel('eras')}>
                   Browse earlier worlds <Icon name="era" />
                 </button>
@@ -1657,6 +1680,12 @@ export function App() {
                         <dt>Color held</dt>
                         <dd>{selectedFossil.pigment.toFixed(3)}</dd>
                       </div>
+                      {waterPlace(selectedFossil.x, selectedFossil.y) && (
+                        <div>
+                          <dt>Place</dt>
+                          <dd>{waterPlace(selectedFossil.x, selectedFossil.y)}</dd>
+                        </div>
+                      )}
                     </dl>
                     <p className="guide-caption">
                       This is paid color from a {FOSSIL_LABEL[selectedFossil.source].singular} lineage that ended. It
@@ -1680,6 +1709,12 @@ export function App() {
                         <dt>Disposition</dt>
                         <dd>Settling · leaching back into pigment</dd>
                       </div>
+                      {waterPlace(selectedRemain.x, selectedRemain.y) && (
+                        <div>
+                          <dt>Place</dt>
+                          <dd>{waterPlace(selectedRemain.x, selectedRemain.y)}</dd>
+                        </div>
+                      )}
                     </dl>
                     <p className="guide-caption">
                       A short life ended here. The body and remaining color sit as a stain until a marlgrub feeds or the
@@ -1717,6 +1752,12 @@ export function App() {
                         <dt>Time in the pool</dt>
                         <dd>{timeLabel(selected.age)}</dd>
                       </div>
+                      {waterPlace(selected.x, selected.y) && (
+                        <div>
+                          <dt>Place</dt>
+                          <dd>{waterPlace(selected.x, selected.y)}</dd>
+                        </div>
+                      )}
                       <div>
                         <dt>Appetite</dt>
                         <dd>{describeDrive(selected.traits.drive)}</dd>

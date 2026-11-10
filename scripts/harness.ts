@@ -4,6 +4,7 @@ import { restoreWorld } from '../src/world/persistence';
 import { FOSSIL_LABEL, FOSSIL_SOURCES, fossilsBySource, heldFossilPigment } from '../src/world/species/fossils';
 import { heldRemainPigment } from '../src/world/species/remains';
 import { MINERAL_SEAM, pigmentNearSeam, seamRemaining } from '../src/world/environment/mineral-seam';
+import { fossilsInDeep, inDeep, pigmentInDeep, remainsInDeep } from '../src/world/environment/depth';
 import { inInletPool, inOpeningPool } from '../src/world/habitat';
 import { seasonName, YEAR_DAYS, YEAR_SECONDS, type SeasonName } from '../src/world/environment/seasons';
 import { FIXED_STEP, type FossilSource, type Traits, type World } from '../src/world/types';
@@ -79,6 +80,10 @@ export interface HarnessReport {
     seamRemaining: number;
     seamDissolved: number;
     seamPigment: number;
+    deepPigment: number;
+    deepRemains: number;
+    deepFossils: number;
+    deepBodies: number;
   };
   fossilsBySource: Record<FossilSource, { count: number; pigment: number }>;
   ledger: World['ecologyLedger'];
@@ -355,6 +360,20 @@ export function runHarness(config: HarnessConfig): HarnessReport {
       seamRemaining: seamRemaining(world),
       seamDissolved: world.ecologyLedger.seamDissolved,
       seamPigment: pigmentNearSeam(world),
+      deepPigment: pigmentInDeep(world),
+      deepRemains: remainsInDeep(world),
+      deepFossils: fossilsInDeep(world),
+      deepBodies: [
+        ...world.organisms,
+        ...world.grazers,
+        ...world.skimmers,
+        ...world.siltstitchers,
+        ...world.reedwells,
+        ...world.rainbells,
+        ...world.glassLimpets,
+        ...world.cargoMites,
+        ...world.marlgrubs,
+      ].filter((body) => inDeep(body.x, body.y)).length,
     },
     fossilsBySource: fossilsBySource(world),
     ledger: { ...world.ecologyLedger },
@@ -544,6 +563,10 @@ export function printReport(report: HarnessReport): void {
   console.log(`   Mineral seam remaining: ${report.resources.seamRemaining.toFixed(3)} / ${MINERAL_SEAM.capacity}`);
   console.log(`   Mineral seam dissolved: ${report.resources.seamDissolved.toFixed(3)}`);
   console.log(`   Pigment within ${MINERAL_SEAM.reach} of the seam: ${report.resources.seamPigment.toFixed(3)}`);
+  console.log(`   Deep-basin loose pigment: ${report.resources.deepPigment.toFixed(3)}`);
+  console.log(`   Deep-basin remain pigment: ${report.resources.deepRemains.toFixed(3)}`);
+  console.log(`   Deep-basin fossil pigment: ${report.resources.deepFossils.toFixed(3)}`);
+  console.log(`   Bodies in the deep basin: ${report.resources.deepBodies}`);
 
   console.log(`\n📒 Ecology Ledger`);
   console.log(`   Mineralized pigment: ${report.ledger.mineralizedPigment.toFixed(2)}`);

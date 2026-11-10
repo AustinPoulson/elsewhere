@@ -1,7 +1,7 @@
 import { applyCurrent } from '../actions/current';
 import { isInPool, type Rainbell, type Sediment, type World } from '../types';
 import { baselineTraits } from '../traits';
-import { effectiveWeather } from '../weather';
+import { effectiveWeather, rainIntensityAt } from '../weather';
 import { activeNewTypePopulation, NEW_TYPE_POPULATION_CAP, RAINBELL_CAP, SPECIES_CATALOG } from './catalog';
 import { blendHue, safeId } from './resources';
 import { settleDeath } from './remains';
@@ -39,7 +39,7 @@ function search(world: World, bell: Rainbell): void {
   bell.pumpTargetSedimentId = pump?.id ?? null;
 }
 
-function updateOne(world: World, bell: Rainbell, dt: number, index: Map<number, Sediment>, raining: boolean): void {
+function updateOne(world: World, bell: Rainbell, dt: number, index: Map<number, Sediment>): void {
   bell.age += dt;
   if (bell.age >= RULE.lifespan || bell.starvedFor >= RULE.starvationLimit) return;
   if ((world.tick + bell.id) % 6 === 0) search(world, bell);
@@ -69,7 +69,7 @@ function updateOne(world: World, bell: Rainbell, dt: number, index: Map<number, 
     return;
   }
   if (
-    !raining ||
+    rainIntensityAt(world, bell.x, bell.y) < 0.5 ||
     bell.reserve < RULE.pulsePigment ||
     world.elapsed < bell.pulseNextAllowedAt ||
     !safeId(world) ||
@@ -113,6 +113,7 @@ export function admitRainbell(world: World): boolean {
   const center = afterCursor ?? first;
   if (!center) return false;
   world.rainbellCandidateAfterId = center.id;
+  if (rainIntensityAt(world, center.x, center.y) < 0.5) return false;
   const sources = neighborhoods.within(center, RULE.rootReach);
   sources.sort(
     (a, b) => Math.hypot(a.x - center.x, a.y - center.y) - Math.hypot(b.x - center.x, b.y - center.y) || a.id - b.id,
@@ -166,8 +167,7 @@ export function updateRainbells(world: World, dt: number, allowStandaloneAdmissi
   }
   index.clear();
   for (const grain of world.sediment) index.set(grain.id, grain);
-  const raining = effectiveWeather(world).intensity >= 0.5;
-  for (const bell of world.rainbells) updateOne(world, bell, dt, index, raining);
+  for (const bell of world.rainbells) updateOne(world, bell, dt, index);
   let write = 0;
   for (const bell of world.rainbells) {
     if (bell.age >= RULE.lifespan || bell.starvedFor >= RULE.starvationLimit)

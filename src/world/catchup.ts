@@ -1,3 +1,4 @@
+import { describeDeepChange, pigmentInDeep, remainsInDeep } from './environment/depth';
 import { describeSeamChange, seamRemaining } from './environment/mineral-seam';
 import { describeSeasonChange } from './environment/seasons';
 import { heldFossilPigment } from './species/fossils';
@@ -48,6 +49,7 @@ export interface ResourceSnapshot {
   fossils: number;
   seamRemaining: number;
   seamDissolved: number;
+  deepPigment: number;
 }
 
 export interface CatchUpJournal {
@@ -129,6 +131,7 @@ export function resourceSnapshot(world: World): ResourceSnapshot {
     fossils: world.fossils.length,
     seamRemaining: seamRemaining(world),
     seamDissolved: world.ecologyLedger.seamDissolved,
+    deepPigment: pigmentInDeep(world) + remainsInDeep(world),
   };
 }
 
@@ -245,6 +248,8 @@ export function composeJournal(
       after.seamDissolved - before.seamDissolved,
     );
     if (seamLine) lines.push(seamLine);
+    const deepLine = describeDeepChange(before.deepPigment, after.deepPigment);
+    if (deepLine) lines.push(deepLine);
   }
 
   for (const species of SPECIES) {

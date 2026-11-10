@@ -1,7 +1,8 @@
 import { daylight } from '../environment/daylight';
+import { depthAt, lightScale } from '../environment/depth';
 import { LIMITS, isInPool, type Reedwell, type Sediment, type World } from '../types';
 import { baselineTraits } from '../traits';
-import { effectiveWeather } from '../weather';
+import { effectiveWeather, rainIntensityAt } from '../weather';
 import { activeNewTypePopulation, NEW_TYPE_POPULATION_CAP, REEDWELL_CAP, SPECIES_CATALOG } from './catalog';
 import { blendHue, safeId } from './resources';
 import { settleDeath } from './remains';
@@ -12,7 +13,8 @@ const RULE = SPECIES_CATALOG.reedwell;
 function updateOne(world: World, reedwell: Reedwell, dt: number, intensity: number): void {
   reedwell.age += dt;
   if (reedwell.age >= RULE.lifespan) return;
-  const offered = RULE.harvestRate * intensity * dt * reedwell.traits.drive;
+  const offered =
+    RULE.harvestRate * intensity * dt * reedwell.traits.drive * lightScale(depthAt(reedwell.x, reedwell.y));
   const harvested = Math.min(offered, Math.max(0, RULE.lightCapacity - reedwell.lightStore));
   reedwell.lightStore += harvested;
   world.ecologyLedger.daylightHarvested += harvested;
@@ -72,6 +74,7 @@ export function admitReedwell(world: World): boolean {
   // Bookkeeping advances even when this one neighborhood cannot pay. Resource
   // balances, IDs, admission cooldown and PRNG remain untouched on that refusal.
   world.reedwellCandidateAfterId = candidate.id;
+  if (rainIntensityAt(world, candidate.x, candidate.y) < 0.5) return false;
   const center = candidate;
   const sources = neighborhoods.within(center, RULE.rootReach);
   sources.sort(

@@ -46,6 +46,7 @@ const quietResources: ResourceSnapshot = {
   fossils: 0,
   seamRemaining: 24,
   seamDissolved: 0,
+  deepPigment: 0,
 };
 
 describe('season math', () => {
