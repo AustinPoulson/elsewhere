@@ -15,7 +15,7 @@ import {
   type WorldStats,
 } from './types';
 import { OPENING_POOL, inOpeningPool, linkedHabitat, waterSdf } from './habitat';
-import { CALM_LIGHT_REACH, effectiveLightReach } from './weather';
+import { CALM_LIGHT_REACH, lightReachAt } from './weather';
 import { applyCurrentDrift } from './currents';
 import { confinePosition } from './geometry';
 import { accrueFeedingPigment, depositFeedingPigment } from './feeding';
@@ -31,6 +31,7 @@ import { runNormalFounding, tryEventFounding } from './species/founding';
 import { nextRandom } from './rng';
 import { baselineTraits, traitMobility } from './traits';
 import { ambientOffer } from './environment/daylight';
+import { depthAt, lightScale, pigmentInDeep } from './environment/depth';
 import { dissolveMineralSeam, seamRemaining } from './environment/mineral-seam';
 
 const TAU = Math.PI * 2;
@@ -335,17 +336,19 @@ function moveInPool(organism: Organism | Grazer, dt: number): void {
   }
 }
 
-function updateLucent(world: World, organism: Organism, dt: number, lightReach: number): void {
+function updateLucent(world: World, organism: Organism, dt: number): void {
   organism.age += dt;
   organism.phase = (organism.phase + dt * 0.42) % TAU;
   organism.energy = Math.max(ENERGY_FLOOR, organism.energy - dt * 0.008 * organism.traits.drive);
-  const ambient = ambientOffer(world, dt);
+  const harvest = lightScale(depthAt(organism.x, organism.y));
+  const ambient = ambientOffer(world, dt) * harvest;
   if (ambient > 0) {
     world.ecologyLedger.ambientHarvested += ambient;
     accrueFeedingPigment(world, organism, ambient * organism.traits.bulk);
   }
   const target = targetLight(organism, world.lights);
   const speed = (18 + organism.energy * 15) * traitMobility(organism.traits);
+  const lightReach = lightReachAt(world, organism);
   let desiredX: number;
   let desiredY: number;
   if (target) {
@@ -365,7 +368,7 @@ function updateLucent(world: World, organism: Organism, dt: number, lightReach: 
     if (distance < lightReach) {
       const eaten = Math.min(
         target.energy,
-        dt * (0.7 + Math.max(0, 1.2 - organism.energy) * 0.45) * organism.traits.drive,
+        dt * (0.7 + Math.max(0, 1.2 - organism.energy) * 0.45) * organism.traits.drive * harvest,
       );
       target.energy -= eaten;
       world.consumed += eaten;
@@ -480,8 +483,7 @@ export function stepWorld(world: World, dt = FIXED_STEP): void {
   world.elapsed += dt;
   world.tick++;
   dissolveMineralSeam(world, dt);
-  const lightReach = effectiveLightReach(world);
-  for (const organism of world.organisms) updateLucent(world, organism, dt, lightReach);
+  for (const organism of world.organisms) updateLucent(world, organism, dt);
   for (const grazer of world.grazers) updateGrazer(world, grazer, dt);
   // Living work runs for present bodies only. One shared founding poll follows
   // all exits, so a growing catalog cannot multiply sediment source scans.
@@ -537,5 +539,6 @@ export function getStats(world: World): WorldStats {
     nestPigment: world.nests.reduce((total, nest) => total + nest.pigment, 0),
     seamRemaining: seamRemaining(world),
     seamDissolved: world.ecologyLedger.seamDissolved,
+    deepPigment: pigmentInDeep(world),
   };
 }

@@ -323,6 +323,7 @@ export interface WorldStats {
   nestPigment: number;
   seamRemaining: number;
   seamDissolved: number;
+  deepPigment: number;
 }
 
 // One shared coastline formula; linked pools and the channel live in habitat.ts.

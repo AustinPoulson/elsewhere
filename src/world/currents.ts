@@ -1,11 +1,13 @@
+import { CURRENT_SPEED, MAX_CURRENT_SPEED, SEDIMENT_DRIFT, currentStrength } from './actions/current';
+import { depthAt, settleVelocity, stillScale } from './environment/depth';
 import { confinePosition } from './geometry';
 import { channelVelocity } from './habitat';
-import { CURRENT_SPEED, MAX_CURRENT_SPEED, SEDIMENT_DRIFT, currentStrength } from './actions/current';
 import type { Point, World } from './types';
 
 const driftVelocity: Point = { x: 0, y: 0 };
+const settleScratch: Point = { x: 0, y: 0 };
 
-function currentVelocity(world: World, body: Point, scale: number, out: Point): Point {
+function currentVelocity(world: World, body: Point, scale: number, out: Point, settle = false): Point {
   let vx = 0;
   let vy = 0;
   for (const current of world.currents) {
@@ -16,22 +18,30 @@ function currentVelocity(world: World, body: Point, scale: number, out: Point): 
     vy += current.dy * speed;
   }
   const magnitude = Math.hypot(vx, vy);
-  if (magnitude === 0) return channelVelocity(body, world.elapsed, scale, out);
-  const bounded = Math.min(1, MAX_CURRENT_SPEED / magnitude) * scale;
-  channelVelocity(body, world.elapsed, scale, out);
-  out.x += vx * bounded;
-  out.y += vy * bounded;
+  if (magnitude === 0) channelVelocity(body, world.elapsed, scale, out);
+  else {
+    const bounded = Math.min(1, MAX_CURRENT_SPEED / magnitude) * scale;
+    channelVelocity(body, world.elapsed, scale, out);
+    out.x += vx * bounded;
+    out.y += vy * bounded;
+  }
+  const still = stillScale(depthAt(body.x, body.y));
+  out.x *= still;
+  out.y *= still;
+  if (settle) {
+    settleVelocity(body, settleScratch);
+    out.x += settleScratch.x;
+    out.y += settleScratch.y;
+  }
   return out;
 }
 
-// Feeding and transport use exactly the same combined current force and
-// sediment scale, including the clamp when fields overlap.
 export function sedimentCurrentVelocity(world: World, grain: Point): Point {
-  return currentVelocity(world, grain, SEDIMENT_DRIFT, { x: 0, y: 0 });
+  return currentVelocity(world, grain, SEDIMENT_DRIFT, { x: 0, y: 0 }, true);
 }
 
-function drift(world: World, body: Point, dt: number, scale: number, margin: number): void {
-  const velocity = currentVelocity(world, body, scale, driftVelocity);
+function drift(world: World, body: Point, dt: number, scale: number, margin: number, settle = false): void {
+  const velocity = currentVelocity(world, body, scale, driftVelocity, settle);
   if (velocity.x === 0 && velocity.y === 0) return;
   body.x += velocity.x * dt;
   body.y += velocity.y * dt;
@@ -49,7 +59,7 @@ export function applyCurrentDrift(world: World, dt: number): void {
   for (const body of world.siltstitchers) drift(world, body, dt, 1, 11);
   for (const body of world.cargoMites) if (body.mode === 'seeking') drift(world, body, dt, 1, 11);
   for (const body of world.marlgrubs) drift(world, body, dt, 1, 11);
-  for (const body of world.sediment) drift(world, body, dt, SEDIMENT_DRIFT, 0);
-  if (world.remains.length > 0) for (const body of world.remains) drift(world, body, dt, SEDIMENT_DRIFT, 0);
-  if (world.fossils.length > 0) for (const body of world.fossils) drift(world, body, dt, SEDIMENT_DRIFT, 0);
+  for (const body of world.sediment) drift(world, body, dt, SEDIMENT_DRIFT, 0, true);
+  if (world.remains.length > 0) for (const body of world.remains) drift(world, body, dt, SEDIMENT_DRIFT, 0, true);
+  if (world.fossils.length > 0) for (const body of world.fossils) drift(world, body, dt, SEDIMENT_DRIFT, 0, true);
 }

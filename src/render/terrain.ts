@@ -1,3 +1,4 @@
+import { DEEP_BASIN } from '../world/environment/depth';
 import { MINERAL_SEAM } from '../world/environment/mineral-seam';
 import { channelSegment, INLET_POOL, OPENING_POOL, poolCoastPoint } from '../world/habitat';
 import { WORLD_HEIGHT, WORLD_WIDTH, type HabitatPool } from '../world/types';
@@ -117,6 +118,15 @@ export function createTerrain(): HTMLCanvasElement {
   veil.addColorStop(1, 'rgba(46,102,93,.06)');
   ctx.fillStyle = veil;
   ctx.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+
+  const deep = ctx.createRadialGradient(DEEP_BASIN.x, DEEP_BASIN.y, 14, DEEP_BASIN.x, DEEP_BASIN.y, DEEP_BASIN.rx);
+  deep.addColorStop(0, 'rgba(2,10,16,.46)');
+  deep.addColorStop(0.55, 'rgba(4,18,24,.22)');
+  deep.addColorStop(1, 'rgba(4,18,24,0)');
+  ctx.fillStyle = deep;
+  ctx.beginPath();
+  ctx.ellipse(DEEP_BASIN.x, DEEP_BASIN.y, DEEP_BASIN.rx, DEEP_BASIN.ry, 0, 0, TAU);
+  ctx.fill();
 
   // Submerged bathymetry: thin contours become quieter toward the deep center.
   for (let layer = 0; layer < 22; layer++) {

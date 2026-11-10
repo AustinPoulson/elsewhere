@@ -1,5 +1,6 @@
+import { depthAt, rainScale } from './environment/depth';
 import { rainSpanAt } from './environment/seasons';
-import type { World } from './types';
+import type { Point, World } from './types';
 
 export interface Weather {
   intensity: number;
@@ -81,4 +82,12 @@ export function effectiveWeather(world: World): EffectiveWeather {
 
 export function effectiveLightReach(world: World): number {
   return CALM_LIGHT_REACH + RAIN_LIGHT_EXTENSION * effectiveWeather(world).intensity;
+}
+
+export function rainIntensityAt(world: World, x: number, y: number): number {
+  return effectiveWeather(world).intensity * rainScale(depthAt(x, y));
+}
+
+export function lightReachAt(world: World, point: Point): number {
+  return CALM_LIGHT_REACH + RAIN_LIGHT_EXTENSION * rainIntensityAt(world, point.x, point.y);
 }

@@ -16,10 +16,12 @@ Eventually: several pools linked by slow currents, and the world keeps living wh
 
 - [x] **Fossils, eras, and linked pools** — Fossils in sediment record extinct populations; multiple pools connected by slow currents allow migration; named eras keep reviewed snapshots of earlier worlds. _Success: fossils visible in old sediment; organisms can move between pools; a visitor can open a named era, read its field note, and restore that frozen moment without gifts._ Fossils and linked pools already exist. Named eras are a static collection of three reviewed snapshots (`elsewhere-era` format, cap 8, 4 MB catalog). Automated capture is the format and `npm run capture-era`; replay uses the ordinary snapshot importer.
 
-- [ ] **New conditions** — Author physics and habitat, not species. A slow year, a deeper pool, or a mineral seam should create variety; life sorts itself out and extinction is allowed. No free populations, pigment, or energy.
+- [x] **New conditions** — Author physics and habitat, not species. A slow year, a deeper pool, or a mineral seam should create variety; life sorts itself out and extinction is allowed. No free populations, pigment, or energy.
   - [x] **Seasons** — first slice. A six-world-day year (2160 seconds) derived from elapsed time shifts daylight length and strength, rain span, and channel current. Opening climate matches the previous yearless world. Catch-up, eras, and the harness see the same year. Schema revision stays 13. _Success: a 30-day harness covers five complete years; the UI names the season; a while-you-were-gone journal can mention a season change._
-  - [ ] A deeper pool
   - [x] **A mineral seam** — second slice. An ochre vein in the opening pool's western sediment holds 24 pigment and dissolves at 0.00072 per second (faster in rain) into ordinary grains near the streak. Placement uses tick phase, not the PRNG. Opening worlds start with the rock, not extra loose color. Schema revision 14; revision-13 saves receive a full unused vein and no pigment. Catch-up, eras, and the harness dissolve the same rock. _Success: a 30-day harness leaves the vein partly spent and balanced; nearby life can use the color; extinction is still allowed; the UI names the seam._
+  - [x] **A deeper pool** — third slice. A small deep basin in the opening pool's northeastern water. Light harvest (ambient and visitor) thins with depth; rain barely widens feeding reach there; currents go still, so sediment and remains settle downhill. Settling uses basin geometry, not the PRNG. Opening worlds and revision-14 saves receive the habitat, not extra life or color. Schema revision stays 14. Catch-up, eras, and the harness see the same depth. _Success: a 30-day harness leaves ledgers balanced; nearby life may use the stiller floor; extinction is still allowed; the UI names the basin._
+
+- [ ] **Traces of time away** — When a visitor returns, the shore keeps a few faint, bounded marks of what actually happened while nobody watched: settled color, a faded path, a note the world wrote from events. Opening and migrated worlds receive none. The pool stays a little mysterious and different every time; extinction is still allowed.
 
 ## Standing Invariants
 
@@ -164,3 +166,25 @@ _This section records surprising population dynamics, extinctions, or runaway re
 **Seed 42, 30 unwatched days:** Skimmers ended at 2 (24 / 22) versus 2 (45 / 43) on seasons. Cargo mites closed at 2 (147 / 145) instead of emptying at 179m 48s. Siltstitchers lasted to 170m with 4 births versus 94m with 6. Reedwells and rainbells still boom-bust in the first quarter-hour. Marlgrubs had a larger pulse (43 / 43 versus 25 / 25) and still went extinct at 173m. A little loose color (0.047) remained within 90 of the seam.
 
 **What the seam did, honestly:** It did not save reedwells or rainbells, and it did not freeze anyone in place. The same 8.3 units left the rock on both seeds; what happened next was seed-shaped gathering and founding. Nested color rose. Some nest-funded lives lasted longer. Shoreline glass limpets on seed 1 ended sooner. Extinction is still allowed. The remaining new-condition candidate is a deeper pool.
+
+### Deeper pool (seeds 1 and 42)
+
+**Habitat, not a species:** A small deep basin sits in the opening pool at (1090, 318). Light harvest scales with depth (`1 - 0.62 * depth`), rain widens feeding reach less (`1 - 0.75 * depth`), and currents go still (`1 - 0.88 * depth`). Sediment, remains, and fossils settle downhill at 1.15 world units/second at full depth. Living bodies are not pulled. Settling uses the basin geometry, so the world PRNG is untouched. Opening worlds have the same 24 lucents, 4 grazers, and 48 spring grains as before. Schema revision stays 14; revision-14 saves pick up the habitat going forward and receive no pigment, organisms, or energy.
+
+**Thirty unwatched days, seeds 1 and 42:** Ambient harvest fell on both seeds (7486.73 → 7442.42 / 7449.66) because lucents that enter the basin convert less daylight. The seam still dissolved 8.300 on both seeds. Remains and fossils balanced. At day 30 neither seed held loose, remain, or fossil color in the basin; seed 1 had one body there. The floor did not become a pantry.
+
+|                                             | Seed 1 seam                 | Seed 1 depth                | Seed 42 seam                     | Seed 42 depth               |
+| ------------------------------------------- | --------------------------- | --------------------------- | -------------------------------- | --------------------------- |
+| Ambient harvest                             | 7486.73                     | 7442.42                     | 7486.73                          | 7449.66                     |
+| Seam dissolved / remaining                  | 8.300 / 15.671              | 8.300 / 15.671              | 8.300 / 15.671                   | 8.300 / 15.671              |
+| Deep pigment / remains / bodies             | —                           | 0 / 0 / 1                   | —                                | 0 / 0 / 0                   |
+| Remains created = held + consumed + decayed | 20.863 = 0 + 1.162 + 19.701 | 26.110 = 0 + 3.640 + 22.470 | 34.488 = 0.125 + 10.792 + 23.571 | 26.911 = 0 + 4.805 + 22.105 |
+| Fossils formed = held                       | 1.699                       | 1.682                       | 1.166                            | 1.546                       |
+| Nested pigment                              | 1.39                        | 0.81                        | 1.24                             | 1.44                        |
+| Loose pigment (inlet)                       | 0.00 (0.00)                 | 1.33 (0.75)                 | 1.17 (0.65)                      | 1.99 (0.78)                 |
+
+**Seed 1, 30 unwatched days:** Lucents and grazers still hold. Skimmers ended at 2 (42 / 40) versus 3 (58 / 55) on the seam. Siltstitchers went extinct at 157m (14 / 14) instead of surviving. Glass limpets turned over more and ended later (9 / 9 at 173m versus 3 / 3 at 52m). Cargo mites closed at 2 (121 / 119). One marlgrub was still alive (15 / 14) instead of going extinct at 168m. Nested color fell to 0.81; loose color returned to the floor and the inlet.
+
+**Seed 42, 30 unwatched days:** Skimmers ended at 3 (57 / 54) versus 2 (24 / 22) on the seam. Cargo mites emptied at 179m 21s (117 / 117) after closing at 2 on the seam. A glass limpet was still alive (6 / 5) instead of going extinct at 127m. Siltstitchers lasted to 174m with 9 births versus 170m with 4. Reedwells and rainbells still boom-bust in the first quarter-hour. Marlgrubs still died (17 / 17 at 172m versus 43 / 43 at 173m).
+
+**What the depth did, honestly:** It did not save reedwells or rainbells, and it did not fill the basin with free color. Ambient harvest is a little weaker when bodies enter the deep. Seam leaching is unchanged. Some shoreline lives lasted longer on one seed and emptied on the other. Extinction is still allowed. Step 6 new conditions is complete.
