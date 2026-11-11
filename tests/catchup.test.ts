@@ -17,6 +17,7 @@ import {
 } from '../src/world/catchup';
 import { serializeWorld } from '../src/world/persistence';
 import { createWorld, stepWorld } from '../src/world/simulation';
+import { TRACE_MARK_CAP } from '../src/world/traces';
 import { FIXED_STEP } from '../src/world/types';
 
 function idleEvents(): CatchUpEvents {
@@ -184,6 +185,9 @@ describe('catch-up simulation', () => {
     ).toBeCloseTo(0, 6);
     expect(report.journal.lines[0]).toBe('You were away for about an hour.');
     expect(shouldPresentJournal(plan, report.events)).toBe(true);
+    expect(report.traces.length).toBeGreaterThan(0);
+    expect(report.traces.length).toBeLessThanOrEqual(TRACE_MARK_CAP);
+    expect(report.journal.lines.some((line) => line.includes('faint') || line.includes('faded'))).toBe(true);
   }, 30_000);
 
   it('chunked catch-up matches the synchronous path', async () => {

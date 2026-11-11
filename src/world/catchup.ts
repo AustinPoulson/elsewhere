@@ -4,7 +4,17 @@ import { describeSeasonChange } from './environment/seasons';
 import { heldFossilPigment } from './species/fossils';
 import { heldRemainPigment } from './species/remains';
 import { stepWorld } from './simulation';
-import { FIXED_STEP, type World } from './types';
+import {
+  TRACE_EXTINCTION_RECORD_CAP,
+  channelOccupied,
+  colorInInlet,
+  composeAwayTraces,
+  describeAwayTraces,
+  livingInInlet,
+  type AwayTrace,
+  type ExtinctionMark,
+} from './traces';
+import { FIXED_STEP, type Point, type World } from './types';
 
 export const CATCH_UP_MAX_SECONDS = 8 * 3600;
 export const CATCH_UP_MIN_SECONDS = 30;
@@ -66,6 +76,7 @@ export interface CatchUpReport {
   before: ResourceSnapshot;
   after: ResourceSnapshot;
   journal: CatchUpJournal;
+  traces: AwayTrace[];
 }
 
 const SPECIES: CensusSpecies[] = [
@@ -226,12 +237,99 @@ function noteEvents(
   return counts;
 }
 
+interface BodyMark extends Point {
+  hue: number;
+}
+
+function elderMark(list: ReadonlyArray<Point & { hue: number; age: number }>): BodyMark | null {
+  if (list.length === 0) return null;
+  let chosen = list[0];
+  for (const body of list) {
+    if (body.age > chosen.age) chosen = body;
+  }
+  return { x: chosen.x, y: chosen.y, hue: chosen.hue };
+}
+
+function lastBodies(world: World): Record<CensusSpecies, BodyMark | null> {
+  return {
+    lucents: elderMark(world.organisms),
+    grazers: elderMark(world.grazers),
+    skimmers: elderMark(world.skimmers),
+    reedwells: elderMark(world.reedwells),
+    rainbells: elderMark(world.rainbells),
+    siltstitchers: elderMark(world.siltstitchers),
+    glassLimpets: elderMark(world.glassLimpets),
+    cargoMites: elderMark(world.cargoMites),
+    marlgrubs: elderMark(world.marlgrubs),
+  };
+}
+
+function recordCatchUpStep(
+  world: World,
+  events: CatchUpEvents,
+  previous: Record<CensusSpecies, number>,
+  lastBody: Record<CensusSpecies, BodyMark | null>,
+  extinctions: ExtinctionMark[],
+): { previous: Record<CensusSpecies, number>; lastBody: Record<CensusSpecies, BodyMark | null> } {
+  const counts = populationCounts(world);
+  for (const species of SPECIES) {
+    const remembered = lastBody[species];
+    if (counts[species] === 0 && previous[species] > 0 && remembered) {
+      if (extinctions.length >= TRACE_EXTINCTION_RECORD_CAP) extinctions.shift();
+      extinctions.push({
+        species,
+        at: world.elapsed,
+        x: remembered.x,
+        y: remembered.y,
+        hue: remembered.hue,
+      });
+    }
+  }
+  return { previous: noteEvents(events, previous, world), lastBody: lastBodies(world) };
+}
+
+function finishCatchUp(
+  world: World,
+  plan: CatchUpPlan,
+  steps: number,
+  events: CatchUpEvents,
+  before: ResourceSnapshot,
+  inletBefore: number,
+  inletBodiesBefore: number,
+  extinctions: ExtinctionMark[],
+): CatchUpReport {
+  const after = resourceSnapshot(world);
+  const ended = extinctions.filter((entry) => events[entry.species as CensusSpecies].extinctAt !== null);
+  const traces =
+    steps === 0
+      ? []
+      : composeAwayTraces({
+          formedAt: world.elapsed,
+          extinctions: ended,
+          seamReleased: after.seamDissolved - before.seamDissolved,
+          deepDelta: after.deepPigment - before.deepPigment,
+          inletDelta: colorInInlet(world) - inletBefore,
+          inletBodiesDelta: livingInInlet(world) - inletBodiesBefore,
+          channelOccupied: channelOccupied(world),
+        });
+  return {
+    plan,
+    steps,
+    events,
+    before,
+    after,
+    traces,
+    journal: composeJournal(plan, events, before, after, world.elapsed, traces),
+  };
+}
+
 export function composeJournal(
   plan: CatchUpPlan,
   events: CatchUpEvents,
   before: ResourceSnapshot,
   after: ResourceSnapshot,
   nowElapsed: number,
+  traces: readonly AwayTrace[] = [],
 ): CatchUpJournal {
   const lines: string[] = [];
   if (plan.reason === 'ready') {
@@ -259,6 +357,9 @@ export function composeJournal(
       lines.push(`The last ${SPECIES_LABEL[species].singular} died ${describeSpan(ago)} ago.`);
     }
   }
+
+  const traceLine = describeAwayTraces(traces);
+  if (traceLine) lines.push(traceLine);
 
   for (const species of SPECIES) {
     if (species === 'lucents' || species === 'grazers') continue;
@@ -315,23 +416,21 @@ function simulateCatchUp(
   onStep?: (done: number, total: number) => void,
 ): CatchUpReport {
   const before = resourceSnapshot(world);
+  const inletBefore = colorInInlet(world);
+  const inletBodiesBefore = livingInInlet(world);
   const events = emptyEvents();
+  const extinctions: ExtinctionMark[] = [];
   const total = plan.reason === 'ready' ? Math.ceil(plan.simulateSeconds / FIXED_STEP) : 0;
   let previous = populationCounts(world);
+  let lastBody = lastBodies(world);
   for (let step = 0; step < total; step++) {
     stepWorld(world);
-    previous = noteEvents(events, previous, world);
+    const recorded = recordCatchUpStep(world, events, previous, lastBody, extinctions);
+    previous = recorded.previous;
+    lastBody = recorded.lastBody;
     onStep?.(step + 1, total);
   }
-  const after = resourceSnapshot(world);
-  return {
-    plan,
-    steps: total,
-    events,
-    before,
-    after,
-    journal: composeJournal(plan, events, before, after, world.elapsed),
-  };
+  return finishCatchUp(world, plan, total, events, before, inletBefore, inletBodiesBefore, extinctions);
 }
 
 export function catchUpWorld(world: World, plan: CatchUpPlan): CatchUpReport {
@@ -359,30 +458,28 @@ export async function catchUpWorldChunked(
   },
 ): Promise<CatchUpReport> {
   const before = resourceSnapshot(world);
+  const inletBefore = colorInInlet(world);
+  const inletBodiesBefore = livingInInlet(world);
   const events = emptyEvents();
+  const extinctions: ExtinctionMark[] = [];
   const total = plan.reason === 'ready' ? Math.ceil(plan.simulateSeconds / FIXED_STEP) : 0;
   const clock = options?.now ?? (() => performance.now());
   const pause = options?.yieldToMain ?? yieldToMain;
   const chunkMs = options?.chunkMs ?? CATCH_UP_CHUNK_MS;
   let previous = populationCounts(world);
+  let lastBody = lastBodies(world);
   let step = 0;
   while (step < total) {
     const sliceStart = clock();
     while (step < total && clock() - sliceStart < chunkMs) {
       stepWorld(world);
       step++;
-      previous = noteEvents(events, previous, world);
+      const recorded = recordCatchUpStep(world, events, previous, lastBody, extinctions);
+      previous = recorded.previous;
+      lastBody = recorded.lastBody;
     }
     options?.onProgress?.(step, total);
     if (step < total) await pause();
   }
-  const after = resourceSnapshot(world);
-  return {
-    plan,
-    steps: total,
-    events,
-    before,
-    after,
-    journal: composeJournal(plan, events, before, after, world.elapsed),
-  };
+  return finishCatchUp(world, plan, total, events, before, inletBefore, inletBodiesBefore, extinctions);
 }

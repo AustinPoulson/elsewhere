@@ -43,6 +43,7 @@ import { DEEP_BASIN, depthAt, lightScale, rainScale } from '../world/environment
 import { MINERAL_SEAM, seamRemaining } from '../world/environment/mineral-seam';
 import { seasonCausticColor, seasonWashColor } from '../world/environment/seasons';
 import { appearanceGlow, appearanceScale } from '../world/traits';
+import { TRACE_MARK_CAP, traceStrength, type AwayTrace } from '../world/traces';
 
 interface SpriteVisual {
   sprite: Sprite;
@@ -124,6 +125,7 @@ export class TidepoolRenderer {
   private readonly sedimentCores = new Graphics();
   private readonly fossilCores = new Graphics();
   private readonly remainCores = new Graphics();
+  private readonly awayMarks = new Graphics();
   private readonly nestLayer = new Container();
   private readonly reedwellLayer = new Container();
   private readonly rainbellLayer = new Container();
@@ -168,6 +170,7 @@ export class TidepoolRenderer {
   private readonly colors = new Map<number, number>();
   private reducedMotion = false;
   private destroyed = false;
+  private awayTraces: readonly AwayTrace[] = [];
   private frame = 0;
   private view: CameraView = openingView();
   private camera: HabitatCamera = fitHabitatCamera(WORLD_WIDTH, WORLD_HEIGHT);
@@ -206,6 +209,7 @@ export class TidepoolRenderer {
       this.sedimentCores,
       this.fossilCores,
       this.remainCores,
+      this.awayMarks,
       this.nestLayer,
       this.reedwellLayer,
       this.rainbellLayer,
@@ -260,6 +264,10 @@ export class TidepoolRenderer {
 
   setReducedMotion(value: boolean): void {
     this.reducedMotion = value;
+  }
+
+  setAwayTraces(traces: readonly AwayTrace[]): void {
+    this.awayTraces = traces.slice(0, TRACE_MARK_CAP);
   }
 
   screenToWorld(clientX: number, clientY: number): Point {
@@ -375,6 +383,7 @@ export class TidepoolRenderer {
     this.sedimentCores.clear();
     this.fossilCores.clear();
     this.remainCores.clear();
+    this.awayMarks.clear();
     this.drawCurrents(world, tool === 'stir' && stirPreview !== null);
 
     let coreCount = 0;
@@ -405,6 +414,7 @@ export class TidepoolRenderer {
     this.pruneSprites(this.sediments);
     this.drawFossils(world, selectedId);
     this.drawRemains(world, selectedId);
+    this.drawAwayTraces(world.elapsed);
     this.drawNests(world);
     this.reedwellRenderer.render(world, this.reducedMotion);
     this.rainbellRenderer.render(world, this.reducedMotion);
@@ -809,6 +819,53 @@ export class TidepoolRenderer {
         .ellipse(remain.x - radius * 0.12, remain.y + radius * 0.08, radius * 0.42, radius * 0.22)
         .fill({ color: tint, alpha: 0.1 + load * 0.18 });
       if (remain.id === selectedId) this.drawSelection(remain, radius + 8);
+    }
+  }
+
+  private drawAwayTraces(elapsed: number): void {
+    const count = Math.min(TRACE_MARK_CAP, this.awayTraces.length);
+    for (let index = 0; index < count; index++) {
+      const trace = this.awayTraces[index];
+      const fade = traceStrength(trace, elapsed);
+      if (fade <= 0.02) continue;
+      const tint = this.color(trace.hue);
+      if (trace.kind === 'channel' && trace.x2 !== undefined && trace.y2 !== undefined) {
+        for (let stop = 1; stop <= 4; stop++) {
+          const t = stop / 5;
+          const x = trace.x + (trace.x2 - trace.x) * t;
+          const y = trace.y + (trace.y2 - trace.y) * t;
+          this.awayMarks.ellipse(x, y, 22, 8).fill({ color: tint, alpha: fade * 0.22 });
+        }
+        this.awayMarks
+          .moveTo(trace.x, trace.y)
+          .lineTo(trace.x2, trace.y2)
+          .stroke({ color: 0xd5e4c8, alpha: fade * 0.28, width: 1.4 });
+        continue;
+      }
+      if (trace.kind === 'seam' && trace.x2 !== undefined && trace.y2 !== undefined) {
+        this.awayMarks
+          .moveTo(trace.x, trace.y)
+          .lineTo(trace.x2, trace.y2)
+          .stroke({ color: tint, alpha: fade * 0.55, width: 3.4 });
+        this.awayMarks.ellipse(trace.x, trace.y, 11, 5).fill({ color: tint, alpha: fade * 0.28 });
+        this.awayMarks.ellipse(trace.x2, trace.y2, 11, 5).fill({ color: tint, alpha: fade * 0.28 });
+        continue;
+      }
+      if (trace.kind === 'deep') {
+        this.awayMarks.ellipse(trace.x, trace.y, 54, 40).fill({ color: 0x163040, alpha: fade * 0.42 });
+        this.awayMarks.ellipse(trace.x, trace.y, 24, 18).fill({ color: tint, alpha: fade * 0.2 });
+        continue;
+      }
+      if (trace.kind === 'inlet') {
+        this.awayMarks.ellipse(trace.x, trace.y, 48, 34).fill({ color: tint, alpha: fade * 0.2 });
+        this.awayMarks.ellipse(trace.x, trace.y, 18, 12).stroke({ color: 0xd7e6cc, alpha: fade * 0.32, width: 1.1 });
+        continue;
+      }
+      this.awayMarks.ellipse(trace.x, trace.y, 16, 7).fill({ color: 0x241c16, alpha: fade * 0.38 });
+      this.awayMarks.ellipse(trace.x, trace.y, 16, 7).stroke({ color: tint, alpha: fade * 0.55, width: 1.2 });
+      this.awayMarks
+        .ellipse(trace.x + 2, trace.y - 1, 7, 2.4)
+        .stroke({ color: 0xead9b4, alpha: fade * 0.28, width: 0.8 });
     }
   }
 

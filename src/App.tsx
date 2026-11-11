@@ -28,6 +28,7 @@ import { describeBulk, describeDrive } from './world/traits';
 import { MAX_CURRENTS } from './world/actions/current';
 import { FOSSIL_LABEL } from './world/species/fossils';
 import { OPENING_POOL } from './world/habitat';
+import { visibleAwayTraces, type AwayTrace } from './world/traces';
 import { isInPool, LIMITS, WORLD_HEIGHT, WORLD_WIDTH } from './world/types';
 import type { Point, Tool, World } from './world/types';
 
@@ -95,6 +96,8 @@ export function App() {
   const catchUpLockRef = useRef(false);
   const [catchUpProgress, setCatchUpProgress] = useState<{ done: number; total: number } | null>(null);
   const [journal, setJournal] = useState<CatchUpJournal | null>(null);
+  const [awayTraces, setAwayTraces] = useState<AwayTrace[]>([]);
+  const tracesRef = useRef<AwayTrace[]>([]);
   const [reducedMotion, setReducedMotion] = useState(() => matchMedia('(prefers-reduced-motion: reduce)').matches);
   const [paused, setPaused] = useState(reducedMotion);
   const [tool, setTool] = useState<Tool>('light');
@@ -115,6 +118,11 @@ export function App() {
   function setNotice(message: string): void {
     setNoticeState(message);
     setFeedback(message);
+  }
+  function rememberTraces(traces: AwayTrace[]): void {
+    tracesRef.current = traces;
+    setAwayTraces(traces);
+    rendererRef.current?.setAwayTraces(traces);
   }
   const controlsRef = useRef({ paused, tool, selectedId, reducedMotion });
   controlsRef.current = { paused, tool, selectedId, reducedMotion };
@@ -251,6 +259,7 @@ export function App() {
         },
       });
       worldRef.current.lastSeenAt = Date.now();
+      rememberTraces(report.traces);
       setCatchUpProgress(null);
       setStats(getStats(worldRef.current));
       catchingUpRef.current = false;
@@ -361,6 +370,7 @@ export function App() {
         }
         rendererRef.current = renderer;
         renderer.setReducedMotion(controlsRef.current.reducedMotion);
+        renderer.setAwayTraces(tracesRef.current);
         setReady(true);
         startLoop();
       })
@@ -711,6 +721,7 @@ export function App() {
       cancelCarry();
       setHintVisible(false);
       setSelectedId(null);
+      rememberTraces([]);
       setStats(getStats(restored));
       saveWorld();
       setNotice('A remembered tidepool has returned.');
@@ -752,6 +763,7 @@ export function App() {
     cancelCarry();
     setHintVisible(false);
     setSelectedId(null);
+    rememberTraces([]);
     setStats(getStats(restored));
     saveWorld();
     rendererRef.current?.resetView();
@@ -772,6 +784,7 @@ export function App() {
     heldRef.current = false;
     cancelCarry();
     setSelectedId(null);
+    rememberTraces([]);
     setStats(getStats(worldRef.current));
     saveWorld();
     setNotice(
@@ -811,6 +824,7 @@ export function App() {
       setSelectedId(null);
       setHintVisible(false);
       setStudyMode(true);
+      rememberTraces([]);
       setStats(getStats(worldRef.current));
       panelReturnFocusRef.current = hostRef.current;
       setPanel(null);
@@ -842,6 +856,7 @@ export function App() {
     setSelectedId(controls.selectedId);
     setHintVisible(controls.hintVisible);
     setStudyMode(false);
+    rememberTraces([]);
     setStats(getStats(worldRef.current));
     resetRef.current?.close();
     panelReturnFocusRef.current = hostRef.current;
@@ -1062,6 +1077,11 @@ export function App() {
             ? `A deeper basin lies in the northeastern water. ${stats.deepPigment.toFixed(1)} pigment has settled there.`
             : 'A deeper basin lies in the northeastern water. Light thins there; color settles.'}
         </div>
+        {visibleAwayTraces(awayTraces, stats.elapsed).length > 0 && (
+          <div className="trace-readout" aria-live="polite">
+            Faint marks remain from time away.
+          </div>
+        )}
         <div className={`weather-readout ${weather.raining ? 'is-raining' : ''}`} aria-label="Pool weather">
           <span aria-hidden="true">◌</span>
           <span>
@@ -1514,10 +1534,12 @@ export function App() {
                     <p>
                       Closing the page lets the pool live on its own, up to eight hours of remembered time. Brief
                       absences catch up quietly. After about ten minutes, or if a lineage ended while you were away, a
-                      short field journal tells what happened. A progress note appears only when catching up would take
-                      a visible moment. Longer absences are named honestly: the rest of the time, the world slept.
-                      Opening a saved snapshot restores that frozen moment; it is not time away. Old saves receive no
-                      free life.
+                      short field journal tells what happened. A real catch-up can leave a few faint marks on the shore
+                      from that time: where a lineage ended, where color settled, or a faded path along the channel.
+                      They grant nothing and fade while you watch. Opening a saved snapshot, a named era, or beginning
+                      again leaves none; only returning after time away writes them. A progress note appears only when
+                      catching up would take a visible moment. Longer absences are named honestly: the rest of the time,
+                      the world slept. Old saves receive no free life.
                     </p>
                   </div>
                 </div>

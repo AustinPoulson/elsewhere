@@ -826,6 +826,14 @@ h1 em {
   max-width: 280px;
   color: #7a9aaa;
 }
+.trace-readout {
+  margin-top: 6px;
+  font-size: 10px;
+  letter-spacing: 0;
+  line-height: 1.45;
+  max-width: 280px;
+  color: #9aa78a;
+}
 .weather-readout {
   display: flex;
   gap: 7px;
@@ -950,7 +958,8 @@ h1 em {
   }
   .season-readout,
   .seam-readout,
-  .deep-readout {
+  .deep-readout,
+  .trace-readout {
     font-size: 9px;
     max-width: min(280px, calc(100vw - 48px));
   }
