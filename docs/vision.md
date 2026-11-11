@@ -22,6 +22,7 @@ Eventually: several pools linked by slow currents, and the world keeps living wh
   - [x] **A deeper pool** — third slice. A small deep basin in the opening pool's northeastern water. Light harvest (ambient and visitor) thins with depth; rain barely widens feeding reach there; currents go still, so sediment and remains settle downhill. Settling uses basin geometry, not the PRNG. Opening worlds and revision-14 saves receive the habitat, not extra life or color. Schema revision stays 14. Catch-up, eras, and the harness see the same depth. _Success: a 30-day harness leaves ledgers balanced; nearby life may use the stiller floor; extinction is still allowed; the UI names the basin._
 
 - [ ] **Traces of time away** — When a visitor returns, the shore keeps a few faint, bounded marks of what actually happened while nobody watched: settled color, a faded path, a note the world wrote from events. Opening and migrated worlds receive none. The pool stays a little mysterious and different every time; extinction is still allowed.
+  - [x] **Faint return marks** — first slice. A real catch-up (the existing 30s–8h path) can leave at most five session-only marks derived from events recorded while away: up to two lineage endings at the last body's position, a faded channel path if color or bodies crossed, and stains at the deep basin, mineral seam, or inlet when color actually settled there. Placement uses those event positions and authored geometry, never the world PRNG. Marks grant no pigment, energy, organisms, or light; they sit outside the save (schema revision stays 14) and fade over eight minutes of watched time. Opening worlds, imported or pocketed snapshots, named eras, and migrated old saves receive none. The journal and observations list name them; reduced motion draws them still; portrait keeps the same world coordinates. _Success: a 1h return on seed 1 shows marks; harness ledgers for seeds 1 and 42 match main._
 
 ## Standing Invariants
 
@@ -188,3 +189,22 @@ _This section records surprising population dynamics, extinctions, or runaway re
 **Seed 42, 30 unwatched days:** Skimmers ended at 3 (57 / 54) versus 2 (24 / 22) on the seam. Cargo mites emptied at 179m 21s (117 / 117) after closing at 2 on the seam. A glass limpet was still alive (6 / 5) instead of going extinct at 127m. Siltstitchers lasted to 174m with 9 births versus 170m with 4. Reedwells and rainbells still boom-bust in the first quarter-hour. Marlgrubs still died (17 / 17 at 172m versus 43 / 43 at 173m).
 
 **What the depth did, honestly:** It did not save reedwells or rainbells, and it did not fill the basin with free color. Ambient harvest is a little weaker when bodies enter the deep. Seam leaching is unchanged. Some shoreline lives lasted longer on one seed and emptied on the other. Extinction is still allowed. Step 6 new conditions is complete.
+
+### Traces of time away, first slice (seeds 1 and 42)
+
+**Memory, not a resource:** Return marks live in the session, not in the snapshot. Schema revision stays 14. `serializeWorld` after catch-up matches a live `stepWorld` loop of the same length. Opening worlds, imported snapshots, named eras, and migrated saves receive none.
+
+**A 1h return already writes a small set of marks:** Seed 1's journal named siltstitcher, glass-limpet, and marlgrub endings, the seam leaking, and the shore keeping faint marks of that time. The observations list repeats "Faint marks remain from time away." Deep pigment did not rise enough for a basin stain. Marks fade over eight minutes of watched time and cap at five.
+
+**Thirty unwatched days still match main:** The harness never creates traces. Ledgers, conservation checks, resources, and event counts for seeds 1 and 42 were identical to `main`.
+
+|                                             | Seed 1 main / this slice    | Seed 42 main / this slice   |
+| ------------------------------------------- | --------------------------- | --------------------------- |
+| Ambient harvest                             | 7442.42                     | 7449.66                     |
+| Seam dissolved / remaining                  | 8.300 / 15.671              | 8.300 / 15.671              |
+| Remains created = held + consumed + decayed | 26.110 = 0 + 3.640 + 22.470 | 26.911 = 0 + 4.805 + 22.105 |
+| Fossils formed = held                       | 1.682                       | 1.546                       |
+| Nested pigment                              | 0.81                        | 1.44                        |
+| Loose pigment (inlet)                       | 1.33 (0.75)                 | 1.99 (0.78)                 |
+
+**What this slice does not do:** Refreshing after a return does not restore the marks; only another real catch-up writes them. That is the save-free choice, not a bug. A later slice could persist traces with a versioned migration if the shore should remember across closing the tab. Extinction is still allowed.

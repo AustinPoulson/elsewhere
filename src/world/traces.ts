@@ -1,0 +1,200 @@
+import { DEEP_BASIN } from './environment/depth';
+import { MINERAL_SEAM } from './environment/mineral-seam';
+import { INLET_POOL, channelSegment, inInletPool, inOpeningPool } from './habitat';
+import { isInPool, type Point, type World } from './types';
+
+export const TRACE_MARK_CAP = 5;
+export const TRACE_EXTINCTION_CAP = 2;
+export const TRACE_EXTINCTION_RECORD_CAP = 16;
+export const TRACE_FADE_SECONDS = 8 * 60;
+export const TRACE_SETTLE_THRESHOLD = 0.2;
+
+export type AwayTraceKind = 'extinction' | 'deep' | 'seam' | 'inlet' | 'channel';
+
+export interface ExtinctionMark extends Point {
+  species: string;
+  at: number;
+  hue: number;
+}
+
+export interface AwayTrace extends Point {
+  kind: AwayTraceKind;
+  hue: number;
+  strength: number;
+  formedAt: number;
+  x2?: number;
+  y2?: number;
+}
+
+export interface AwayTraceFacts {
+  formedAt: number;
+  extinctions: readonly ExtinctionMark[];
+  seamReleased: number;
+  deepDelta: number;
+  inletDelta: number;
+  inletBodiesDelta: number;
+  channelOccupied: boolean;
+}
+
+function clamp01(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.min(1, Math.max(0, value));
+}
+
+function inNeck(x: number, y: number): boolean {
+  return isInPool(x, y) && !inOpeningPool(x, y) && !inInletPool(x, y);
+}
+
+export function colorInInlet(world: Pick<World, 'sediment' | 'remains'>): number {
+  let total = 0;
+  for (const grain of world.sediment) {
+    if (inInletPool(grain.x, grain.y)) total += grain.strength;
+  }
+  for (const remain of world.remains) {
+    if (inInletPool(remain.x, remain.y)) total += remain.pigment;
+  }
+  return total;
+}
+
+export function livingPoints(world: World): Point[] {
+  return [
+    ...world.organisms,
+    ...world.grazers,
+    ...world.skimmers,
+    ...world.reedwells,
+    ...world.rainbells,
+    ...world.siltstitchers,
+    ...world.glassLimpets,
+    ...world.cargoMites,
+    ...world.marlgrubs,
+  ];
+}
+
+export function livingInInlet(world: World): number {
+  let count = 0;
+  for (const body of livingPoints(world)) {
+    if (inInletPool(body.x, body.y)) count += 1;
+  }
+  return count;
+}
+
+export function channelOccupied(world: World): boolean {
+  for (const body of livingPoints(world)) {
+    if (inNeck(body.x, body.y)) return true;
+  }
+  for (const grain of world.sediment) {
+    if (inNeck(grain.x, grain.y)) return true;
+  }
+  for (const remain of world.remains) {
+    if (inNeck(remain.x, remain.y)) return true;
+  }
+  for (const fossil of world.fossils) {
+    if (inNeck(fossil.x, fossil.y)) return true;
+  }
+  return false;
+}
+
+function mark(
+  kind: AwayTraceKind,
+  x: number,
+  y: number,
+  hue: number,
+  strength: number,
+  formedAt: number,
+  extra?: Pick<AwayTrace, 'x2' | 'y2'>,
+): AwayTrace {
+  return {
+    kind,
+    x,
+    y,
+    hue,
+    strength: clamp01(strength),
+    formedAt,
+    ...extra,
+  };
+}
+
+export function composeAwayTraces(facts: AwayTraceFacts): AwayTrace[] {
+  if (!Number.isFinite(facts.formedAt) || facts.formedAt < 0) return [];
+  const traces: AwayTrace[] = [];
+  const recent: ExtinctionMark[] = [];
+  const seen = new Set<string>();
+  const sorted = [...facts.extinctions]
+    .filter((entry) => Number.isFinite(entry.at) && Number.isFinite(entry.x) && Number.isFinite(entry.y))
+    .sort((a, b) => b.at - a.at);
+  for (const ended of sorted) {
+    if (seen.has(ended.species)) continue;
+    seen.add(ended.species);
+    recent.push(ended);
+    if (recent.length >= TRACE_EXTINCTION_CAP) break;
+  }
+  for (const ended of recent) {
+    traces.push(mark('extinction', ended.x, ended.y, ended.hue, 0.58, facts.formedAt));
+  }
+  const drifted = facts.channelOccupied || facts.inletDelta >= TRACE_SETTLE_THRESHOLD || facts.inletBodiesDelta > 0;
+  if (drifted && traces.length < TRACE_MARK_CAP) {
+    const path = channelSegment();
+    traces.push(
+      mark('channel', path.ax, path.ay, 168, 0.42, facts.formedAt, {
+        x2: path.bx,
+        y2: path.by,
+      }),
+    );
+  }
+  if (facts.deepDelta >= TRACE_SETTLE_THRESHOLD && traces.length < TRACE_MARK_CAP) {
+    traces.push(mark('deep', DEEP_BASIN.x, DEEP_BASIN.y, 198, 0.28 + clamp01(facts.deepDelta) * 0.32, facts.formedAt));
+  }
+  if (facts.seamReleased >= TRACE_SETTLE_THRESHOLD && traces.length < TRACE_MARK_CAP) {
+    traces.push(
+      mark(
+        'seam',
+        MINERAL_SEAM.ax,
+        MINERAL_SEAM.ay,
+        MINERAL_SEAM.hue,
+        0.3 + clamp01(facts.seamReleased / 4) * 0.28,
+        facts.formedAt,
+        { x2: MINERAL_SEAM.bx, y2: MINERAL_SEAM.by },
+      ),
+    );
+  }
+  if (facts.inletDelta >= TRACE_SETTLE_THRESHOLD && traces.length < TRACE_MARK_CAP) {
+    traces.push(mark('inlet', INLET_POOL.x, INLET_POOL.y, 164, 0.28 + clamp01(facts.inletDelta) * 0.3, facts.formedAt));
+  }
+  return traces.slice(0, TRACE_MARK_CAP);
+}
+
+export function traceStrength(trace: AwayTrace, elapsed: number): number {
+  if (!Number.isFinite(elapsed)) return 0;
+  const age = elapsed - trace.formedAt;
+  if (age < 0) return trace.strength;
+  const remain = 1 - Math.min(1, age / TRACE_FADE_SECONDS);
+  return trace.strength * remain;
+}
+
+export function visibleAwayTraces(traces: readonly AwayTrace[], elapsed: number): AwayTrace[] {
+  const visible: AwayTrace[] = [];
+  for (const trace of traces) {
+    if (visible.length >= TRACE_MARK_CAP) break;
+    if (traceStrength(trace, elapsed) > 0.02) visible.push(trace);
+  }
+  return visible;
+}
+
+export function describeAwayTraces(traces: readonly AwayTrace[]): string | null {
+  if (traces.length === 0) return null;
+  const kinds = new Set(traces.map((trace) => trace.kind));
+  const ended = kinds.has('extinction');
+  const settled = kinds.has('deep') || kinds.has('seam') || kinds.has('inlet');
+  const drifted = kinds.has('channel');
+  if (ended && (settled || drifted)) {
+    return 'The shore kept faint marks of that time: where a lineage ended, and where color moved.';
+  }
+  if (ended) {
+    return traces.filter((trace) => trace.kind === 'extinction').length === 1
+      ? 'A faint mark remains where that lineage ended.'
+      : 'Faint marks remain where lineages ended.';
+  }
+  if (drifted && settled) return 'A faded path still shows along the channel, and color left a stain.';
+  if (drifted) return 'A faded path still shows along the channel.';
+  return 'The shore kept a faint stain of color that settled while you were gone.';
+}
