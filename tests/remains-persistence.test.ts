@@ -27,6 +27,8 @@ function previousRevision(world: World): Record<string, any> {
   delete previous.fossils;
   delete previous.pools;
   delete previous.seamAccrued;
+  delete previous.awayTraces;
+  delete previous.shoreMemory;
   delete previous.channel;
   for (const key of remainsLedgerKeys) delete previous.ecologyLedger[key];
   return previous;
@@ -55,7 +57,7 @@ describe('remains snapshot revision', () => {
     const migrated = restoreWorld(source)!;
     expect(migrated).not.toBeNull();
     expect(migrated).toMatchObject({
-      schemaRevision: 14,
+      schemaRevision: 15,
       lastSeenAt: null,
       remains: [],
       marlgrubs: [],
@@ -97,7 +99,7 @@ describe('remains snapshot revision', () => {
         w.schemaRevision = 9;
       },
       (w) => {
-        w.schemaRevision = 15;
+        w.schemaRevision = 16;
       },
       (w) => {
         w.remains[0].pigment = 2.1;

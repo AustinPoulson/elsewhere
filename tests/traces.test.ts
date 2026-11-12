@@ -9,19 +9,34 @@ import {
 } from '../src/world/catchup';
 import { DEEP_BASIN } from '../src/world/environment/depth';
 import { MINERAL_SEAM } from '../src/world/environment/mineral-seam';
-import { INLET_POOL, channelSegment } from '../src/world/habitat';
+import { INLET_POOL, channelSegment, isInPool } from '../src/world/habitat';
 import { restoreWorld, serializeWorld } from '../src/world/persistence';
 import { createWorld, stepWorld } from '../src/world/simulation';
 import {
   TRACE_FADE_SECONDS,
   TRACE_MARK_CAP,
+  TRACE_MEMORY_CAP,
+  TRACE_POOL_MARGIN,
   composeAwayTraces,
   describeAwayTraces,
+  describeShoreMemory,
+  holdTracesAcrossCatchUp,
+  recordAwayTraces,
+  settleAwayTraces,
   traceStrength,
   visibleAwayTraces,
   type AwayTrace,
 } from '../src/world/traces';
 import { FIXED_STEP, SCHEMA_REVISION } from '../src/world/types';
+
+function nearShorePoint(margin: number): { x: number; y: number } {
+  let edge = 0;
+  for (let x = 1200; x < 1400; x += 0.05) {
+    if (isInPool(x, 500, margin) && !isInPool(x, 500, TRACE_POOL_MARGIN)) edge = x;
+  }
+  expect(edge).toBeGreaterThan(0);
+  return { x: edge, y: 500 };
+}
 
 function idleEvents(): CatchUpEvents {
   return {
@@ -112,12 +127,25 @@ describe('away traces from recorded events', () => {
     const traces = composeAwayTraces(
       facts({
         extinctions: [
-          { species: 'glassLimpets', at: 100, x: 1, y: 1, hue: 10 },
-          { species: 'glassLimpets', at: 900, x: 2, y: 2, hue: 20 },
+          { species: 'glassLimpets', at: 100, x: 640, y: 520, hue: 10 },
+          { species: 'glassLimpets', at: 900, x: 700, y: 480, hue: 20 },
         ],
       }),
     );
-    expect(traces).toEqual([expect.objectContaining({ kind: 'extinction', x: 2, y: 2, hue: 20 })]);
+    expect(traces).toEqual([expect.objectContaining({ kind: 'extinction', x: 700, y: 480, hue: 20 })]);
+  });
+
+  it('snaps a coastal last-body extinction mark inward so it stays visible', () => {
+    const death = nearShorePoint(4);
+    expect(isInPool(death.x, death.y, 4)).toBe(true);
+    expect(isInPool(death.x, death.y, TRACE_POOL_MARGIN)).toBe(false);
+    const traces = composeAwayTraces(
+      facts({
+        extinctions: [{ species: 'glassLimpets', at: 100, x: death.x, y: death.y, hue: 40 }],
+      }),
+    );
+    expect(traces).toEqual([expect.objectContaining({ kind: 'extinction', hue: 40, formedAt: 3600 })]);
+    expect(isInPool(traces[0].x, traces[0].y, TRACE_POOL_MARGIN)).toBe(true);
   });
 
   it('fades over watched time and expires', () => {
@@ -155,33 +183,91 @@ describe('away traces from recorded events', () => {
     expect(journal.lines).toContain('The last glass limpet died about two hours ago.');
     expect(journal.lines).toContain('A faint mark remains where that lineage ended.');
   });
+
+  it('quietly recalls faded returns in the journal and observations copy', () => {
+    const memory = [{ formedAt: 100, kinds: ['extinction' as const, 'seam' as const] }];
+    expect(describeShoreMemory(memory)).toBe(
+      'The shore still remembers an earlier return: a lineage ending, and color that moved.',
+    );
+    expect(
+      describeShoreMemory([
+        { formedAt: 100, kinds: ['inlet'] },
+        { formedAt: 200, kinds: ['channel'] },
+      ]),
+    ).toBe('The shore still remembers a few earlier returns.');
+    const journal = composeJournal(
+      { reason: 'ready', awaySeconds: 3600, simulateSeconds: 3600, sleptSeconds: 0 },
+      idleEvents(),
+      quietResources,
+      quietResources,
+      3600,
+      composeAwayTraces(facts({ seamReleased: 1 })),
+      memory,
+    );
+    expect(journal.lines).toContain('The shore kept a faint stain of color that settled while you were gone.');
+    expect(journal.lines).toContain(
+      'The shore still remembers an earlier return: a lineage ending, and color that moved.',
+    );
+  });
+
+  it('holds fade across unwatched catch-up and archives a replaced return', () => {
+    const trace: AwayTrace = {
+      kind: 'seam',
+      x: MINERAL_SEAM.ax,
+      y: MINERAL_SEAM.ay,
+      hue: MINERAL_SEAM.hue,
+      strength: 0.5,
+      formedAt: 100,
+    };
+    const held = holdTracesAcrossCatchUp([trace], 180);
+    expect(traceStrength(held[0], 280)).toBeCloseTo(traceStrength(trace, 100), 5);
+    const faded: AwayTrace = { ...trace, formedAt: 0 };
+    const settled = settleAwayTraces([faded], [], TRACE_FADE_SECONDS);
+    expect(settled.traces).toEqual([]);
+    expect(settled.memory).toEqual([{ formedAt: 0, kinds: ['seam'] }]);
+    const next = recordAwayTraces([trace], [], composeAwayTraces(facts({ formedAt: 400, inletDelta: 0.5 })), 400);
+    expect(next.memory).toEqual([{ formedAt: 100, kinds: ['seam'] }]);
+    expect(next.traces.some((entry) => entry.kind === 'inlet')).toBe(true);
+    expect(next.memory.length).toBeLessThanOrEqual(TRACE_MEMORY_CAP);
+  });
 });
 
-describe('catch-up writes traces without touching the save', () => {
+function ecologyOf(world: ReturnType<typeof createWorld>) {
+  const { awayTraces: _traces, shoreMemory: _memory, ...rest } = world;
+  return rest;
+}
+
+describe('catch-up writes traces into the save without touching ledgers', () => {
   it('does not create traces when the clock is unsafe', () => {
     const world = createWorld(3);
     const report = catchUpWorld(world, planCatchUp(null, Date.now()));
     expect(report.traces).toEqual([]);
     expect(report.steps).toBe(0);
+    expect(world.awayTraces).toEqual([]);
   });
 
-  it('keeps traces out of snapshots and leaves schema revision 14', () => {
-    expect(SCHEMA_REVISION).toBe(14);
+  it('stores unfaded marks in revision 15 without changing the simulated world', () => {
+    expect(SCHEMA_REVISION).toBe(15);
     const world = createWorld(1);
     const live = createWorld(1);
+    expect(world.awayTraces).toEqual([]);
+    expect(world.shoreMemory).toEqual([]);
     const plan = planCatchUp(0, 600_000);
     const report = catchUpWorld(world, plan);
     const steps = Math.ceil(600 / FIXED_STEP);
     for (let i = 0; i < steps; i++) stepWorld(live);
-    expect(serializeWorld(world)).toBe(serializeWorld(live));
+    expect(ecologyOf(world)).toEqual(ecologyOf(live));
+    expect(world.randomState).toBe(live.randomState);
+    expect(world.ecologyLedger).toEqual(live.ecologyLedger);
     expect(report.traces.length).toBeGreaterThan(0);
     expect(report.traces.length).toBeLessThanOrEqual(TRACE_MARK_CAP);
     expect(report.traces.some((trace) => trace.kind === 'seam')).toBe(true);
+    expect(world.awayTraces).toEqual(report.traces);
     const snapshot = JSON.parse(serializeWorld(world)) as Record<string, unknown>;
-    expect(snapshot.schemaRevision).toBe(14);
-    expect(snapshot).not.toHaveProperty('traces');
-    expect(snapshot).not.toHaveProperty('awayTraces');
+    expect(snapshot.schemaRevision).toBe(15);
+    expect(snapshot.awayTraces).toEqual(report.traces);
     expect(restoreWorld(serializeWorld(world))).toEqual(world);
+    expect(live.awayTraces).toEqual([]);
   });
 
   it('chunked catch-up records the same traces as the synchronous path', async () => {
@@ -192,5 +278,6 @@ describe('catch-up writes traces without touching the save', () => {
     const chunked = await catchUpWorldChunked(asyncWorld, plan, { chunkMs: 1, yieldToMain: async () => undefined });
     expect(serializeWorld(asyncWorld)).toBe(serializeWorld(syncWorld));
     expect(chunked.traces).toEqual(sync.traces);
+    expect(asyncWorld.awayTraces).toEqual(syncWorld.awayTraces);
   });
 });

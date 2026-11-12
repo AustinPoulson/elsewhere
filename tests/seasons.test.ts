@@ -19,6 +19,7 @@ import { channelFlowAt, HABITAT_CHANNEL } from '../src/world/habitat';
 import { SPECIES_CATALOG } from '../src/world/species/catalog';
 import { restoreWorld, serializeWorld } from '../src/world/persistence';
 import { createWorld, stepWorld } from '../src/world/simulation';
+import { withoutAwayMemory } from '../src/world/traces';
 import { SCHEMA_REVISION, FIXED_STEP } from '../src/world/types';
 import { getWeather } from '../src/world/weather';
 import { parseHarnessArgs, runHarness } from '../scripts/harness';
@@ -165,12 +166,12 @@ describe('season math', () => {
     world.elapsed = YEAR_SECONDS / 2;
     const parsed = JSON.parse(serializeWorld(world)) as { schemaRevision: number; season?: unknown };
     expect(parsed.schemaRevision).toBe(SCHEMA_REVISION);
-    expect(parsed.schemaRevision).toBe(14);
+    expect(parsed.schemaRevision).toBe(15);
     expect(parsed).not.toHaveProperty('season');
     const restored = restoreWorld(serializeWorld(world));
     expect(restored).not.toBeNull();
     expect(seasonName(restored!.elapsed)).toBe('autumn');
-    expect(restoreWorld(serializeWorld(createWorld(1)))?.schemaRevision).toBe(14);
+    expect(restoreWorld(serializeWorld(createWorld(1)))?.schemaRevision).toBe(15);
   });
 });
 
@@ -198,7 +199,7 @@ describe('season catch-up and harness parity', () => {
     const steps = Math.ceil(seconds / FIXED_STEP);
     for (let i = 0; i < steps; i++) stepWorld(live);
     expect(report.steps).toBe(steps);
-    expect(serializeWorld(caught)).toBe(serializeWorld(live));
+    expect(serializeWorld(withoutAwayMemory(caught))).toBe(serializeWorld(withoutAwayMemory(live)));
     expect(seasonName(caught.elapsed)).toBe('summer');
     expect(seasonName(live.elapsed)).toBe(seasonName(caught.elapsed));
     expect(report.journal.lines).toContain('The shore passed from spring into summer.');
@@ -215,14 +216,16 @@ describe('season catch-up and harness parity', () => {
     const caught = createWorld(1);
     catchUpWorld(caught, planCatchUp(0, 2 * 360 * 1000));
     expect(caught.elapsed).toBeCloseTo(report.worldSeconds, 5);
-    expect(serializeWorld(caught)).toBe(
+    expect(serializeWorld(withoutAwayMemory(caught))).toBe(
       serializeWorld(
-        (() => {
-          const live = createWorld(1);
-          const steps = Math.ceil((2 * 360) / FIXED_STEP);
-          for (let i = 0; i < steps; i++) stepWorld(live);
-          return live;
-        })(),
+        withoutAwayMemory(
+          (() => {
+            const live = createWorld(1);
+            const steps = Math.ceil((2 * 360) / FIXED_STEP);
+            for (let i = 0; i < steps; i++) stepWorld(live);
+            return live;
+          })(),
+        ),
       ),
     );
   }, 20_000);

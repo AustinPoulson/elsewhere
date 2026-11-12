@@ -10,11 +10,14 @@ import {
   colorInInlet,
   composeAwayTraces,
   describeAwayTraces,
+  describeShoreMemory,
+  holdTracesAcrossCatchUp,
   livingInInlet,
+  recordAwayTraces,
   type AwayTrace,
   type ExtinctionMark,
 } from './traces';
-import { FIXED_STEP, type Point, type World } from './types';
+import { FIXED_STEP, type Point, type ShoreMemory, type World } from './types';
 
 export const CATCH_UP_MAX_SECONDS = 8 * 3600;
 export const CATCH_UP_MIN_SECONDS = 30;
@@ -297,6 +300,7 @@ function finishCatchUp(
   inletBefore: number,
   inletBodiesBefore: number,
   extinctions: ExtinctionMark[],
+  startedElapsed: number,
 ): CatchUpReport {
   const after = resourceSnapshot(world);
   const ended = extinctions.filter((entry) => events[entry.species as CensusSpecies].extinctAt !== null);
@@ -312,6 +316,10 @@ function finishCatchUp(
           inletBodiesDelta: livingInInlet(world) - inletBodiesBefore,
           channelOccupied: channelOccupied(world),
         });
+  const held = holdTracesAcrossCatchUp(world.awayTraces, world.elapsed - startedElapsed);
+  const next = recordAwayTraces(held, world.shoreMemory, traces, world.elapsed);
+  world.awayTraces = next.traces;
+  world.shoreMemory = next.memory;
   return {
     plan,
     steps,
@@ -319,7 +327,7 @@ function finishCatchUp(
     before,
     after,
     traces,
-    journal: composeJournal(plan, events, before, after, world.elapsed, traces),
+    journal: composeJournal(plan, events, before, after, world.elapsed, traces, world.shoreMemory),
   };
 }
 
@@ -330,6 +338,7 @@ export function composeJournal(
   after: ResourceSnapshot,
   nowElapsed: number,
   traces: readonly AwayTrace[] = [],
+  memory: readonly ShoreMemory[] = [],
 ): CatchUpJournal {
   const lines: string[] = [];
   if (plan.reason === 'ready') {
@@ -360,6 +369,8 @@ export function composeJournal(
 
   const traceLine = describeAwayTraces(traces);
   if (traceLine) lines.push(traceLine);
+  const memoryLine = describeShoreMemory(memory);
+  if (memoryLine) lines.push(memoryLine);
 
   for (const species of SPECIES) {
     if (species === 'lucents' || species === 'grazers') continue;
@@ -420,6 +431,7 @@ function simulateCatchUp(
   const inletBodiesBefore = livingInInlet(world);
   const events = emptyEvents();
   const extinctions: ExtinctionMark[] = [];
+  const startedElapsed = world.elapsed;
   const total = plan.reason === 'ready' ? Math.ceil(plan.simulateSeconds / FIXED_STEP) : 0;
   let previous = populationCounts(world);
   let lastBody = lastBodies(world);
@@ -430,7 +442,7 @@ function simulateCatchUp(
     lastBody = recorded.lastBody;
     onStep?.(step + 1, total);
   }
-  return finishCatchUp(world, plan, total, events, before, inletBefore, inletBodiesBefore, extinctions);
+  return finishCatchUp(world, plan, total, events, before, inletBefore, inletBodiesBefore, extinctions, startedElapsed);
 }
 
 export function catchUpWorld(world: World, plan: CatchUpPlan): CatchUpReport {
@@ -462,6 +474,7 @@ export async function catchUpWorldChunked(
   const inletBodiesBefore = livingInInlet(world);
   const events = emptyEvents();
   const extinctions: ExtinctionMark[] = [];
+  const startedElapsed = world.elapsed;
   const total = plan.reason === 'ready' ? Math.ceil(plan.simulateSeconds / FIXED_STEP) : 0;
   const clock = options?.now ?? (() => performance.now());
   const pause = options?.yieldToMain ?? yieldToMain;
@@ -481,5 +494,5 @@ export async function catchUpWorldChunked(
     options?.onProgress?.(step, total);
     if (step < total) await pause();
   }
-  return finishCatchUp(world, plan, total, events, before, inletBefore, inletBodiesBefore, extinctions);
+  return finishCatchUp(world, plan, total, events, before, inletBefore, inletBodiesBefore, extinctions, startedElapsed);
 }

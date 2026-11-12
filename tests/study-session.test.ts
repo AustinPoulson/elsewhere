@@ -61,6 +61,8 @@ describe('safe shower study', () => {
       pools: _pools,
       channel: _channel,
       seamAccrued: _seamAccrued,
+      awayTraces: _awayTraces,
+      shoreMemory: _shoreMemory,
       organisms,
       grazers,
       ...normalizedEcology
@@ -218,6 +220,8 @@ describe('safe shower study', () => {
     delete legacy.pools;
     delete legacy.channel;
     delete legacy.seamAccrued;
+    delete legacy.awayTraces;
+    delete legacy.shoreMemory;
     for (const entry of legacy.organisms) delete entry.pigmentCredit;
     expect(session.importSnapshot(JSON.stringify(legacy), session.importToken())).toBe('imported');
     expect(session.world.version).toBe(3);

@@ -17,6 +17,7 @@ import { inOpeningPool, OPENING_POOL } from '../src/world/habitat';
 import { restoreWorld, serializeWorld } from '../src/world/persistence';
 import { createWorld, getStats, SPRINGS, stepWorld } from '../src/world/simulation';
 import { applyCurrentDrift } from '../src/world/currents';
+import { withoutAwayMemory } from '../src/world/traces';
 import { SCHEMA_REVISION, FIXED_STEP } from '../src/world/types';
 import { CALM_LIGHT_REACH, lightReachAt, rainIntensityAt } from '../src/world/weather';
 import { parseHarnessArgs, runHarness } from '../scripts/harness';
@@ -148,9 +149,9 @@ describe('deeper basin physics', () => {
   });
 
   it('opens with the habitat only: no extra life, pigment, or energy', () => {
-    expect(SCHEMA_REVISION).toBe(14);
+    expect(SCHEMA_REVISION).toBe(15);
     const world = createWorld(1);
-    expect(world.schemaRevision).toBe(14);
+    expect(world.schemaRevision).toBe(15);
     expect(world.organisms).toHaveLength(24);
     expect(world.grazers).toHaveLength(4);
     expect(world.sediment).toHaveLength(48);
@@ -159,7 +160,7 @@ describe('deeper basin physics', () => {
     expect(getStats(world).deepPigment).toBeGreaterThanOrEqual(0);
     expect(restoreWorld(serializeWorld(world))).toEqual(world);
     const previous = structuredClone(world) as unknown as Record<string, unknown>;
-    previous.schemaRevision = 15;
+    previous.schemaRevision = 16;
     expect(restoreWorld(JSON.stringify(previous))).toBeNull();
   });
 
@@ -185,7 +186,7 @@ describe('deeper basin physics', () => {
     const steps = Math.ceil(seconds / FIXED_STEP);
     for (let i = 0; i < steps; i++) stepWorld(live);
     expect(report.steps).toBe(steps);
-    expect(serializeWorld(caught)).toBe(serializeWorld(live));
+    expect(serializeWorld(withoutAwayMemory(caught))).toBe(serializeWorld(withoutAwayMemory(live)));
   });
 
   it('lets the harness see the same depth rules as stepped elapsed time', () => {
@@ -197,14 +198,16 @@ describe('deeper basin physics', () => {
     const caught = createWorld(1);
     catchUpWorld(caught, planCatchUp(0, 360 * 1000));
     expect(caught.elapsed).toBeCloseTo(report.worldSeconds, 5);
-    expect(serializeWorld(caught)).toBe(
+    expect(serializeWorld(withoutAwayMemory(caught))).toBe(
       serializeWorld(
-        (() => {
-          const live = createWorld(1);
-          const steps = Math.ceil(360 / FIXED_STEP);
-          for (let i = 0; i < steps; i++) stepWorld(live);
-          return live;
-        })(),
+        withoutAwayMemory(
+          (() => {
+            const live = createWorld(1);
+            const steps = Math.ceil(360 / FIXED_STEP);
+            for (let i = 0; i < steps; i++) stepWorld(live);
+            return live;
+          })(),
+        ),
       ),
     );
   }, 20_000);

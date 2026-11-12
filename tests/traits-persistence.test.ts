@@ -11,6 +11,8 @@ function previousRevision(world: World): Record<string, unknown> {
   delete previous.fossils;
   delete previous.pools;
   delete previous.seamAccrued;
+  delete previous.awayTraces;
+  delete previous.shoreMemory;
   delete previous.channel;
   delete previous.ecologyLedger.ambientHarvested;
   delete previous.remains;
@@ -156,7 +158,7 @@ describe('heritable trait snapshot revision', () => {
         delete w.ecologyLedger.ambientHarvested;
       },
       (w) => {
-        w.schemaRevision = 15;
+        w.schemaRevision = 16;
       },
       (w) => {
         w.schemaRevision = 8;

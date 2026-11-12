@@ -146,6 +146,8 @@ function previous(world: World): Record<string, any> {
     pools: _pools,
     channel: _channel,
     seamAccrued: _seamAccrued,
+    awayTraces: _awayTraces,
+    shoreMemory: _shoreMemory,
     skimmerCandidateAfterId: _skimmerCandidate,
     ...old
   } = structuredClone(world);
@@ -238,10 +240,12 @@ describe('siltstitcher snapshot revision', () => {
       pools: _pools,
       channel: _channel,
       seamAccrued: _seamAccrued,
+      awayTraces: _awayTraces,
+      shoreMemory: _shoreMemory,
       skimmerCandidateAfterId: _skimmerCandidate,
       ...old
     } = restored;
-    expect(restored.schemaRevision).toBe(14);
+    expect(restored.schemaRevision).toBe(15);
     expect(siltstitchers).toEqual([]);
     expect(siltstitcherAdmissionAt).toBe(source.elapsed);
     expect(siltstitcherCandidateAfterId).toBe(0);
@@ -281,7 +285,7 @@ describe('siltstitcher snapshot revision', () => {
       const before = JSON.stringify(source);
       const restored = restoreWorld(before)!;
       expect(restored).toMatchObject({
-        schemaRevision: 14,
+        schemaRevision: 15,
         siltstitchers: [],
         siltstitcherAdmissionAt: source.elapsed,
         siltstitcherCandidateAfterId: 0,
@@ -548,7 +552,7 @@ describe('siltstitcher snapshot revision', () => {
         w.siltstitchers = Array.from({ length: 7 }, () => ({ ...w.siltstitchers[0], id: w.nextId++ }));
       },
       (w) => {
-        w.schemaRevision = 15;
+        w.schemaRevision = 16;
       },
     ];
     for (const other of [

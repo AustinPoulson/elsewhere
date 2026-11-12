@@ -8,6 +8,8 @@ function previousRevision(world: World): Record<string, unknown> {
   const previous = structuredClone(world) as unknown as Record<string, any>;
   previous.schemaRevision = 13;
   delete previous.seamAccrued;
+  delete previous.awayTraces;
+  delete previous.shoreMemory;
   delete previous.ecologyLedger.seamDissolved;
   return previous;
 }
@@ -67,7 +69,7 @@ describe('mineral seam snapshot revision', () => {
         w.schemaRevision = 13;
       },
       (w) => {
-        w.schemaRevision = 15;
+        w.schemaRevision = 16;
       },
       (w) => {
         w.seamAccrued = 2;

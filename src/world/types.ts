@@ -2,7 +2,7 @@ export const OPENING_WIDTH = 1440;
 export const OPENING_HEIGHT = 1000;
 export const WORLD_WIDTH = 1440;
 export const WORLD_HEIGHT = 1560;
-export const SCHEMA_REVISION = 14;
+export const SCHEMA_REVISION = 15;
 export const FIXED_STEP = 1 / 30;
 export const MAX_POOLS = 2;
 export const MAX_LINKS = 1;
@@ -254,9 +254,22 @@ export interface Nest extends Point {
   pigment: number;
   age: number;
 }
+export type AwayTraceKind = 'extinction' | 'deep' | 'seam' | 'inlet' | 'channel';
+export interface AwayTrace extends Point {
+  kind: AwayTraceKind;
+  hue: number;
+  strength: number;
+  formedAt: number;
+  x2?: number;
+  y2?: number;
+}
+export interface ShoreMemory {
+  formedAt: number;
+  kinds: AwayTraceKind[];
+}
 export interface World {
   version: 3;
-  schemaRevision: 14;
+  schemaRevision: 15;
   lastSeenAt: number | null;
   seamAccrued: number;
   pools: HabitatPool[];
@@ -300,6 +313,8 @@ export interface World {
   grazers: Grazer[];
   nests: Nest[];
   consumed: number;
+  awayTraces: AwayTrace[];
+  shoreMemory: ShoreMemory[];
 }
 export type Tool = 'light' | 'observe' | 'carry' | 'stir';
 export interface WorldStats {

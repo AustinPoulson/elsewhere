@@ -11,6 +11,7 @@ import { inOpeningPool } from '../src/world/habitat';
 import { serializeWorld } from '../src/world/persistence';
 import { createWorld, getStats, stepWorld } from '../src/world/simulation';
 import { MIN_SEDIMENT_GRAIN } from '../src/world/species/resources';
+import { withoutAwayMemory } from '../src/world/traces';
 import { FIXED_STEP } from '../src/world/types';
 import { callRain } from '../src/world/weather';
 import { parseHarnessArgs, runHarness } from '../scripts/harness';
@@ -133,7 +134,7 @@ describe('mineral seam physics', () => {
     const steps = Math.ceil(seconds / FIXED_STEP);
     for (let i = 0; i < steps; i++) stepWorld(live);
     expect(report.steps).toBe(steps);
-    expect(serializeWorld(caught)).toBe(serializeWorld(live));
+    expect(serializeWorld(withoutAwayMemory(caught))).toBe(serializeWorld(withoutAwayMemory(live)));
     expect(caught.ecologyLedger.seamDissolved + caught.seamAccrued).toBeGreaterThan(0);
   });
 
@@ -146,14 +147,16 @@ describe('mineral seam physics', () => {
     const caught = createWorld(1);
     catchUpWorld(caught, planCatchUp(0, 360 * 1000));
     expect(caught.elapsed).toBeCloseTo(report.worldSeconds, 5);
-    expect(serializeWorld(caught)).toBe(
+    expect(serializeWorld(withoutAwayMemory(caught))).toBe(
       serializeWorld(
-        (() => {
-          const live = createWorld(1);
-          const steps = Math.ceil(360 / FIXED_STEP);
-          for (let i = 0; i < steps; i++) stepWorld(live);
-          return live;
-        })(),
+        withoutAwayMemory(
+          (() => {
+            const live = createWorld(1);
+            const steps = Math.ceil(360 / FIXED_STEP);
+            for (let i = 0; i < steps; i++) stepWorld(live);
+            return live;
+          })(),
+        ),
       ),
     );
   }, 20_000);

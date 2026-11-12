@@ -1,5 +1,6 @@
 import { createWorld } from '../world/simulation';
 import { restoreWorld, serializeWorld } from '../world/persistence';
+import { forgetAwayTraces } from '../world/traces';
 import type { World } from '../world/types';
 import { createShowerStudy } from './study';
 
@@ -60,6 +61,7 @@ export class WorldSession<Controls> {
     const restored = restoreWorld(snapshot);
     if (!restored) return 'invalid';
     restored.lastSeenAt = Date.now();
+    forgetAwayTraces(restored);
     this.world = restored;
     this.revision++;
     return 'imported';
