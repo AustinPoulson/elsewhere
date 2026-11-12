@@ -204,6 +204,8 @@ describe('current save revisions', () => {
       pools: _pools,
       channel: _channel,
       seamAccrued: _seamAccrued,
+      awayTraces: _awayTraces,
+      shoreMemory: _shoreMemory,
       organisms,
       ...rest
     } = world;
@@ -219,7 +221,7 @@ describe('current save revisions', () => {
     expect(migrated).toEqual({
       ...world,
       elapsed: 12,
-      schemaRevision: 14,
+      schemaRevision: 15,
       skimmerAdmissionAt: 12,
       reedwellAdmissionAt: 12,
       rainbellAdmissionAt: 12,
@@ -243,7 +245,7 @@ describe('current save revisions', () => {
         w.currents = null;
       },
       (w) => {
-        w.schemaRevision = 15;
+        w.schemaRevision = 16;
       },
       (w) => {
         w.currents[0].x = 0;

@@ -9,6 +9,8 @@ function previousRevision(world: World): Record<string, unknown> {
   previous.schemaRevision = 12;
   delete previous.pools;
   delete previous.seamAccrued;
+  delete previous.awayTraces;
+  delete previous.shoreMemory;
   delete previous.channel;
   delete (previous.ecologyLedger as { seamDissolved?: number }).seamDissolved;
   return previous;
@@ -69,7 +71,7 @@ describe('linked habitat snapshot revision', () => {
         w.schemaRevision = 12;
       },
       (w) => {
-        w.schemaRevision = 15;
+        w.schemaRevision = 16;
       },
       (w) => {
         (w.pools as { x: number }[])[1].x = 900;

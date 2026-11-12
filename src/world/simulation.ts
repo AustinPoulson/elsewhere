@@ -229,6 +229,8 @@ export function createWorld(seed = 20261006): World {
     grazers: [],
     nests: [],
     consumed: 0,
+    awayTraces: [],
+    shoreMemory: [],
   };
   const springs = SPRINGS;
   for (const spring of springs) addLight(world, spring.x, spring.y);

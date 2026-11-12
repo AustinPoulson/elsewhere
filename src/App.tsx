@@ -28,9 +28,9 @@ import { describeBulk, describeDrive } from './world/traits';
 import { MAX_CURRENTS } from './world/actions/current';
 import { FOSSIL_LABEL } from './world/species/fossils';
 import { OPENING_POOL } from './world/habitat';
-import { visibleAwayTraces, type AwayTrace } from './world/traces';
+import { describeShoreMemory, settleAwayTraces, visibleAwayTraces, type AwayTrace } from './world/traces';
 import { isInPool, LIMITS, WORLD_HEIGHT, WORLD_WIDTH } from './world/types';
-import type { Point, Tool, World } from './world/types';
+import type { Point, ShoreMemory, Tool, World } from './world/types';
 
 type PoolControls = {
   paused: boolean;
@@ -51,6 +51,9 @@ function loadInitialWorld(): {
     const saved = localStorage.getItem(SAVE_KEY);
     const world = saved ? restoreWorld(saved) : null;
     const loaded = world ?? createWorld();
+    const settled = settleAwayTraces(loaded.awayTraces, loaded.shoreMemory, loaded.elapsed);
+    loaded.awayTraces = settled.traces;
+    loaded.shoreMemory = settled.memory;
     return {
       world: loaded,
       remembered: Boolean(world),
@@ -59,6 +62,9 @@ function loadInitialWorld(): {
     };
   } catch {
     const world = createWorld();
+    const settled = settleAwayTraces(world.awayTraces, world.shoreMemory, world.elapsed);
+    world.awayTraces = settled.traces;
+    world.shoreMemory = settled.memory;
     return {
       world,
       remembered: false,
@@ -96,8 +102,9 @@ export function App() {
   const catchUpLockRef = useRef(false);
   const [catchUpProgress, setCatchUpProgress] = useState<{ done: number; total: number } | null>(null);
   const [journal, setJournal] = useState<CatchUpJournal | null>(null);
-  const [awayTraces, setAwayTraces] = useState<AwayTrace[]>([]);
-  const tracesRef = useRef<AwayTrace[]>([]);
+  const [awayTraces, setAwayTraces] = useState<AwayTrace[]>(() => initial.world.awayTraces);
+  const tracesRef = useRef<AwayTrace[]>(initial.world.awayTraces);
+  const [shoreMemory, setShoreMemory] = useState<ShoreMemory[]>(() => initial.world.shoreMemory);
   const [reducedMotion, setReducedMotion] = useState(() => matchMedia('(prefers-reduced-motion: reduce)').matches);
   const [paused, setPaused] = useState(reducedMotion);
   const [tool, setTool] = useState<Tool>('light');
@@ -119,9 +126,10 @@ export function App() {
     setNoticeState(message);
     setFeedback(message);
   }
-  function rememberTraces(traces: AwayTrace[]): void {
+  function rememberTraces(traces: AwayTrace[], memory: ShoreMemory[] = worldRef.current.shoreMemory): void {
     tracesRef.current = traces;
     setAwayTraces(traces);
+    setShoreMemory(memory);
     rendererRef.current?.setAwayTraces(traces);
   }
   const controlsRef = useRef({ paused, tool, selectedId, reducedMotion });
@@ -259,7 +267,7 @@ export function App() {
         },
       });
       worldRef.current.lastSeenAt = Date.now();
-      rememberTraces(report.traces);
+      rememberTraces(worldRef.current.awayTraces, worldRef.current.shoreMemory);
       setCatchUpProgress(null);
       setStats(getStats(worldRef.current));
       catchingUpRef.current = false;
@@ -343,6 +351,18 @@ export function App() {
         stirRef.current.state,
       );
       if (now - lastStats > 450) {
+        const beforeMarks = worldRef.current.awayTraces.length;
+        const beforeMemory = worldRef.current.shoreMemory.length;
+        const settled = settleAwayTraces(
+          worldRef.current.awayTraces,
+          worldRef.current.shoreMemory,
+          worldRef.current.elapsed,
+        );
+        worldRef.current.awayTraces = settled.traces;
+        worldRef.current.shoreMemory = settled.memory;
+        if (settled.traces.length !== beforeMarks || settled.memory.length !== beforeMemory) {
+          rememberTraces(settled.traces, settled.memory);
+        }
         setStats(getStats(worldRef.current));
         lastStats = now;
       }
@@ -721,7 +741,7 @@ export function App() {
       cancelCarry();
       setHintVisible(false);
       setSelectedId(null);
-      rememberTraces([]);
+      rememberTraces([], []);
       setStats(getStats(restored));
       saveWorld();
       setNotice('A remembered tidepool has returned.');
@@ -763,7 +783,7 @@ export function App() {
     cancelCarry();
     setHintVisible(false);
     setSelectedId(null);
-    rememberTraces([]);
+    rememberTraces([], []);
     setStats(getStats(restored));
     saveWorld();
     rendererRef.current?.resetView();
@@ -784,7 +804,7 @@ export function App() {
     heldRef.current = false;
     cancelCarry();
     setSelectedId(null);
-    rememberTraces([]);
+    rememberTraces([], []);
     setStats(getStats(worldRef.current));
     saveWorld();
     setNotice(
@@ -824,7 +844,7 @@ export function App() {
       setSelectedId(null);
       setHintVisible(false);
       setStudyMode(true);
-      rememberTraces([]);
+      rememberTraces([], []);
       setStats(getStats(worldRef.current));
       panelReturnFocusRef.current = hostRef.current;
       setPanel(null);
@@ -856,7 +876,7 @@ export function App() {
     setSelectedId(controls.selectedId);
     setHintVisible(controls.hintVisible);
     setStudyMode(false);
-    rememberTraces([]);
+    rememberTraces(worldRef.current.awayTraces, worldRef.current.shoreMemory);
     setStats(getStats(worldRef.current));
     resetRef.current?.close();
     panelReturnFocusRef.current = hostRef.current;
@@ -883,6 +903,7 @@ export function App() {
   const openPanel = (next: Panel) => setPanel((current) => (current === next ? null : next));
   const weather = effectiveWeather(worldRef.current);
   const season = getSeason(worldRef.current.elapsed);
+  const shoreMemoryNote = describeShoreMemory(shoreMemory);
 
   return (
     <main
@@ -1077,11 +1098,15 @@ export function App() {
             ? `A deeper basin lies in the northeastern water. ${stats.deepPigment.toFixed(1)} pigment has settled there.`
             : 'A deeper basin lies in the northeastern water. Light thins there; color settles.'}
         </div>
-        {visibleAwayTraces(awayTraces, stats.elapsed).length > 0 && (
+        {visibleAwayTraces(awayTraces, stats.elapsed).length > 0 ? (
           <div className="trace-readout" aria-live="polite">
             Faint marks remain from time away.
           </div>
-        )}
+        ) : shoreMemoryNote ? (
+          <div className="trace-readout" aria-live="polite">
+            {shoreMemoryNote}
+          </div>
+        ) : null}
         <div className={`weather-readout ${weather.raining ? 'is-raining' : ''}`} aria-label="Pool weather">
           <span aria-hidden="true">◌</span>
           <span>

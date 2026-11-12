@@ -243,6 +243,8 @@ describe('weather and existing snapshots', () => {
       pools: _pools,
       channel: _channel,
       seamAccrued: _seamAccrued,
+      awayTraces: _awayTraces,
+      shoreMemory: _shoreMemory,
       organisms,
       ...fields
     } = legacy;

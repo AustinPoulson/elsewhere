@@ -38,6 +38,8 @@ describe('linked habitat', () => {
   it('opens with life and pigment only in the first pool', () => {
     const world = createWorld(7);
     expect(world.schemaRevision).toBe(SCHEMA_REVISION);
+    expect(world.awayTraces).toEqual([]);
+    expect(world.shoreMemory).toEqual([]);
     expect(world.pools).toEqual(linkedHabitat().pools);
     expect(world.organisms.every((entry) => inOpeningPool(entry.x, entry.y, entry.size + 3))).toBe(true);
     expect(world.grazers.every((entry) => inOpeningPool(entry.x, entry.y, entry.size + 3))).toBe(true);

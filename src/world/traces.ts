@@ -1,29 +1,22 @@
 import { DEEP_BASIN } from './environment/depth';
 import { MINERAL_SEAM } from './environment/mineral-seam';
 import { INLET_POOL, channelSegment, inInletPool, inOpeningPool } from './habitat';
-import { isInPool, type Point, type World } from './types';
+import { isInPool, type AwayTrace, type AwayTraceKind, type Point, type ShoreMemory, type World } from './types';
 
 export const TRACE_MARK_CAP = 5;
 export const TRACE_EXTINCTION_CAP = 2;
 export const TRACE_EXTINCTION_RECORD_CAP = 16;
 export const TRACE_FADE_SECONDS = 8 * 60;
 export const TRACE_SETTLE_THRESHOLD = 0.2;
+export const TRACE_MEMORY_CAP = 4;
+export const TRACE_KINDS: readonly AwayTraceKind[] = ['extinction', 'deep', 'seam', 'inlet', 'channel'];
 
-export type AwayTraceKind = 'extinction' | 'deep' | 'seam' | 'inlet' | 'channel';
+export type { AwayTrace, AwayTraceKind, ShoreMemory };
 
 export interface ExtinctionMark extends Point {
   species: string;
   at: number;
   hue: number;
-}
-
-export interface AwayTrace extends Point {
-  kind: AwayTraceKind;
-  hue: number;
-  strength: number;
-  formedAt: number;
-  x2?: number;
-  y2?: number;
 }
 
 export interface AwayTraceFacts {
@@ -197,4 +190,100 @@ export function describeAwayTraces(traces: readonly AwayTrace[]): string | null 
   if (drifted && settled) return 'A faded path still shows along the channel, and color left a stain.';
   if (drifted) return 'A faded path still shows along the channel.';
   return 'The shore kept a faint stain of color that settled while you were gone.';
+}
+
+export function isAwayTraceKind(value: unknown): value is AwayTraceKind {
+  return value === 'extinction' || value === 'deep' || value === 'seam' || value === 'inlet' || value === 'channel';
+}
+
+function uniqueKinds(kinds: readonly AwayTraceKind[]): AwayTraceKind[] {
+  const seen = new Set<AwayTraceKind>();
+  const ordered: AwayTraceKind[] = [];
+  for (const kind of TRACE_KINDS) {
+    if (!kinds.includes(kind) || seen.has(kind)) continue;
+    seen.add(kind);
+    ordered.push(kind);
+  }
+  return ordered.slice(0, TRACE_MARK_CAP);
+}
+
+export function memoryFromTraces(traces: readonly AwayTrace[]): ShoreMemory[] {
+  const byTime = new Map<number, AwayTraceKind[]>();
+  const order: number[] = [];
+  for (const trace of traces) {
+    const existing = byTime.get(trace.formedAt);
+    if (existing) existing.push(trace.kind);
+    else {
+      byTime.set(trace.formedAt, [trace.kind]);
+      order.push(trace.formedAt);
+    }
+  }
+  return order
+    .map((formedAt) => ({ formedAt, kinds: uniqueKinds(byTime.get(formedAt) ?? []) }))
+    .filter((entry) => entry.kinds.length > 0);
+}
+
+export function keepShoreMemory(memory: readonly ShoreMemory[], traces: readonly AwayTrace[]): ShoreMemory[] {
+  const next = memory.map((entry) => ({ formedAt: entry.formedAt, kinds: uniqueKinds(entry.kinds) }));
+  for (const entry of memoryFromTraces(traces)) {
+    const last = next[next.length - 1];
+    if (last && last.formedAt === entry.formedAt) {
+      next[next.length - 1] = { formedAt: last.formedAt, kinds: uniqueKinds([...last.kinds, ...entry.kinds]) };
+    } else next.push(entry);
+  }
+  return next.slice(-TRACE_MEMORY_CAP);
+}
+
+export function holdTracesAcrossCatchUp(traces: readonly AwayTrace[], elapsedDelta: number): AwayTrace[] {
+  if (!Number.isFinite(elapsedDelta) || elapsedDelta <= 0) return traces.map((trace) => ({ ...trace }));
+  return traces.map((trace) => ({ ...trace, formedAt: trace.formedAt + elapsedDelta }));
+}
+
+export function settleAwayTraces(
+  traces: readonly AwayTrace[],
+  memory: readonly ShoreMemory[],
+  elapsed: number,
+): { traces: AwayTrace[]; memory: ShoreMemory[] } {
+  const visible = visibleAwayTraces(traces, elapsed);
+  const faded = traces.filter((trace) => traceStrength(trace, elapsed) <= 0.02);
+  return {
+    traces: visible.slice(0, TRACE_MARK_CAP),
+    memory: faded.length === 0 ? memory.slice(-TRACE_MEMORY_CAP) : keepShoreMemory(memory, faded),
+  };
+}
+
+export function recordAwayTraces(
+  current: readonly AwayTrace[],
+  memory: readonly ShoreMemory[],
+  nextTraces: readonly AwayTrace[],
+  elapsed: number,
+): { traces: AwayTrace[]; memory: ShoreMemory[] } {
+  if (nextTraces.length === 0) return settleAwayTraces(current, memory, elapsed);
+  const archived = current.length > 0 ? keepShoreMemory(memory, current) : memory.slice(-TRACE_MEMORY_CAP);
+  return settleAwayTraces(nextTraces, archived, elapsed);
+}
+
+export function forgetAwayTraces(world: Pick<World, 'awayTraces' | 'shoreMemory'>): void {
+  world.awayTraces = [];
+  world.shoreMemory = [];
+}
+
+export function withoutAwayMemory(world: World): World {
+  return { ...world, awayTraces: [], shoreMemory: [] };
+}
+
+export function describeShoreMemory(memory: readonly ShoreMemory[]): string | null {
+  if (memory.length === 0) return null;
+  if (memory.length > 1) return 'The shore still remembers a few earlier returns.';
+  const kinds = new Set(memory[0].kinds);
+  const ended = kinds.has('extinction');
+  const settled = kinds.has('deep') || kinds.has('seam') || kinds.has('inlet');
+  const drifted = kinds.has('channel');
+  if (ended && (settled || drifted)) {
+    return 'The shore still remembers an earlier return: a lineage ending, and color that moved.';
+  }
+  if (ended) return 'The shore still remembers where a lineage ended.';
+  if (drifted && settled) return 'The notes still mention a faded path, and a stain from an earlier return.';
+  if (drifted) return 'The notes still mention a faded path from an earlier return.';
+  return 'The shore still remembers a stain from an earlier return.';
 }

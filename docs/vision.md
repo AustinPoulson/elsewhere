@@ -21,8 +21,11 @@ Eventually: several pools linked by slow currents, and the world keeps living wh
   - [x] **A mineral seam** — second slice. An ochre vein in the opening pool's western sediment holds 24 pigment and dissolves at 0.00072 per second (faster in rain) into ordinary grains near the streak. Placement uses tick phase, not the PRNG. Opening worlds start with the rock, not extra loose color. Schema revision 14; revision-13 saves receive a full unused vein and no pigment. Catch-up, eras, and the harness dissolve the same rock. _Success: a 30-day harness leaves the vein partly spent and balanced; nearby life can use the color; extinction is still allowed; the UI names the seam._
   - [x] **A deeper pool** — third slice. A small deep basin in the opening pool's northeastern water. Light harvest (ambient and visitor) thins with depth; rain barely widens feeding reach there; currents go still, so sediment and remains settle downhill. Settling uses basin geometry, not the PRNG. Opening worlds and revision-14 saves receive the habitat, not extra life or color. Schema revision stays 14. Catch-up, eras, and the harness see the same depth. _Success: a 30-day harness leaves ledgers balanced; nearby life may use the stiller floor; extinction is still allowed; the UI names the basin._
 
-- [ ] **Traces of time away** — When a visitor returns, the shore keeps a few faint, bounded marks of what actually happened while nobody watched: settled color, a faded path, a note the world wrote from events. Opening and migrated worlds receive none. The pool stays a little mysterious and different every time; extinction is still allowed.
+- [x] **Traces of time away** — When a visitor returns, the shore keeps a few faint, bounded marks of what actually happened while nobody watched: settled color, a faded path, a note the world wrote from events. Opening and migrated worlds receive none. The pool stays a little mysterious and different every time; extinction is still allowed.
   - [x] **Faint return marks** — first slice. A real catch-up (the existing 30s–8h path) can leave at most five session-only marks derived from events recorded while away: up to two lineage endings at the last body's position, a faded channel path if color or bodies crossed, and stains at the deep basin, mineral seam, or inlet when color actually settled there. Placement uses those event positions and authored geometry, never the world PRNG. Marks grant no pigment, energy, organisms, or light; they sit outside the save (schema revision stays 14) and fade over eight minutes of watched time. Opening worlds, imported or pocketed snapshots, named eras, and migrated old saves receive none. The journal and observations list name them; reduced motion draws them still; portrait keeps the same world coordinates. _Success: a 1h return on seed 1 shows marks; harness ledgers for seeds 1 and 42 match main._
+  - [x] **The shore remembers** — second slice. Unfaded return marks live in the snapshot (schema revision 15) so closing the tab does not erase them; they keep fading from `formedAt` across reload. Faded marks compact into at most four shore-memory notes, derived only from recorded events, which the observations list and field journal can quietly recall. Opening worlds, imported or pocketed snapshots, named eras, and revision-14 or older saves receive none. Caps stay five live marks and four remembered returns. Marks still grant nothing and never touch the world PRNG. _Success: a 1h return on seed 1 survives serialize/restore; harness ledgers for seeds 1 and 42 match main._
+
+- [ ] **A visitor's own named eras** — Automated capture of the live pool onto the shelf, using the existing `elsewhere-era` format, the 8-era / 4 MB catalog, and the ordinary importer. Opening a kept era restores that frozen moment without gifts, catch-up, or return marks. _Success: a visitor can keep a reviewed snapshot of their own shore; the live world is unchanged; extinction is still allowed._
 
 ## Standing Invariants
 
@@ -207,4 +210,23 @@ _This section records surprising population dynamics, extinctions, or runaway re
 | Nested pigment                              | 0.81                        | 1.44                        |
 | Loose pigment (inlet)                       | 1.33 (0.75)                 | 1.99 (0.78)                 |
 
-**What this slice does not do:** Refreshing after a return does not restore the marks; only another real catch-up writes them. That is the save-free choice, not a bug. A later slice could persist traces with a versioned migration if the shore should remember across closing the tab. Extinction is still allowed.
+**What this slice does not do:** Refreshing after a return does not restore the marks; only another real catch-up writes them. That is the save-free choice, not a bug. The second slice persists traces with a versioned migration so the shore can remember across closing the tab. Extinction is still allowed.
+
+### Traces of time away, second slice (seeds 1 and 42)
+
+**Memory, still not a resource:** Unfaded return marks and a four-note shore memory live in the snapshot at schema revision 15. `stepWorld` never writes them. Catch-up records marks from events, then stores them; time away does not spend their fade. Opening worlds, imported snapshots, named eras, and revision-14 saves receive empty collections.
+
+**A 1h return survives closing the tab:** Seed 1 still names siltstitcher, glass-limpet, and marlgrub endings, the seam leaking, and faint marks of that time. Serialize then restore keeps the same marks and remaining fade. After eight minutes of watched time they compact into shore memory; the observations list can still mention an earlier return.
+
+**Thirty unwatched days still match main:** The harness never creates traces. Ledgers, conservation checks, resources, and event counts for seeds 1 and 42 were identical to `main`.
+
+|                                             | Seed 1 main / this slice    | Seed 42 main / this slice   |
+| ------------------------------------------- | --------------------------- | --------------------------- |
+| Ambient harvest                             | 7442.42                     | 7449.66                     |
+| Seam dissolved / remaining                  | 8.300 / 15.671              | 8.300 / 15.671              |
+| Remains created = held + consumed + decayed | 26.110 = 0 + 3.640 + 22.470 | 26.911 = 0 + 4.805 + 22.105 |
+| Fossils formed = held                       | 1.682                       | 1.546                       |
+| Nested pigment                              | 0.81                        | 1.44                        |
+| Loose pigment (inlet)                       | 1.33 (0.75)                 | 1.99 (0.78)                 |
+
+**What this slice does not do:** Pocket import and named eras still arrive without marks, even if a revision-15 file had them. A later roadmap step can keep a visitor's own named era of the live pool. Extinction is still allowed.

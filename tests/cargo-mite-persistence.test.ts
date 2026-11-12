@@ -11,6 +11,8 @@ function previousRevision(world: World): Record<string, any> {
   delete previous.fossils;
   delete previous.pools;
   delete previous.seamAccrued;
+  delete previous.awayTraces;
+  delete previous.shoreMemory;
   delete previous.channel;
   delete previous.cargoMites;
   delete previous.cargoMiteAdmissionAt;
@@ -77,7 +79,7 @@ describe('cargo mite snapshot revision', () => {
     const migrated = restoreWorld(source)!;
     expect(migrated).not.toBeNull();
     expect(migrated).toMatchObject({
-      schemaRevision: 14,
+      schemaRevision: 15,
       lastSeenAt: null,
       cargoMites: [],
       cargoMiteAdmissionAt: old.elapsed,

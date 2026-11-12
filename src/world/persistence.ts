@@ -23,7 +23,10 @@ import {
   type EcologyLedger,
   type Traits,
   type World,
+  type AwayTrace,
+  type ShoreMemory,
 } from './types';
+import { TRACE_MARK_CAP, TRACE_MEMORY_CAP, isAwayTraceKind, settleAwayTraces } from './traces';
 import { MINERAL_SEAM } from './environment/mineral-seam';
 import { containingPool, isAuthoredHabitat, linkedHabitat, shoreRho } from './habitat';
 import { initializeGrazers } from './simulation';
@@ -431,6 +434,30 @@ function fossil(value: unknown): boolean {
   );
 }
 
+function awayTrace(value: unknown, elapsed: number): value is AwayTrace {
+  if (
+    !record(value) ||
+    !isAwayTraceKind(value.kind) ||
+    !point(value, 24) ||
+    !range(value.hue, 0, 360) ||
+    (value.hue as number) >= 360 ||
+    !range(value.strength, 0, 1) ||
+    !range(value.formedAt, 0, elapsed + 1e-6)
+  )
+    return false;
+  if (value.kind === 'channel' || value.kind === 'seam') {
+    return range(value.x2, -10000, 10000) && range(value.y2, -10000, 10000) && isInPool(value.x2, value.y2, 24);
+  }
+  return !('x2' in value) && !('y2' in value);
+}
+
+function shoreMemory(value: unknown, elapsed: number): value is ShoreMemory {
+  if (!record(value) || !range(value.formedAt, 0, elapsed + 1e-6) || !Array.isArray(value.kinds)) return false;
+  if (value.kinds.length < 1 || value.kinds.length > TRACE_MARK_CAP) return false;
+  if (!value.kinds.every((kind: unknown) => isAwayTraceKind(kind))) return false;
+  return new Set(value.kinds).size === value.kinds.length;
+}
+
 function marlgrub(value: unknown, nextId: number, withTraits = false): boolean {
   const policy = SPECIES_CATALOG.marlgrub;
   const seekSpeed =
@@ -466,7 +493,10 @@ type Revision6Ledger = Omit<Revision7Ledger, (typeof GLASS_LIMPET_LEDGER_KEYS)[n
 type RainbellLedger = Omit<Revision6Ledger, (typeof SILTSTITCHER_LEDGER_KEYS)[number]>;
 type ReedwellLedger = Omit<RainbellLedger, (typeof RAINBELL_LEDGER_KEYS)[number]>;
 type PrismLedger = Omit<ReedwellLedger, (typeof REEDWELL_LEDGER_KEYS)[number]>;
-type Revision13World = Omit<World, 'schemaRevision' | 'seamAccrued' | 'ecologyLedger'> & {
+type Revision14World = Omit<World, 'schemaRevision' | 'awayTraces' | 'shoreMemory'> & {
+  schemaRevision: 14;
+};
+type Revision13World = Omit<Revision14World, 'schemaRevision' | 'seamAccrued' | 'ecologyLedger'> & {
   schemaRevision: 13;
   ecologyLedger: Revision13Ledger;
 };
@@ -689,12 +719,21 @@ function migrateRevision12To13(previous: Revision12World): Revision13World {
   };
 }
 
-function migrateRevision13To14(previous: Revision13World): World {
+function migrateRevision13To14(previous: Revision13World): Revision14World {
   return {
     ...previous,
     schemaRevision: 14,
     seamAccrued: 0,
     ecologyLedger: { ...previous.ecologyLedger, seamDissolved: 0 },
+  };
+}
+
+function migrateRevision14To15(previous: Revision14World): World {
+  return {
+    ...previous,
+    schemaRevision: 15,
+    awayTraces: [],
+    shoreMemory: [],
   };
 }
 
@@ -725,12 +764,12 @@ export function restoreWorld(input: string): World | null {
 
   if (
     (parsed.version === 3 &&
-      (!integer(parsed.schemaRevision, 1, 14) || !weatherCall(parsed.weatherCall, parsed.elapsed))) ||
+      (!integer(parsed.schemaRevision, 1, 15) || !weatherCall(parsed.weatherCall, parsed.elapsed))) ||
     (parsed.version !== 3 && ('schemaRevision' in parsed || 'weatherCall' in parsed || 'currents' in parsed))
   )
     return null;
   let currents: Current[] = [];
-  if (parsed.version === 3 && integer(parsed.schemaRevision, 2, 14)) {
+  if (parsed.version === 3 && integer(parsed.schemaRevision, 2, 15)) {
     if (
       !Array.isArray(parsed.currents) ||
       parsed.currents.length > MAX_CURRENTS ||
@@ -740,7 +779,8 @@ export function restoreWorld(input: string): World | null {
     currents = parsed.currents as Current[];
   } else if ('currents' in parsed) return null;
 
-  const seamRevision = parsed.version === 3 && parsed.schemaRevision === 14;
+  const tracesRevision = parsed.version === 3 && parsed.schemaRevision === 15;
+  const seamRevision = parsed.version === 3 && (parsed.schemaRevision === 14 || tracesRevision);
   const linkedRevision = parsed.version === 3 && (parsed.schemaRevision === 13 || seamRevision);
   const fossilsRevision = parsed.version === 3 && (parsed.schemaRevision === 12 || linkedRevision);
   const catchUpRevision = parsed.version === 3 && (parsed.schemaRevision === 11 || fossilsRevision);
@@ -999,6 +1039,27 @@ export function restoreWorld(input: string): World | null {
     )
       return null;
   } else if ('seamAccrued' in parsed) return null;
+
+  let awayTraces: AwayTrace[] = [];
+  let shoreMemoryEntries: ShoreMemory[] = [];
+  if (tracesRevision) {
+    if (
+      !Array.isArray(parsed.awayTraces) ||
+      parsed.awayTraces.length > TRACE_MARK_CAP ||
+      !parsed.awayTraces.every((entry: unknown) => awayTrace(entry, parsed.elapsed as number)) ||
+      !Array.isArray(parsed.shoreMemory) ||
+      parsed.shoreMemory.length > TRACE_MEMORY_CAP ||
+      !parsed.shoreMemory.every((entry: unknown) => shoreMemory(entry, parsed.elapsed as number))
+    )
+      return null;
+    const settled = settleAwayTraces(
+      parsed.awayTraces as AwayTrace[],
+      parsed.shoreMemory as ShoreMemory[],
+      parsed.elapsed as number,
+    );
+    awayTraces = settled.traces;
+    shoreMemoryEntries = settled.memory;
+  } else if ('awayTraces' in parsed || 'shoreMemory' in parsed) return null;
 
   if (catchUpRevision) {
     if (!(parsed.lastSeenAt === null || integer(parsed.lastSeenAt, 0))) return null;
@@ -1263,7 +1324,7 @@ export function restoreWorld(input: string): World | null {
           channel: parsed.channel as World['channel'],
         }
       : migrateRevision12To13(revision12);
-    return seamRevision
+    const revision14: Revision14World = seamRevision
       ? {
           ...revision13,
           schemaRevision: 14,
@@ -1271,20 +1332,30 @@ export function restoreWorld(input: string): World | null {
           ecologyLedger: { ...(parsed.ecologyLedger as EcologyLedger) },
         }
       : migrateRevision13To14(revision13);
+    return tracesRevision
+      ? {
+          ...revision14,
+          schemaRevision: 15,
+          awayTraces,
+          shoreMemory: shoreMemoryEntries,
+        }
+      : migrateRevision14To15(revision14);
   }
   let legacy: LegacyWorld = { ...ecology, version: parsed.version };
   if (legacy.version === 1) legacy = migrateV1ToV2(legacy);
-  return migrateRevision13To14(
-    migrateRevision12To13(
-      migrateRevision11To12(
-        migrateRevision10To11(
-          migrateRevision9To10(
-            migrateRevision8To9(
-              migrateRevision7To8(
-                migrateRevision6To7(
-                  migrateRevision5To6(
-                    migrateRevision4To5(
-                      migrateRevision3To4(migrateRevision2To3(migrateRevision1To2(migrateV2ToV3(legacy)))),
+  return migrateRevision14To15(
+    migrateRevision13To14(
+      migrateRevision12To13(
+        migrateRevision11To12(
+          migrateRevision10To11(
+            migrateRevision9To10(
+              migrateRevision8To9(
+                migrateRevision7To8(
+                  migrateRevision6To7(
+                    migrateRevision5To6(
+                      migrateRevision4To5(
+                        migrateRevision3To4(migrateRevision2To3(migrateRevision1To2(migrateV2ToV3(legacy)))),
+                      ),
                     ),
                   ),
                 ),

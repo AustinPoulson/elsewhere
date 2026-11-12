@@ -154,6 +154,8 @@ export function captureNamedEra(options: CaptureEraOptions): { file: EraFile; er
     }
   }
   world.lastSeenAt = null;
+  world.awayTraces = [];
+  world.shoreMemory = [];
   const file: EraFile = {
     format: ERA_FORMAT,
     formatRevision: ERA_FORMAT_REVISION,

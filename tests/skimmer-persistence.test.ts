@@ -37,6 +37,8 @@ function legacy(world: World, version: 1 | 2 | 3, revision = 2) {
     pools: _pools,
     channel: _channel,
     seamAccrued: _seamAccrued,
+    awayTraces: _awayTraces,
+    shoreMemory: _shoreMemory,
     organisms,
     ...old
   } = structuredClone(world);
@@ -117,7 +119,7 @@ describe('prism snapshot revision', () => {
       expect(restored).not.toBeNull();
       expect(restored).toMatchObject({
         version: 3,
-        schemaRevision: 14,
+        schemaRevision: 15,
         skimmers: [],
         skimmerAdmissionAt: 123,
         elapsed: 123,
@@ -306,7 +308,7 @@ describe('prism snapshot revision', () => {
         w.nextId += 7;
       },
       (w) => {
-        w.schemaRevision = 15;
+        w.schemaRevision = 16;
       },
     ];
     for (const change of changes) {

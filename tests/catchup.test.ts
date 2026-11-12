@@ -17,7 +17,7 @@ import {
 } from '../src/world/catchup';
 import { serializeWorld } from '../src/world/persistence';
 import { createWorld, stepWorld } from '../src/world/simulation';
-import { TRACE_MARK_CAP } from '../src/world/traces';
+import { TRACE_MARK_CAP, withoutAwayMemory } from '../src/world/traces';
 import { FIXED_STEP } from '../src/world/types';
 
 function idleEvents(): CatchUpEvents {
@@ -157,7 +157,7 @@ describe('catch-up simulation', () => {
     const steps = Math.ceil(seconds / FIXED_STEP);
     for (let i = 0; i < steps; i++) stepWorld(live);
     expect(report.steps).toBe(steps);
-    expect(serializeWorld(caught)).toBe(serializeWorld(live));
+    expect(serializeWorld(withoutAwayMemory(caught))).toBe(serializeWorld(withoutAwayMemory(live)));
     expect(remainsLedgerBalanced(caught)).toBe(true);
     expect(caught.elapsed).toBeCloseTo(seconds, 5);
   });

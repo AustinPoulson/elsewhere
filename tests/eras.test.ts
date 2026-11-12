@@ -33,9 +33,9 @@ function captureFile(seed = 7, worldDays = 2) {
 
 describe('named eras', () => {
   it('keeps the live snapshot at the current revision and stores eras beside it', () => {
-    expect(SCHEMA_REVISION).toBe(14);
+    expect(SCHEMA_REVISION).toBe(15);
     const opening = createWorld(1);
-    expect(opening.schemaRevision).toBe(14);
+    expect(opening.schemaRevision).toBe(15);
     expect(opening.fossils).toEqual([]);
     expect('camera' in opening).toBe(false);
     expect('journal' in opening).toBe(false);
@@ -125,6 +125,8 @@ describe('named eras', () => {
     for (const era of eras) {
       expect(era.note.length).toBeGreaterThan(40);
       expect(era.world.schemaRevision).toBe(SCHEMA_REVISION);
+      expect(era.world.awayTraces).toEqual([]);
+      expect(era.world.shoreMemory).toEqual([]);
       expect(era.snapshot.length).toBeLessThanOrEqual(MAX_ERA_SNAPSHOT_LENGTH);
       const session = new WorldSession(createWorld(99));
       const frozen = serializeWorld(era.world);
@@ -138,6 +140,8 @@ describe('named eras', () => {
       expect(session.world.organisms).toHaveLength(era.world.organisms.length);
       expect(session.world.fossils).toHaveLength(era.world.fossils.length);
       expect(session.world.sediment).toHaveLength(era.world.sediment.length);
+      expect(session.world.awayTraces).toEqual([]);
+      expect(session.world.shoreMemory).toEqual([]);
       expect(session.world.lastSeenAt).toBeGreaterThanOrEqual(before);
       expect(session.world.lastSeenAt).toBeLessThanOrEqual(Date.now());
       expect(planCatchUp(session.world.lastSeenAt, Date.now())).toMatchObject({

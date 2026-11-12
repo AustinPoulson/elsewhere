@@ -11,6 +11,8 @@ function previousRevision(world: World): Record<string, unknown> {
   delete previous.fossils;
   delete previous.pools;
   delete previous.seamAccrued;
+  delete previous.awayTraces;
+  delete previous.shoreMemory;
   delete previous.channel;
   delete previous.ecologyLedger.fossilsFormed;
   delete previous.ecologyLedger.seamDissolved;
@@ -37,7 +39,7 @@ describe('fossil snapshot revision', () => {
     const migrated = restoreWorld(source)!;
     expect(migrated).not.toBeNull();
     expect(migrated).toMatchObject({
-      schemaRevision: 14,
+      schemaRevision: 15,
       lastSeenAt: null,
       fossils: [],
       nextId: old.nextId,
@@ -78,7 +80,7 @@ describe('fossil snapshot revision', () => {
         w.schemaRevision = 11;
       },
       (w) => {
-        w.schemaRevision = 15;
+        w.schemaRevision = 16;
       },
       (w) => {
         w.fossils[0].pigment = 1.3;
