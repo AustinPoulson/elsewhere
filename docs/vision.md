@@ -210,13 +210,13 @@ _This section records surprising population dynamics, extinctions, or runaway re
 | Nested pigment                              | 0.81                        | 1.44                        |
 | Loose pigment (inlet)                       | 1.33 (0.75)                 | 1.99 (0.78)                 |
 
-**What this slice does not do:** Refreshing after a return does not restore the marks; only another real catch-up writes them. That is the save-free choice, not a bug. The second slice persists traces with a versioned migration so the shore can remember across closing the tab. Extinction is still allowed.
+**What this slice did not persist:** Marks were session-only here. A refresh dropped them until another catch-up. The second slice stores unfaded marks in the snapshot, so a tab close keeps any that have not finished fading and they resume fading from `formedAt`. Extinction is still allowed.
 
 ### Traces of time away, second slice (seeds 1 and 42)
 
 **Memory, still not a resource:** Unfaded return marks and a four-note shore memory live in the snapshot at schema revision 15. `stepWorld` never writes them. Catch-up records marks from events, then stores them; time away does not spend their fade. Opening worlds, imported snapshots, named eras, and revision-14 saves receive empty collections.
 
-**A 1h return survives closing the tab:** Seed 1 still names siltstitcher, glass-limpet, and marlgrub endings, the seam leaking, and faint marks of that time. Serialize then restore keeps the same marks and remaining fade. After eight minutes of watched time they compact into shore memory; the observations list can still mention an earlier return.
+**A 1h return survives closing the tab:** Seed 1 still names siltstitcher, glass-limpet, and marlgrub endings, the seam leaking, and faint marks of that time. Marks that have not finished fading persist across a tab close and resume fading from `formedAt`. Serialize then restore keeps the same marks and remaining fade. After eight minutes of watched time they compact into shore memory; the observations list can still mention an earlier return.
 
 **Thirty unwatched days still match main:** The harness never creates traces. Ledgers, conservation checks, resources, and event counts for seeds 1 and 42 were identical to `main`.
 

@@ -9,13 +9,14 @@ import {
 } from '../src/world/catchup';
 import { DEEP_BASIN } from '../src/world/environment/depth';
 import { MINERAL_SEAM } from '../src/world/environment/mineral-seam';
-import { INLET_POOL, channelSegment } from '../src/world/habitat';
+import { INLET_POOL, channelSegment, isInPool } from '../src/world/habitat';
 import { restoreWorld, serializeWorld } from '../src/world/persistence';
 import { createWorld, stepWorld } from '../src/world/simulation';
 import {
   TRACE_FADE_SECONDS,
   TRACE_MARK_CAP,
   TRACE_MEMORY_CAP,
+  TRACE_POOL_MARGIN,
   composeAwayTraces,
   describeAwayTraces,
   describeShoreMemory,
@@ -27,6 +28,15 @@ import {
   type AwayTrace,
 } from '../src/world/traces';
 import { FIXED_STEP, SCHEMA_REVISION } from '../src/world/types';
+
+function nearShorePoint(margin: number): { x: number; y: number } {
+  let edge = 0;
+  for (let x = 1200; x < 1400; x += 0.05) {
+    if (isInPool(x, 500, margin) && !isInPool(x, 500, TRACE_POOL_MARGIN)) edge = x;
+  }
+  expect(edge).toBeGreaterThan(0);
+  return { x: edge, y: 500 };
+}
 
 function idleEvents(): CatchUpEvents {
   return {
@@ -117,12 +127,25 @@ describe('away traces from recorded events', () => {
     const traces = composeAwayTraces(
       facts({
         extinctions: [
-          { species: 'glassLimpets', at: 100, x: 1, y: 1, hue: 10 },
-          { species: 'glassLimpets', at: 900, x: 2, y: 2, hue: 20 },
+          { species: 'glassLimpets', at: 100, x: 640, y: 520, hue: 10 },
+          { species: 'glassLimpets', at: 900, x: 700, y: 480, hue: 20 },
         ],
       }),
     );
-    expect(traces).toEqual([expect.objectContaining({ kind: 'extinction', x: 2, y: 2, hue: 20 })]);
+    expect(traces).toEqual([expect.objectContaining({ kind: 'extinction', x: 700, y: 480, hue: 20 })]);
+  });
+
+  it('snaps a coastal last-body extinction mark inward so it stays visible', () => {
+    const death = nearShorePoint(4);
+    expect(isInPool(death.x, death.y, 4)).toBe(true);
+    expect(isInPool(death.x, death.y, TRACE_POOL_MARGIN)).toBe(false);
+    const traces = composeAwayTraces(
+      facts({
+        extinctions: [{ species: 'glassLimpets', at: 100, x: death.x, y: death.y, hue: 40 }],
+      }),
+    );
+    expect(traces).toEqual([expect.objectContaining({ kind: 'extinction', hue: 40, formedAt: 3600 })]);
+    expect(isInPool(traces[0].x, traces[0].y, TRACE_POOL_MARGIN)).toBe(true);
   });
 
   it('fades over watched time and expires', () => {

@@ -1,9 +1,10 @@
 import { DEEP_BASIN } from './environment/depth';
 import { MINERAL_SEAM } from './environment/mineral-seam';
-import { INLET_POOL, channelSegment, inInletPool, inOpeningPool } from './habitat';
+import { INLET_POOL, channelSegment, confineToWater, inInletPool, inOpeningPool } from './habitat';
 import { isInPool, type AwayTrace, type AwayTraceKind, type Point, type ShoreMemory, type World } from './types';
 
 export const TRACE_MARK_CAP = 5;
+export const TRACE_POOL_MARGIN = 24;
 export const TRACE_EXTINCTION_CAP = 2;
 export const TRACE_EXTINCTION_RECORD_CAP = 16;
 export const TRACE_FADE_SECONDS = 8 * 60;
@@ -107,6 +108,28 @@ function mark(
   };
 }
 
+export function placeAwayTracePoint(x: number, y: number): Point | null {
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+  const point = { x, y };
+  if (isInPool(point.x, point.y, TRACE_POOL_MARGIN)) return point;
+  if (!isInPool(point.x, point.y, 0)) return null;
+  confineToWater(point, TRACE_POOL_MARGIN);
+  if (!isInPool(point.x, point.y, TRACE_POOL_MARGIN)) return null;
+  return point;
+}
+
+export function placeAwayTrace(trace: AwayTrace): AwayTrace | null {
+  const start = placeAwayTracePoint(trace.x, trace.y);
+  if (!start) return null;
+  if (trace.kind === 'channel' || trace.kind === 'seam') {
+    if (trace.x2 === undefined || trace.y2 === undefined) return null;
+    const end = placeAwayTracePoint(trace.x2, trace.y2);
+    if (!end) return null;
+    return { ...trace, x: start.x, y: start.y, x2: end.x, y2: end.y };
+  }
+  return { ...trace, x: start.x, y: start.y };
+}
+
 export function composeAwayTraces(facts: AwayTraceFacts): AwayTrace[] {
   if (!Number.isFinite(facts.formedAt) || facts.formedAt < 0) return [];
   const traces: AwayTrace[] = [];
@@ -122,7 +145,9 @@ export function composeAwayTraces(facts: AwayTraceFacts): AwayTrace[] {
     if (recent.length >= TRACE_EXTINCTION_CAP) break;
   }
   for (const ended of recent) {
-    traces.push(mark('extinction', ended.x, ended.y, ended.hue, 0.58, facts.formedAt));
+    const placed = placeAwayTracePoint(ended.x, ended.y);
+    if (!placed) continue;
+    traces.push(mark('extinction', placed.x, placed.y, ended.hue, 0.58, facts.formedAt));
   }
   const drifted = facts.channelOccupied || facts.inletDelta >= TRACE_SETTLE_THRESHOLD || facts.inletBodiesDelta > 0;
   if (drifted && traces.length < TRACE_MARK_CAP) {

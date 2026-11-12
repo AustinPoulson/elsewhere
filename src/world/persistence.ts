@@ -26,7 +26,7 @@ import {
   type AwayTrace,
   type ShoreMemory,
 } from './types';
-import { TRACE_MARK_CAP, TRACE_MEMORY_CAP, isAwayTraceKind, settleAwayTraces } from './traces';
+import { TRACE_MARK_CAP, TRACE_MEMORY_CAP, isAwayTraceKind, placeAwayTrace, settleAwayTraces } from './traces';
 import { MINERAL_SEAM } from './environment/mineral-seam';
 import { containingPool, isAuthoredHabitat, linkedHabitat, shoreRho } from './habitat';
 import { initializeGrazers } from './simulation';
@@ -438,7 +438,8 @@ function awayTrace(value: unknown, elapsed: number): value is AwayTrace {
   if (
     !record(value) ||
     !isAwayTraceKind(value.kind) ||
-    !point(value, 24) ||
+    !range(value.x, -10000, 10000) ||
+    !range(value.y, -10000, 10000) ||
     !range(value.hue, 0, 360) ||
     (value.hue as number) >= 360 ||
     !range(value.strength, 0, 1) ||
@@ -446,7 +447,7 @@ function awayTrace(value: unknown, elapsed: number): value is AwayTrace {
   )
     return false;
   if (value.kind === 'channel' || value.kind === 'seam') {
-    return range(value.x2, -10000, 10000) && range(value.y2, -10000, 10000) && isInPool(value.x2, value.y2, 24);
+    return range(value.x2, -10000, 10000) && range(value.y2, -10000, 10000);
   }
   return !('x2' in value) && !('y2' in value);
 }
@@ -1052,11 +1053,12 @@ export function restoreWorld(input: string): World | null {
       !parsed.shoreMemory.every((entry: unknown) => shoreMemory(entry, parsed.elapsed as number))
     )
       return null;
-    const settled = settleAwayTraces(
-      parsed.awayTraces as AwayTrace[],
-      parsed.shoreMemory as ShoreMemory[],
-      parsed.elapsed as number,
-    );
+    const placed: AwayTrace[] = [];
+    for (const entry of parsed.awayTraces as AwayTrace[]) {
+      const next = placeAwayTrace(entry);
+      if (next) placed.push(next);
+    }
+    const settled = settleAwayTraces(placed, parsed.shoreMemory as ShoreMemory[], parsed.elapsed as number);
     awayTraces = settled.traces;
     shoreMemoryEntries = settled.memory;
   } else if ('awayTraces' in parsed || 'shoreMemory' in parsed) return null;
