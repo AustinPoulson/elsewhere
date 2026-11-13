@@ -566,6 +566,17 @@ h1 em {
   color: #95a98b;
   margin-top: 20px;
 }
+.era-keep {
+  margin-top: 22px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+.era-keep .primary-button {
+  margin-top: 0;
+}
+.era-keep .guide-caption {
+  margin-top: 12px;
+}
 .era-card {
   padding: 22px 0;
   border-bottom: 1px solid var(--line);
@@ -595,6 +606,15 @@ h1 em {
 }
 .era-card .secondary-button {
   margin-top: 14px;
+}
+.era-card-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+}
+.era-card-actions .secondary-button {
+  margin-top: 0;
 }
 .era-card .secondary-button svg:last-child {
   margin-left: auto;

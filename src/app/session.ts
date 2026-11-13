@@ -6,20 +6,24 @@ import { createShowerStudy } from './study';
 
 export const SAVE_KEY = 'elsewhere:tidepool:v1';
 export type SaveResult = 'saved' | 'unavailable' | 'preview';
+export type PreviewKind = 'study' | 'era';
 export interface SaveStorage {
   setItem(key: string, value: string): void;
 }
 
-/** The only autosave boundary. A study never becomes the personal world. */
+/** The only autosave boundary. A study or era visit never becomes the personal world. */
 export class WorldSession<Controls> {
   world: World;
   revision = 0;
-  private retained: { world: World; controls: Controls } | null = null;
+  private retained: { world: World; controls: Controls; kind: PreviewKind; eraSnapshot: string | null } | null = null;
   constructor(world: World) {
     this.world = world;
   }
   get preview(): boolean {
     return this.retained !== null;
+  }
+  get previewKind(): PreviewKind | null {
+    return this.retained?.kind ?? null;
   }
   save(storage: SaveStorage): SaveResult {
     if (this.preview) return 'preview';
@@ -32,11 +36,22 @@ export class WorldSession<Controls> {
   }
   enterStudy(controls: Controls, storage: SaveStorage): SaveResult {
     if (this.preview) return 'preview';
-    // Validate before checkpointing or changing identity.
     const study = createShowerStudy();
     const result = this.save(storage);
-    this.retained = { world: this.world, controls };
+    this.retained = { world: this.world, controls, kind: 'study', eraSnapshot: null };
     this.world = study;
+    this.revision++;
+    return result;
+  }
+  enterEra(snapshot: string, controls: Controls, storage: SaveStorage): SaveResult | 'invalid' {
+    if (this.preview) return 'preview';
+    const restored = restoreWorld(snapshot);
+    if (!restored) return 'invalid';
+    restored.lastSeenAt = Date.now();
+    forgetAwayTraces(restored);
+    const result = this.save(storage);
+    this.retained = { world: this.world, controls, kind: 'era', eraSnapshot: snapshot };
+    this.world = restored;
     this.revision++;
     return result;
   }
@@ -49,6 +64,16 @@ export class WorldSession<Controls> {
     return controls;
   }
   reset(): void {
+    if (this.retained?.kind === 'era' && this.retained.eraSnapshot) {
+      const restored = restoreWorld(this.retained.eraSnapshot);
+      if (restored) {
+        restored.lastSeenAt = Date.now();
+        forgetAwayTraces(restored);
+        this.world = restored;
+        this.revision++;
+        return;
+      }
+    }
     this.world = this.preview ? createShowerStudy() : createWorld(this.world.seed);
     this.revision++;
   }

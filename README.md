@@ -105,6 +105,6 @@ npm run harness -- --load mysave.json --days 5
 
 The harness reports population curves, births, deaths, extinctions, fossils, and resource flow. Birth and death totals are per-step net census change, not complete genealogical counts. Use `--json` for machine-readable output.
 
-Named eras are reviewed snapshots of those runs. Capture one with `npm run capture-era -- --id a-name --name "A title" --note "Field note" --days 30 --seed 1 --out src/world/era-snapshots/a-name.json`. The file must pass the `elsewhere-era` format and the ordinary snapshot importer before it can join the shelf.
+Named eras are reviewed snapshots of those runs, and a visitor can keep a snapshot of their own live shore on the same shelf. Capture a reviewed file with `npm run capture-era -- --id a-name --name "A title" --note "Field note" --days 30 --seed 1 --out src/world/era-snapshots/a-name.json`. The file must pass the `elsewhere-era` format and the ordinary snapshot importer before it can join the shelf. Kept eras use that format, persist locally, and count toward the eight-era / 4 MB catalog.
 
 We can keep adding species, weather, habitats, and artifacts without turning the opening pool into a large game engine first.
