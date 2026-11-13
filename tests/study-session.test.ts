@@ -4,6 +4,7 @@ import { createShowerStudy, SHOWER_STUDY } from '../src/app/study';
 import { createWorld, releaseNestPigment, stepWorld } from '../src/world/simulation';
 import { planCatchUp } from '../src/world/catchup';
 import { restoreWorld, serializeWorld } from '../src/world/persistence';
+import { composeAwayTraces } from '../src/world/traces';
 import { LIMITS } from '../src/world/types';
 import { getWeather } from '../src/world/weather';
 import fixture from '../src/app/shower-study.json';
@@ -157,6 +158,44 @@ describe('safe shower study', () => {
     expect(session.returnToPool()).toBe(controls);
     expect(session.world).toBe(personal);
     expect(session.save(denied)).toBe('unavailable');
+  });
+
+  it('opens a kept era as a preview so the live save and PRNG stay put', () => {
+    const personal = createWorld(33);
+    for (let i = 0; i < 40; i++) stepWorld(personal);
+    personal.awayTraces = composeAwayTraces({
+      formedAt: personal.elapsed,
+      extinctions: [],
+      seamReleased: 0,
+      deepDelta: 0,
+      inletDelta: 0,
+      inletBodiesDelta: 0,
+      channelOccupied: true,
+    });
+    const before = serializeWorld(personal);
+    const eraWorld = createWorld(44);
+    for (let i = 0; i < 20; i++) stepWorld(eraWorld);
+    eraWorld.lastSeenAt = null;
+    eraWorld.awayTraces = [];
+    eraWorld.shoreMemory = [];
+    const snapshot = serializeWorld(eraWorld);
+    const session = new WorldSession(personal);
+    const disk = storage();
+    expect(session.enterEra(snapshot, controls, disk)).toBe('saved');
+    expect(session.previewKind).toBe('era');
+    expect(session.world.seed).toBe(44);
+    expect(session.world.awayTraces).toEqual([]);
+    expect(session.save(disk)).toBe('preview');
+    expect(disk.entries.get(SAVE_KEY)).toBe(before);
+    expect(session.enterStudy({ ...controls, paused: true }, disk)).toBe('preview');
+    expect(session.world.seed).toBe(44);
+    session.reset();
+    expect(session.world.seed).toBe(44);
+    expect(session.world.elapsed).toBe(eraWorld.elapsed);
+    expect(session.returnToPool()).toBe(controls);
+    expect(session.world).toBe(personal);
+    expect(serializeWorld(personal)).toBe(before);
+    expect(session.previewKind).toBeNull();
   });
 
   it('rejects asynchronous imports across enter/return/reset and concurrent imports without replacing either pool', () => {

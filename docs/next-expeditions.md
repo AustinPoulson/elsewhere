@@ -24,7 +24,7 @@ Let the visitor pilot a luminous organism. Movement leaves or transports a resou
 
 ## 5. Preserve eras — implemented as named eras
 
-Curate named snapshots of earlier worlds alongside short field notes about the experiment that created each one. **This slice:** a static collection of three reviewed snapshots (an hour unwatched, thirty days of faint daylight, another seed's sediment). Each file is `elsewhere-era` format revision 1: identity, field note, provenance, and a world snapshot validated by `restoreWorld`. Opening an era restores that frozen moment the same way pocket import does. Catalog budget: at most 8 eras, 1,000,000 characters per inner snapshot, 4 MB for the shelf. `npm run capture-era` writes a file in that format. Automated capture of a live pool onto the shelf, and replay beyond loading an era as the active world, remain later work.
+Curate named snapshots of earlier worlds alongside short field notes about the experiment that created each one. **This slice:** a static collection of three reviewed snapshots plus visitor-kept live shores on the same shelf. Each file is `elsewhere-era` format revision 1: identity, field note, provenance, and a world snapshot validated by `restoreWorld`. Kept eras persist locally (`elsewhere-kept-eras` revision 1) and count toward the catalog. Opening a reviewed era restores that frozen moment the same way pocket import does. Opening a kept era holds the live pool aside. Catalog budget: at most 8 eras, 1,000,000 characters per inner snapshot, 4 MB for the shelf. `npm run capture-era` writes a file in that format. Replay beyond visiting a kept era as a held-aside frozen moment, and beyond loading a reviewed era as the active world, remain later work.
 
 ## How to pick
 

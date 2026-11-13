@@ -17,6 +17,10 @@ export function eraById(id: string): NamedEra | null {
   return catalog.find((era) => era.id === id) ?? null;
 }
 
+export function isReviewedEraId(id: string): boolean {
+  return catalog.some((era) => era.id === id);
+}
+
 export function eraCatalogBytes(): number {
   return files.reduce((total, file) => total + file.length, 0);
 }

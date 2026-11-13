@@ -25,7 +25,8 @@ Eventually: several pools linked by slow currents, and the world keeps living wh
   - [x] **Faint return marks** — first slice. A real catch-up (the existing 30s–8h path) can leave at most five session-only marks derived from events recorded while away: up to two lineage endings at the last body's position, a faded channel path if color or bodies crossed, and stains at the deep basin, mineral seam, or inlet when color actually settled there. Placement uses those event positions and authored geometry, never the world PRNG. Marks grant no pigment, energy, organisms, or light; they sit outside the save (schema revision stays 14) and fade over eight minutes of watched time. Opening worlds, imported or pocketed snapshots, named eras, and migrated old saves receive none. The journal and observations list name them; reduced motion draws them still; portrait keeps the same world coordinates. _Success: a 1h return on seed 1 shows marks; harness ledgers for seeds 1 and 42 match main._
   - [x] **The shore remembers** — second slice. Unfaded return marks live in the snapshot (schema revision 15) so closing the tab does not erase them; they keep fading from `formedAt` across reload. Faded marks compact into at most four shore-memory notes, derived only from recorded events, which the observations list and field journal can quietly recall. Opening worlds, imported or pocketed snapshots, named eras, and revision-14 or older saves receive none. Caps stay five live marks and four remembered returns. Marks still grant nothing and never touch the world PRNG. _Success: a 1h return on seed 1 survives serialize/restore; harness ledgers for seeds 1 and 42 match main._
 
-- [ ] **A visitor's own named eras** — Automated capture of the live pool onto the shelf, using the existing `elsewhere-era` format, the 8-era / 4 MB catalog, and the ordinary importer. Opening a kept era restores that frozen moment without gifts, catch-up, or return marks. _Success: a visitor can keep a reviewed snapshot of their own shore; the live world is unchanged; extinction is still allowed._
+- [x] **A visitor's own named eras** — Automated capture of the live pool onto the shelf, using the existing `elsewhere-era` format, the 8-era / 4 MB catalog, and the ordinary importer. Opening a kept era restores that frozen moment without gifts, catch-up, or return marks. _Success: a visitor can keep a reviewed snapshot of their own shore; the live world is unchanged; extinction is still allowed._
+  - [x] **Keep a live shore** — first slice. A deliberate Keep this shore action (keyboard-accessible, works in portrait) captures the live pool in `elsewhere-era` format with a short field note written from recorded state and events, not hand-authored lore. Kept eras persist in a separate local shelf (`elsewhere-kept-eras` revision 1; a raw array of era files migrates) and count toward the existing 8-era / 4 MB catalog. The shelf says when it is full; a visitor can remove one of their own kept eras, not the three reviewed ones. Opening a kept era uses the ordinary snapshot importer, then holds the live pool aside so returning continues it unchanged: no gifts, catch-up, return marks, shore memory, free pigment, energy, or organisms. Keeping does not touch the live world, its save, or the world PRNG. Schema revision stays 15. _Success: a visitor can keep a snapshot of their own shore; harness ledgers for seeds 1 and 42 match main._
 
 ## Standing Invariants
 
@@ -122,7 +123,7 @@ _This section records surprising population dynamics, extinctions, or runaway re
 
 **Storage stays bounded:** Three compact era files total about 101 KB, well under the 8-era / 4 MB catalog budget. Each inner world still passes the 1,000,000-character snapshot cap. Schema revision stays 13; eras live beside the live save, not inside it.
 
-**What remains later:** Automated capture of a visitor's own pool into this shelf, and replay tools beyond opening a named era as the live world. The format and `npm run capture-era` are the contract for that work.
+**What remains later:** Replay tools beyond visiting a kept era as a held-aside frozen moment, and beyond opening a reviewed era as the live world. The format and `npm run capture-era` remain the contract.
 
 ### Seasons (seeds 1 and 42)
 
@@ -229,4 +230,25 @@ _This section records surprising population dynamics, extinctions, or runaway re
 | Nested pigment                              | 0.81                        | 1.44                        |
 | Loose pigment (inlet)                       | 1.33 (0.75)                 | 1.99 (0.78)                 |
 
-**What this slice does not do:** Pocket import and named eras still arrive without marks, even if a revision-15 file had them. A later roadmap step can keep a visitor's own named era of the live pool. Extinction is still allowed.
+**What this slice does not do:** Pocket import and named eras still arrive without marks, even if a revision-15 file had them. A visitor can now keep their own named era of the live pool. Extinction is still allowed.
+
+### A visitor's own named eras, first slice (seeds 1 and 42)
+
+**A shelf, not a new format:** Keep this shore captures the live pool as an `elsewhere-era` file: identity, a field note written from recorded census, fossils, pigment, season, and visitor-light, plus the ordinary snapshot. Kept files live in `elsewhere:kept-eras:v1` (`elsewhere-kept-eras` revision 1). A raw array of era JSON strings migrates. Schema revision stays 15; the live save is untouched. Opening worlds and older live saves receive no kept eras.
+
+**Keeping does not change the pool:** The live world, its autosave, and the world PRNG are the same after a keep. Return marks and shore memory stay on the live shore and are stripped from the frozen file, the same as reviewed capture. The shelf counts kept eras toward eight files and 4 MB with the three reviewed snapshots. It says when it is full. A visitor can remove a kept era; reviewed worlds stay.
+
+**Opening a kept era is a visit:** Restore uses `restoreWorld`, stamps `lastSeenAt` to now, skips catch-up, and grants nothing — no pigment, energy, organisms, return marks, or shore memory. The live pool is held aside and does not autosave over itself. Returning continues that live shore unchanged. Reviewed eras still replace the live pool after confirmation.
+
+**Thirty unwatched days still match main:** The harness never keeps or opens eras. Ledgers, conservation checks, resources, and event counts for seeds 1 and 42 were identical to `main`.
+
+|                                             | Seed 1 main / this slice    | Seed 42 main / this slice   |
+| ------------------------------------------- | --------------------------- | --------------------------- |
+| Ambient harvest                             | 7442.42                     | 7449.66                     |
+| Seam dissolved / remaining                  | 8.300 / 15.671              | 8.300 / 15.671              |
+| Remains created = held + consumed + decayed | 26.110 = 0 + 3.640 + 22.470 | 26.911 = 0 + 4.805 + 22.105 |
+| Fossils formed = held                       | 1.682                       | 1.546                       |
+| Nested pigment                              | 0.81                        | 1.44                        |
+| Loose pigment (inlet)                       | 1.33 (0.75)                 | 1.99 (0.78)                 |
+
+**What this slice does not do:** A kept era is local to this browser. Opening one does not make it the live save; returning restores the held shore. Visitor-written titles, comparing two eras, and replay tools beyond that visit remain later work. Extinction is still allowed.

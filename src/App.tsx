@@ -4,7 +4,7 @@ import { Icon } from './Icons';
 import { CarryController } from './app/carry';
 import { StirController } from './app/stir';
 import { SimulationClock } from './app/clock';
-import { SAVE_KEY, WorldSession } from './app/session';
+import { SAVE_KEY, WorldSession, type SaveStorage } from './app/session';
 import { SHOWER_STUDY } from './app/study';
 import { TidepoolRenderer } from './render/TidepoolRenderer';
 import { cargoMiteDisplayPoint } from './render/cargoMiteDisplay';
@@ -17,7 +17,18 @@ import {
   type CatchUpPlan,
 } from './world/catchup';
 import { addLight, createWorld, getStats, releaseNestPigment, stepWorld } from './world/simulation';
-import { eraById, namedEras } from './world/era-catalog';
+import { eraById, isReviewedEraId, namedEras } from './world/era-catalog';
+import { keepLiveEra, MAX_ERA_CATALOG_BYTES, MAX_NAMED_ERAS, type NamedEra } from './world/eras';
+import {
+  addKeptEra,
+  nextKeptEraId,
+  readKeptEras,
+  removeKeptEra,
+  shelfRoom,
+  writeKeptEras,
+  type KeptEraShelf,
+  type ShelfRoom,
+} from './world/kept-eras';
 import { restoreWorld, serializeWorld } from './world/persistence';
 import { callRain, effectiveWeather } from './world/weather';
 import { getDaylight } from './world/environment/daylight';
@@ -41,6 +52,31 @@ type PoolControls = {
   keyboard: boolean;
 };
 type Panel = 'guide' | 'specimen' | 'pocket' | 'eras' | null;
+type Visit = 'live' | 'study' | 'era';
+function loadKeptShelf(): KeptEraShelf {
+  try {
+    return readKeptEras(localStorage);
+  } catch {
+    return { eras: [], files: [] };
+  }
+}
+function shelfFullNotice(room: ShelfRoom): string {
+  if (room === 'full-bytes') {
+    return 'The shelf has reached its 4 MB bound. Remove one of your kept eras to make room. Reviewed worlds stay.';
+  }
+  return 'The shelf already holds eight eras. Remove one of your kept eras to make room. Reviewed worlds stay.';
+}
+function localSaveStorage(): SaveStorage {
+  try {
+    return localStorage;
+  } catch {
+    return {
+      setItem() {
+        throw new Error('Storage unavailable');
+      },
+    };
+  }
+}
 function loadInitialWorld(): {
   world: World;
   remembered: boolean;
@@ -77,6 +113,12 @@ function timeLabel(seconds: number): string {
   const mins = Math.floor(seconds / 60);
   return `${String(mins).padStart(2, '0')}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
 }
+function worldDaysMeta(days: number): string {
+  if (days === 0) return 'OPENING';
+  const rounded = Math.round(days * 10) / 10;
+  const amount = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+  return `${amount} WORLD DAY${rounded === 1 ? '' : 'S'}`;
+}
 
 function waterPlace(x: number, y: number): string | null {
   return inDeepWater(x, y) ? 'In the deeper water' : null;
@@ -86,7 +128,8 @@ export function App() {
   const [initial] = useState(loadInitialWorld);
   const worldRef = useRef(initial.world);
   const sessionRef = useRef(new WorldSession<PoolControls>(initial.world));
-  const [studyMode, setStudyMode] = useState(false);
+  const [visit, setVisit] = useState<Visit>('live');
+  const [keptShelf, setKeptShelf] = useState<KeptEraShelf>(loadKeptShelf);
   const hostRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<TidepoolRenderer | null>(null);
   const importRef = useRef<HTMLInputElement>(null);
@@ -96,7 +139,13 @@ export function App() {
   const resetTriggerRef = useRef<HTMLElement | null>(null);
   const eraRef = useRef<HTMLDialogElement>(null);
   const eraTriggerRef = useRef<HTMLElement | null>(null);
+  const keepRef = useRef<HTMLDialogElement>(null);
+  const keepTriggerRef = useRef<HTMLElement | null>(null);
+  const removeRef = useRef<HTMLDialogElement>(null);
+  const removeTriggerRef = useRef<HTMLElement | null>(null);
   const [pendingEraId, setPendingEraId] = useState<string | null>(null);
+  const [pendingKeep, setPendingKeep] = useState(false);
+  const [pendingRemoveId, setPendingRemoveId] = useState<string | null>(null);
   const journalRef = useRef<HTMLDialogElement>(null);
   const catchingUpRef = useRef(initial.catchUpPlan.reason === 'ready');
   const catchUpLockRef = useRef(false);
@@ -430,6 +479,12 @@ export function App() {
     if (pendingEraId) eraRef.current?.showModal();
   }, [pendingEraId]);
   useEffect(() => {
+    if (pendingKeep) keepRef.current?.showModal();
+  }, [pendingKeep]);
+  useEffect(() => {
+    if (pendingRemoveId) removeRef.current?.showModal();
+  }, [pendingRemoveId]);
+  useEffect(() => {
     rendererRef.current?.setReducedMotion(reducedMotion);
   }, [reducedMotion, ready]);
   useEffect(() => {
@@ -703,13 +758,21 @@ export function App() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `${sessionRef.current.preview ? 'elsewhere-study-during-a-shower' : 'elsewhere-tidepool'}-${worldRef.current.seed}.json`;
+    link.download = `${
+      sessionRef.current.previewKind === 'era'
+        ? 'elsewhere-era'
+        : sessionRef.current.preview
+          ? 'elsewhere-study-during-a-shower'
+          : 'elsewhere-tidepool'
+    }-${worldRef.current.seed}.json`;
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
     setNotice(
-      sessionRef.current.preview
-        ? 'A snapshot of the shower study, saved separately from your pool.'
-        : 'A little world, saved for later.',
+      sessionRef.current.previewKind === 'era'
+        ? 'A snapshot of this frozen moment, saved separately from your pool.'
+        : sessionRef.current.preview
+          ? 'A snapshot of the shower study, saved separately from your pool.'
+          : 'A little world, saved for later.',
     );
   }
   async function importSnapshot(event: ChangeEvent<HTMLInputElement>) {
@@ -750,18 +813,68 @@ export function App() {
     }
   }
   function requestEra(id: string, trigger: HTMLElement): void {
-    if (studyMode) {
+    if (visit !== 'live') {
       setNotice('Return to your pool before opening an earlier world.');
       return;
     }
     eraTriggerRef.current = trigger;
     setPendingEraId(id);
   }
+  function eraFromShelf(id: string): NamedEra | null {
+    return eraById(id) ?? keptShelf.eras.find((item) => item.id === id) ?? null;
+  }
+  function openKeptEra(era: NamedEra): void {
+    const result = sessionRef.current.enterEra(
+      era.snapshot,
+      { paused, tool, selectedId, hintVisible, cursor: cursorRef.current, keyboard: keyboardRef.current },
+      localSaveStorage(),
+    );
+    if (result === 'preview') {
+      eraRef.current?.close();
+      setNotice('Return to your pool before opening an earlier world.');
+      return;
+    }
+    if (result === 'invalid') {
+      eraRef.current?.close();
+      setNotice('That remembered world could not be read. Your tidepool is still here.');
+      return;
+    }
+    setStorageAvailable(result === 'saved');
+    worldRef.current = sessionRef.current.world;
+    heldRef.current = false;
+    cancelCarry();
+    cursorRef.current = null;
+    keyboardRef.current = false;
+    controlsRef.current = { paused: true, tool: 'observe', selectedId: null, reducedMotion };
+    setPaused(true);
+    chooseTool('observe');
+    setSelectedId(null);
+    setHintVisible(false);
+    setVisit('era');
+    rememberTraces([], []);
+    setStats(getStats(worldRef.current));
+    rendererRef.current?.resetView();
+    panelReturnFocusRef.current = hostRef.current;
+    eraTriggerRef.current = hostRef.current;
+    eraRef.current?.close();
+    setPanel(null);
+    hostRef.current?.focus({ preventScroll: true });
+    setNotice(`${era.name} has returned. That frozen moment is on the shelf; your live pool is held aside.`);
+  }
   function loadPendingEra(): void {
     if (!pendingEraId) return;
-    const era = eraById(pendingEraId);
+    const era = eraFromShelf(pendingEraId);
+    if (!era) {
+      eraRef.current?.close();
+      setNotice('That remembered world could not be read. Your tidepool is still here.');
+      return;
+    }
+    if (!isReviewedEraId(era.id)) {
+      openKeptEra(era);
+      return;
+    }
     const token = sessionRef.current.importToken();
-    if (!era || token === null) {
+    if (token === null) {
       eraRef.current?.close();
       setNotice('Return to your pool before opening an earlier world.');
       return;
@@ -794,6 +907,83 @@ export function App() {
     hostRef.current?.focus({ preventScroll: true });
     setNotice(`${era.name} has returned. That frozen moment is the pool now.`);
   }
+  function requestKeep(trigger: HTMLElement): void {
+    if (visit !== 'live' || catchingUpRef.current) {
+      setNotice('Return to your pool before keeping this shore.');
+      return;
+    }
+    const room = shelfRoom(keptShelf.files);
+    if (room !== 'ok') {
+      setNotice(shelfFullNotice(room));
+      return;
+    }
+    keepTriggerRef.current = trigger;
+    setPendingKeep(true);
+  }
+  function keepPendingShore(): void {
+    const room = shelfRoom(keptShelf.files);
+    if (room !== 'ok') {
+      keepRef.current?.close();
+      setNotice(shelfFullNotice(room));
+      return;
+    }
+    const captured = keepLiveEra(worldRef.current, nextKeptEraId([...namedEras(), ...keptShelf.eras]));
+    if (!captured) {
+      keepRef.current?.close();
+      setNotice('This shore could not be kept in the named-era format. The live pool is unchanged.');
+      return;
+    }
+    const encoded = JSON.stringify(captured.file);
+    const added = addKeptEra(keptShelf, captured.era, encoded);
+    if (added.room !== 'ok') {
+      keepRef.current?.close();
+      setNotice(shelfFullNotice(added.room));
+      return;
+    }
+    let stored: 'saved' | 'unavailable';
+    try {
+      stored = writeKeptEras(localStorage, added.shelf.files);
+    } catch {
+      stored = 'unavailable';
+    }
+    setKeptShelf(added.shelf);
+    keepRef.current?.close();
+    setNotice(
+      stored === 'saved'
+        ? `${captured.era.name} is on the shelf. The live pool continues unchanged.`
+        : `${captured.era.name} is on the shelf for this visit only. This device could not remember it.`,
+    );
+  }
+  function requestRemove(id: string, trigger: HTMLElement): void {
+    if (isReviewedEraId(id)) {
+      setNotice('Reviewed worlds stay on the shelf.');
+      return;
+    }
+    removeTriggerRef.current = trigger;
+    setPendingRemoveId(id);
+  }
+  function removePendingEra(): void {
+    if (!pendingRemoveId) return;
+    const removed = removeKeptEra(keptShelf, pendingRemoveId);
+    if (!removed) {
+      removeRef.current?.close();
+      setNotice('Reviewed worlds stay on the shelf.');
+      return;
+    }
+    let stored: 'saved' | 'unavailable';
+    try {
+      stored = writeKeptEras(localStorage, removed.files);
+    } catch {
+      stored = 'unavailable';
+    }
+    setKeptShelf(removed);
+    removeRef.current?.close();
+    setNotice(
+      stored === 'saved'
+        ? 'That kept era has left the shelf. The live pool is unchanged.'
+        : 'That kept era has left this visit. This device could not remember the change.',
+    );
+  }
   function resetWorld() {
     sessionRef.current.reset();
     worldRef.current = sessionRef.current.world;
@@ -808,9 +998,11 @@ export function App() {
     setStats(getStats(worldRef.current));
     saveWorld();
     setNotice(
-      sessionRef.current.preview
-        ? 'The shower study is back at its paused first moment. Your pool is untouched.'
-        : 'A new beginning, along the same shore.',
+      sessionRef.current.previewKind === 'era'
+        ? 'That frozen moment is back on the water. Your live pool is still held aside.'
+        : sessionRef.current.preview
+          ? 'The shower study is back at its paused first moment. Your pool is untouched.'
+          : 'A new beginning, along the same shore.',
     );
     resetRef.current?.close();
     resetTriggerRef.current?.focus();
@@ -843,7 +1035,7 @@ export function App() {
       chooseTool('observe');
       setSelectedId(null);
       setHintVisible(false);
-      setStudyMode(true);
+      setVisit('study');
       rememberTraces([], []);
       setStats(getStats(worldRef.current));
       panelReturnFocusRef.current = hostRef.current;
@@ -858,6 +1050,7 @@ export function App() {
     }
   }
   function returnToPool() {
+    const kind = sessionRef.current.previewKind;
     const controls = sessionRef.current.returnToPool();
     if (!controls) return;
     worldRef.current = sessionRef.current.world;
@@ -875,14 +1068,22 @@ export function App() {
     setTool(controls.tool);
     setSelectedId(controls.selectedId);
     setHintVisible(controls.hintVisible);
-    setStudyMode(false);
+    setVisit('live');
     rememberTraces(worldRef.current.awayTraces, worldRef.current.shoreMemory);
     setStats(getStats(worldRef.current));
+    if (kind === 'era') {
+      worldRef.current.lastSeenAt = Date.now();
+      saveWorld();
+    }
     resetRef.current?.close();
     panelReturnFocusRef.current = hostRef.current;
     setPanel(null);
     hostRef.current?.focus({ preventScroll: true });
-    setNotice('Your pool returns exactly where you left it. No time passed during the study.');
+    setNotice(
+      kind === 'era'
+        ? 'Your pool returns exactly where you left it.'
+        : 'Your pool returns exactly where you left it. No time passed during the study.',
+    );
   }
   const selected = [
     ...worldRef.current.organisms,
@@ -899,7 +1100,11 @@ export function App() {
   const selectedFossil = worldRef.current.fossils.find((fossil) => fossil.id === selectedId) ?? null;
   const selectedNest =
     selected?.species === 'grazer' ? worldRef.current.nests.find((nest) => nest.id === selected.nestId) : null;
-  const pendingEra = pendingEraId ? eraById(pendingEraId) : null;
+  const pendingEra = pendingEraId ? eraFromShelf(pendingEraId) : null;
+  const pendingKept = pendingEra !== null && !isReviewedEraId(pendingEra.id);
+  const pendingRemove = pendingRemoveId ? keptShelf.eras.find((era) => era.id === pendingRemoveId) : null;
+  const keepRoom = shelfRoom(keptShelf.files);
+  const shelfEras = [...namedEras(), ...keptShelf.eras];
   const openPanel = (next: Panel) => setPanel((current) => (current === next ? null : next));
   const weather = effectiveWeather(worldRef.current);
   const season = getSeason(worldRef.current.elapsed);
@@ -974,10 +1179,21 @@ export function App() {
         onKeyDown={habitatKey}
       />
 
-      {studyMode && (
-        <section className="study-banner" aria-label="Temporary study visit">
+      {visit !== 'live' && (
+        <section
+          className="study-banner"
+          aria-label={visit === 'era' ? 'Temporary era visit' : 'Temporary study visit'}
+        >
           <span>
-            <strong>During a shower</strong> · Study · Your pool is held aside
+            {visit === 'era' ? (
+              <>
+                <strong>A kept era</strong> · Frozen moment · Your pool is held aside
+              </>
+            ) : (
+              <>
+                <strong>During a shower</strong> · Study · Your pool is held aside
+              </>
+            )}
           </span>
           <button className="secondary-button" onClick={returnToPool}>
             Return to your pool <Icon name="arrow" />
@@ -1573,10 +1789,10 @@ export function App() {
                   <div>
                     <h3>Earlier worlds</h3>
                     <p>
-                      Named eras keep reviewed snapshots of earlier experiments, each with a short field note. Opening
-                      one restores that frozen moment as the live pool. Nothing is granted: the organisms and color in
-                      the file are the ones that already paid their way. The camera is not stored; the field journal is
-                      still written only after time away.
+                      Named eras keep reviewed snapshots of earlier experiments, and you can keep a snapshot of your own
+                      live shore beside them. Each has a short field note. Opening a reviewed era still becomes the
+                      pool; opening one you kept holds your live shore aside so you can return to it. Nothing is
+                      granted. The camera is not stored; the field journal is still written only after time away.
                     </p>
                   </div>
                 </div>
@@ -2060,9 +2276,11 @@ export function App() {
                   <em>in your pocket.</em>
                 </h2>
                 <p className="panel-intro">
-                  {studyMode
+                  {visit === 'study'
                     ? 'You are visiting During a shower. This study never autosaves over your pool. A saved snapshot contains the study.'
-                    : `Your tidepool is ${storageAvailable ? 'remembered automatically on this device' : 'running without automatic saves'}. Take a snapshot to carry it somewhere else.`}
+                    : visit === 'era'
+                      ? 'You are visiting a kept era. This frozen moment never autosaves over your pool. A saved snapshot contains the era.'
+                      : `Your tidepool is ${storageAvailable ? 'remembered automatically on this device' : 'running without automatic saves'}. Take a snapshot to carry it somewhere else.`}
                 </p>
                 <div className="snapshot-stamp">
                   <Icon name="spark" size={38} />
@@ -2081,7 +2299,11 @@ export function App() {
                   <Icon name="download" />
                   Save a snapshot <Icon name="arrow" />
                 </button>
-                <button className="secondary-button" disabled={studyMode} onClick={() => importRef.current?.click()}>
+                <button
+                  className="secondary-button"
+                  disabled={visit !== 'live'}
+                  onClick={() => importRef.current?.click()}
+                >
                   <Icon name="upload" />
                   Open a snapshot
                 </button>
@@ -2089,11 +2311,13 @@ export function App() {
                   {notice}
                 </p>
                 <p className="guide-caption">
-                  {studyMode
+                  {visit === 'study'
                     ? 'Return to your pool before opening a snapshot. Reset only restarts this study.'
-                    : "Opening a snapshot replaces the current pool. Save this one first if you'd like to keep both. A snapshot captures this version of the world."}
+                    : visit === 'era'
+                      ? 'Return to your pool before opening a snapshot. Reset only restores this frozen moment.'
+                      : "Opening a snapshot replaces the current pool. Save this one first if you'd like to keep both. A snapshot captures this version of the world."}
                 </p>
-                {studyMode ? (
+                {visit !== 'live' ? (
                   <button className="secondary-button" onClick={returnToPool}>
                     Return to your pool <Icon name="arrow" />
                   </button>
@@ -2115,8 +2339,9 @@ export function App() {
                 </p>
                 <h3>Earlier worlds</h3>
                 <p className="guide-caption">
-                  A small shelf of reviewed snapshots. Each one is an experiment that already happened, with a field
-                  note about how it was made. Opening an era replaces this pool the same way a pocketed file does.
+                  A small shelf of reviewed snapshots, and any shores you have kept on this device. Each has a field
+                  note about how it was made. Opening a reviewed era replaces this pool; opening one you kept holds your
+                  live shore aside.
                 </p>
                 <button className="secondary-button" onClick={() => setPanel('eras')}>
                   Browse earlier worlds <Icon name="era" />
@@ -2131,37 +2356,67 @@ export function App() {
                   <em>worlds.</em>
                 </h2>
                 <p className="panel-intro">
-                  These are named snapshots of reviewed experiments. Opening one restores that frozen moment. It is not
-                  treated as time away, and nothing is granted.
+                  Reviewed experiments sit here, and you can keep a snapshot of this live shore beside them. Opening a
+                  kept era holds your pool aside. It is not treated as time away, and nothing is granted.
                 </p>
-                {namedEras().map((era, index) => (
-                  <article className="era-card" key={era.id}>
-                    <p className="eyebrow">
-                      ERA {String(index + 1).padStart(2, '0')} / SEED {era.provenance.seed}
-                    </p>
-                    <h3>{era.name}</h3>
-                    <p className="era-meta">
-                      {timeLabel(era.world.elapsed)} · {era.world.fossils.length} FOSSIL
-                      {era.world.fossils.length === 1 ? '' : 'S'} · {era.provenance.worldDays} WORLD DAY
-                      {era.provenance.worldDays === 1 ? '' : 'S'}
-                    </p>
-                    <p className="era-note">{era.note}</p>
-                    <button
-                      className="secondary-button"
-                      disabled={studyMode}
-                      onClick={(event) => requestEra(era.id, event.currentTarget)}
-                    >
-                      Open this era <Icon name="arrow" />
-                    </button>
-                  </article>
-                ))}
+                <div className="era-keep">
+                  <button
+                    className="primary-button"
+                    disabled={visit !== 'live' || keepRoom !== 'ok'}
+                    onClick={(event) => requestKeep(event.currentTarget)}
+                  >
+                    Keep this shore <Icon name="era" />
+                  </button>
+                  <p className="guide-caption" role="status">
+                    {visit !== 'live'
+                      ? 'Return to your pool before keeping a shore.'
+                      : keepRoom === 'full-count'
+                        ? `The shelf is full (${MAX_NAMED_ERAS} eras). Remove one of your kept worlds to make room. Reviewed worlds stay.`
+                        : keepRoom === 'full-bytes'
+                          ? `The shelf is full (${(MAX_ERA_CATALOG_BYTES / 1_000_000).toFixed(0)} MB). Remove one of your kept worlds to make room. Reviewed worlds stay.`
+                          : `This shelf can hold ${MAX_NAMED_ERAS} eras and ${(MAX_ERA_CATALOG_BYTES / 1_000_000).toFixed(0)} MB. ${shelfEras.length} ${shelfEras.length === 1 ? 'era sits' : 'eras sit'} here.`}
+                  </p>
+                </div>
+                {shelfEras.map((era, index) => {
+                  const kept = !isReviewedEraId(era.id);
+                  return (
+                    <article className={`era-card${kept ? ' is-kept' : ''}`} key={era.id}>
+                      <p className="eyebrow">
+                        {kept ? 'KEPT' : `ERA ${String(index + 1).padStart(2, '0')}`} / SEED {era.provenance.seed}
+                      </p>
+                      <h3>{era.name}</h3>
+                      <p className="era-meta">
+                        {timeLabel(era.world.elapsed)} · {era.world.fossils.length} FOSSIL
+                        {era.world.fossils.length === 1 ? '' : 'S'} · {worldDaysMeta(era.provenance.worldDays)}
+                      </p>
+                      <p className="era-note">{era.note}</p>
+                      <div className="era-card-actions">
+                        <button
+                          className="secondary-button"
+                          disabled={visit !== 'live'}
+                          onClick={(event) => requestEra(era.id, event.currentTarget)}
+                        >
+                          Open this era <Icon name="arrow" />
+                        </button>
+                        {kept ? (
+                          <button
+                            className="secondary-button"
+                            onClick={(event) => requestRemove(era.id, event.currentTarget)}
+                          >
+                            Remove from the shelf
+                          </button>
+                        ) : null}
+                      </div>
+                    </article>
+                  );
+                })}
                 <p className="snapshot-feedback" role="status">
                   {notice}
                 </p>
                 <p className="guide-caption">
-                  {studyMode
-                    ? 'Return to your pool before opening an earlier world. The study never overwrites its autosave.'
-                    : 'Opening an era replaces the current pool. Save a snapshot first if you would like to keep both.'}
+                  {visit !== 'live'
+                    ? 'Return to your pool before opening an earlier world. This visit never overwrites its autosave.'
+                    : 'Opening a reviewed era replaces the current pool. Opening one you kept holds this shore aside so you can return to it.'}
                 </p>
               </>
             )}
@@ -2244,9 +2499,11 @@ export function App() {
         <p className="eyebrow">THE TIDE TURNS</p>
         <h2 id="reset-title">Begin again?</h2>
         <p>
-          {studyMode
+          {visit === 'study'
             ? 'Only the study will return to its paused first moment. Your personal pool stays held aside.'
-            : "The pool will return to its first moment. Save a snapshot first to keep what you've made."}
+            : visit === 'era'
+              ? 'Only this frozen moment will return to the shelf snapshot. Your personal pool stays held aside.'
+              : "The pool will return to its first moment. Save a snapshot first to keep what you've made."}
         </p>
         <div className="dialog-actions">
           <button className="secondary-button" autoFocus onClick={() => resetRef.current?.close()}>
@@ -2269,16 +2526,63 @@ export function App() {
         <p className="eyebrow">AN EARLIER WORLD</p>
         <h2 id="era-title">Open {pendingEra?.name ?? 'this era'}?</h2>
         <p>
-          {studyMode
-            ? 'Return to your pool before opening an earlier world. The study stays aside.'
-            : 'The pool will become this remembered moment. Save a snapshot first if you would like to keep what is here. Opening it is not treated as time away, and nothing is granted.'}
+          {visit !== 'live'
+            ? 'Return to your pool before opening an earlier world. This visit stays aside.'
+            : pendingKept
+              ? 'You will visit this frozen moment. Your live pool is held aside and continues unchanged when you return. Opening it is not treated as time away, and nothing is granted.'
+              : 'The pool will become this remembered moment. Save a snapshot first if you would like to keep what is here. Opening it is not treated as time away, and nothing is granted.'}
         </p>
         <div className="dialog-actions">
           <button className="secondary-button" autoFocus onClick={() => eraRef.current?.close()}>
             Stay here
           </button>
-          <button className="primary-button" disabled={studyMode} onClick={loadPendingEra}>
+          <button className="primary-button" disabled={visit !== 'live'} onClick={loadPendingEra}>
             Open this era <Icon name="era" />
+          </button>
+        </div>
+      </dialog>
+      <dialog
+        ref={keepRef}
+        className="reset-dialog"
+        aria-labelledby="keep-title"
+        onClose={() => {
+          setPendingKeep(false);
+          keepTriggerRef.current?.focus();
+        }}
+      >
+        <p className="eyebrow">THIS SHORE</p>
+        <h2 id="keep-title">Keep this moment?</h2>
+        <p>
+          A snapshot of this live shore will sit on the shelf in the same named-era format. The pool continues
+          unchanged. The note is written from what the world has actually recorded.
+        </p>
+        <div className="dialog-actions">
+          <button className="secondary-button" autoFocus onClick={() => keepRef.current?.close()}>
+            Stay here
+          </button>
+          <button className="primary-button" onClick={keepPendingShore}>
+            Keep this shore <Icon name="era" />
+          </button>
+        </div>
+      </dialog>
+      <dialog
+        ref={removeRef}
+        className="reset-dialog"
+        aria-labelledby="remove-title"
+        onClose={() => {
+          setPendingRemoveId(null);
+          removeTriggerRef.current?.focus();
+        }}
+      >
+        <p className="eyebrow">A KEPT ERA</p>
+        <h2 id="remove-title">Remove {pendingRemove?.name ?? 'this era'}?</h2>
+        <p>This takes your kept snapshot off the shelf. Reviewed worlds stay. The live pool is unchanged.</p>
+        <div className="dialog-actions">
+          <button className="secondary-button" autoFocus onClick={() => removeRef.current?.close()}>
+            Stay here
+          </button>
+          <button className="primary-button" onClick={removePendingEra}>
+            Remove from the shelf
           </button>
         </div>
       </dialog>
@@ -2292,8 +2596,8 @@ export function App() {
       )}
       {!storageAvailable && (
         <div className="storage-notice">
-          {studyMode
-            ? 'Your personal pool is held in memory only. Return before closing or reloading; study snapshots do not contain your pool.'
+          {visit !== 'live'
+            ? 'Your personal pool is held in memory only. Return before closing or reloading; this visit does not contain your pool.'
             : 'Automatic saving is unavailable. Use “Pocket this world” to keep a snapshot.'}
         </div>
       )}
