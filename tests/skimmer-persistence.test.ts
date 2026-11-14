@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest';
 import historicalStudy from '../src/app/shower-study.json';
 import { restoreWorld, serializeWorld } from '../src/world/persistence';
 import { createWorld, stepWorld } from '../src/world/simulation';
+import { SPECIES_CATALOG } from '../src/world/species/catalog';
 import { baselineTraits } from '../src/world/traits';
-import type { Skimmer, World } from '../src/world/types';
+import { SCHEMA_REVISION, type Skimmer, type World } from '../src/world/types';
 
 function legacy(world: World, version: 1 | 2 | 3, revision = 2) {
   const {
@@ -87,6 +88,8 @@ function inhabited(): World {
     starvedFor: 0,
     emissionNextAllowedAt: 0,
     lastEmissionAt: null,
+    parentId: null,
+    nextBirthAt: 31,
     traits: baselineTraits(),
   };
   world.skimmers = [skimmer];
@@ -119,7 +122,7 @@ describe('prism snapshot revision', () => {
       expect(restored).not.toBeNull();
       expect(restored).toMatchObject({
         version: 3,
-        schemaRevision: 15,
+        schemaRevision: 16,
         skimmers: [],
         skimmerAdmissionAt: 123,
         elapsed: 123,
@@ -298,6 +301,21 @@ describe('prism snapshot revision', () => {
         w.skimmers[0].lastEmissionAt = -1;
       },
       (w) => {
+        delete w.skimmers[0].parentId;
+      },
+      (w) => {
+        w.skimmers[0].parentId = w.organisms[0].id;
+      },
+      (w) => {
+        w.skimmers[0].parentId = w.skimmers[0].id;
+      },
+      (w) => {
+        w.skimmers[0].nextBirthAt = w.elapsed;
+      },
+      (w) => {
+        w.skimmers[0].nextBirthAt = w.elapsed + 61;
+      },
+      (w) => {
         w.skimmers[0].id = w.currents[0].id;
       },
       (w) => {
@@ -308,7 +326,7 @@ describe('prism snapshot revision', () => {
         w.nextId += 7;
       },
       (w) => {
-        w.schemaRevision = 16;
+        w.schemaRevision = 17;
       },
     ];
     for (const change of changes) {
@@ -340,5 +358,67 @@ describe('prism snapshot revision', () => {
         expect(restoreWorld(JSON.stringify(world))).toBeNull();
       }
     }
+  });
+
+  it('migrates revision 15 skimmers with lineage fields and no gifted resources', () => {
+    const world = inhabited();
+    const held =
+      world.nests.reduce((sum, nest) => sum + nest.pigment, 0) +
+      world.sediment.reduce((sum, grain) => sum + grain.strength, 0) +
+      world.skimmers.reduce((sum, body) => sum + body.body + body.reserve, 0);
+    const previous = structuredClone(world) as Record<string, any>;
+    previous.schemaRevision = 15;
+    previous.skimmers = previous.skimmers.map(
+      ({ parentId: _parentId, nextBirthAt: _nextBirthAt, ...rest }: Record<string, unknown>) => rest,
+    );
+    const source = JSON.stringify(previous);
+    const restored = restoreWorld(source)!;
+    expect(restored).not.toBeNull();
+    expect(restored.schemaRevision).toBe(SCHEMA_REVISION);
+    expect(restored.skimmers).toHaveLength(1);
+    expect(restored.skimmers[0].parentId).toBeNull();
+    expect(restored.skimmers[0].nextBirthAt).toBe(
+      world.elapsed - world.skimmers[0].age + SPECIES_CATALOG.skimmer.maturityAge,
+    );
+    expect(restored.skimmers[0].traits).toEqual(baselineTraits());
+    expect(restored.randomState).toBe(world.randomState);
+    expect(restored.nextId).toBe(world.nextId);
+    expect(restored.sediment).toEqual(world.sediment);
+    expect(
+      restored.nests.reduce((sum, nest) => sum + nest.pigment, 0) +
+        restored.sediment.reduce((sum, grain) => sum + grain.strength, 0) +
+        restored.skimmers.reduce((sum, body) => sum + body.body + body.reserve, 0),
+    ).toBeCloseTo(held, 12);
+    expect(JSON.stringify(previous)).toBe(source);
+    expect(restoreWorld(serializeWorld(restored))).toEqual(restored);
+  });
+
+  it('keeps living skimmer traits through a round trip and continues the lineage', () => {
+    const world = inhabited();
+    world.skimmers[0].traits = { drive: 1.12, bulk: 0.88 };
+    const resumed = restoreWorld(serializeWorld(world))!;
+    expect(resumed).toEqual(world);
+    expect(resumed.skimmers[0].traits).toEqual({ drive: 1.12, bulk: 0.88 });
+    for (let tick = 0; tick < 60; tick++) {
+      stepWorld(world);
+      stepWorld(resumed);
+    }
+    expect(resumed).toEqual(world);
+  });
+
+  it('keeps a stout skimmer larger paid reserve and rejects overflow on a slighter frame', () => {
+    const world = inhabited();
+    world.skimmers[0].traits = { drive: 1, bulk: 1.3 };
+    world.skimmers[0].reserve = 1.2;
+    expect(restoreWorld(serializeWorld(world))).toEqual(world);
+    const overfull = structuredClone(world) as Record<string, any>;
+    overfull.skimmers[0].traits = { drive: 1, bulk: 0.7 };
+    expect(restoreWorld(JSON.stringify(overfull))).toBeNull();
+  });
+
+  it('rejects lineage fields left on a revision-15 skimmer rather than filling them', () => {
+    const previous = structuredClone(inhabited()) as Record<string, any>;
+    previous.schemaRevision = 15;
+    expect(restoreWorld(JSON.stringify(previous))).toBeNull();
   });
 });

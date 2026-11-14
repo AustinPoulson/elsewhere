@@ -80,6 +80,8 @@ function mixedMaximum(): World {
       starvedFor: 0,
       emissionNextAllowedAt: 0,
       lastEmissionAt: null,
+      parentId: null,
+      nextBirthAt: world.elapsed + 30,
       traits: baselineTraits(),
     });
     world.reedwells.push({
@@ -234,6 +236,7 @@ function stepStress(world: World, index: number): void {
   for (const body of world.skimmers) {
     body.age %= 479;
     body.starvedFor = 0;
+    body.nextBirthAt = world.elapsed - body.age + 30;
   }
   for (const body of world.reedwells) body.age %= 899;
   for (const body of world.rainbells) {

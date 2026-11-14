@@ -166,12 +166,12 @@ describe('season math', () => {
     world.elapsed = YEAR_SECONDS / 2;
     const parsed = JSON.parse(serializeWorld(world)) as { schemaRevision: number; season?: unknown };
     expect(parsed.schemaRevision).toBe(SCHEMA_REVISION);
-    expect(parsed.schemaRevision).toBe(15);
+    expect(parsed.schemaRevision).toBe(16);
     expect(parsed).not.toHaveProperty('season');
     const restored = restoreWorld(serializeWorld(world));
     expect(restored).not.toBeNull();
     expect(seasonName(restored!.elapsed)).toBe('autumn');
-    expect(restoreWorld(serializeWorld(createWorld(1)))?.schemaRevision).toBe(15);
+    expect(restoreWorld(serializeWorld(createWorld(1)))?.schemaRevision).toBe(16);
   });
 });
 

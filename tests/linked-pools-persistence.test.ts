@@ -71,7 +71,7 @@ describe('linked habitat snapshot revision', () => {
         w.schemaRevision = 12;
       },
       (w) => {
-        w.schemaRevision = 16;
+        w.schemaRevision = 17;
       },
       (w) => {
         (w.pools as { x: number }[])[1].x = 900;

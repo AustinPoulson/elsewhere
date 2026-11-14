@@ -90,7 +90,7 @@ describe('glass limpet snapshot revision', () => {
     const migrated = restoreWorld(serialized)!;
     expect(migrated).not.toBeNull();
     expect(migrated).toMatchObject({
-      schemaRevision: 15,
+      schemaRevision: 16,
       lastSeenAt: null,
       glassLimpets: [],
       cargoMites: [],

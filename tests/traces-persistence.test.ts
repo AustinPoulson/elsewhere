@@ -182,7 +182,7 @@ describe('away-trace snapshot revision', () => {
         w.schemaRevision = 14;
       },
       (w) => {
-        w.schemaRevision = 16;
+        w.schemaRevision = 17;
       },
       (w) => {
         w.awayTraces = Array.from({ length: TRACE_MARK_CAP + 1 }, () => sampleTrace(0));

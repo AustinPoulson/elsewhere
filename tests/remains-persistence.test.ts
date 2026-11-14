@@ -57,7 +57,7 @@ describe('remains snapshot revision', () => {
     const migrated = restoreWorld(source)!;
     expect(migrated).not.toBeNull();
     expect(migrated).toMatchObject({
-      schemaRevision: 15,
+      schemaRevision: 16,
       lastSeenAt: null,
       remains: [],
       marlgrubs: [],
@@ -99,7 +99,7 @@ describe('remains snapshot revision', () => {
         w.schemaRevision = 9;
       },
       (w) => {
-        w.schemaRevision = 16;
+        w.schemaRevision = 17;
       },
       (w) => {
         w.remains[0].pigment = 2.1;

@@ -42,6 +42,8 @@ function inhabited(): World {
       starvedFor: 0,
       lastEmissionAt: null,
       emissionNextAllowedAt: 0,
+      parentId: null,
+      nextBirthAt: 112,
       traits: baselineTraits(),
     },
   ];
@@ -131,6 +133,9 @@ function revision4(world: World): Record<string, any> {
     ...previous
   } = structuredClone(world);
   const result: Record<string, any> = { ...previous, schemaRevision: 4 };
+  result.skimmers = result.skimmers.map(
+    ({ parentId: _parentId, nextBirthAt: _nextBirthAt, ...rest }: Record<string, unknown>) => rest,
+  );
   for (const key of [
     ...rainbellLedgerKeys,
     ...siltstitcherLedgerKeys,
@@ -219,7 +224,7 @@ describe('rainbell snapshot revision', () => {
       skimmerCandidateAfterId: _skimmerCandidate,
       ...oldFields
     } = restored;
-    expect(restored.schemaRevision).toBe(15);
+    expect(restored.schemaRevision).toBe(16);
     expect(rainbells).toEqual([]);
     expect(rainbellAdmissionAt).toBe(source.elapsed);
     expect(rainbellCandidateAfterId).toBe(0);
@@ -244,7 +249,12 @@ describe('rainbell snapshot revision', () => {
       expect(oldLedger[key]).toBe(0);
       delete oldLedger[key];
     }
-    expect({ ...oldFields, schemaRevision: 4, ecologyLedger: oldLedger }).toEqual(source);
+    expect({
+      ...oldFields,
+      schemaRevision: 4,
+      ecologyLedger: oldLedger,
+      skimmers: oldFields.skimmers.map(({ parentId: _parentId, nextBirthAt: _nextBirthAt, ...rest }) => rest),
+    }).toEqual(source);
     expect(JSON.stringify(source)).toBe(before);
     expect(restoreWorld(serializeWorld(restored))).toEqual(restored);
   });
@@ -262,7 +272,7 @@ describe('rainbell snapshot revision', () => {
       const before = JSON.stringify(source);
       const restored = restoreWorld(before)!;
       expect(restored).toMatchObject({
-        schemaRevision: 15,
+        schemaRevision: 16,
         rainbells: [],
         rainbellAdmissionAt: source.elapsed,
         rainbellCandidateAfterId: 0,
@@ -436,7 +446,7 @@ describe('rainbell snapshot revision', () => {
         w.nextId += 5;
       },
       (w) => {
-        w.schemaRevision = 16;
+        w.schemaRevision = 17;
       },
     ];
     for (const target of ['feedTargetSedimentId', 'pumpTargetSedimentId']) {

@@ -503,6 +503,9 @@ describe('rainbell polyp paid sediment pump', () => {
     expect(world.skimmers).toHaveLength(6);
     expect(world.rainbells).toHaveLength(4);
     expect(activeNewTypePopulation(world)).toBe(16);
+    for (const body of world.skimmers) {
+      body.nextBirthAt = world.elapsed - body.age + SPECIES_CATALOG.skimmer.maturityAge;
+    }
     for (let i = 0; i < 3; i++)
       expect(applyCurrent(world, { x: 640, y: 500 }, { x: 800, y: 500 }).status).toBe('applied');
     const restored = restoreWorld(serializeWorld(world))!;
