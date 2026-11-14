@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { addLight, createWorld, stepWorld } from '../src/world/simulation';
 import { restoreWorld, serializeWorld } from '../src/world/persistence';
-import { admitSkimmer, updateSkimmers } from '../src/world/species/skimmer';
-import { baselineTraits } from '../src/world/traits';
+import { SPECIES_CATALOG } from '../src/world/species/catalog';
+import { admitSkimmer, skimmerReserveCapacity, skimmerSeekReach, updateSkimmers } from '../src/world/species/skimmer';
+import { baselineTraits, traitMobility, TRAIT_MAX, TRAIT_MIN } from '../src/world/traits';
 import { FIXED_STEP, LIMITS, isInPool, type Skimmer, type World } from '../src/world/types';
 import { confinePosition } from '../src/world/geometry';
 import { applyCurrent } from '../src/world/actions/current';
@@ -123,6 +124,8 @@ describe('autonomous prism skimmer', () => {
       starvedFor: 0,
       emissionNextAllowedAt: 0,
       lastEmissionAt: null,
+      parentId: null,
+      nextBirthAt: 30,
       traits: baselineTraits(),
     });
     world.tick = 6;
@@ -292,9 +295,8 @@ describe('autonomous prism skimmer', () => {
     control.nests[0].pigment = 0;
     advance(world, 1200);
     advance(control, 1200);
-    expect(world.skimmers).toHaveLength(0);
-    expect(control.skimmers).toHaveLength(0);
     expect(world.skimmers.length).toBeLessThanOrEqual(6);
+    expect(control.skimmers).toHaveLength(0);
     expect(world.sediment.length).toBeLessThanOrEqual(600);
     expect(world.lights.length).toBeLessThanOrEqual(32);
     expect(
@@ -336,7 +338,10 @@ describe('autonomous prism skimmer', () => {
         world.skimmers.length > 6 ||
         world.lights.length > 32 ||
         world.sediment.length > 600 ||
-        world.skimmers.some((body) => !isInPool(body.x, body.y, 11) || body.reserve < 0 || body.reserve > 1)
+        world.skimmers.some(
+          (body) =>
+            !isInPool(body.x, body.y, 11) || body.reserve < 0 || body.reserve > skimmerReserveCapacity(body.traits),
+        )
       )
         throw new Error('Unbounded skimmer habitat');
       if (tick % 1800 === 0)
@@ -351,7 +356,7 @@ describe('autonomous prism skimmer', () => {
     expect(world.consumed).toBeGreaterThan(0);
     expect(control.consumed).toBe(0);
     expect(control.ecologyLedger.emittedLight).toBe(0);
-    expect(world.skimmers).toHaveLength(0);
+    expect(world.skimmers.length).toBeLessThanOrEqual(6);
     expect(world.ecologyLedger.emittedLight).toBeLessThanOrEqual((1.61 * 1.5) / 0.97);
     expect(world.consumed * 0.02).toBeLessThanOrEqual(world.ecologyLedger.pigmentConverted * 0.03 + 1e-10);
     expect(snapshots).toHaveLength(20);
@@ -403,6 +408,9 @@ describe('autonomous prism skimmer', () => {
       world.tick = Math.round(world.elapsed / FIXED_STEP);
       updateSkimmers(world, FIXED_STEP);
     }
+    for (const body of world.skimmers) {
+      body.nextBirthAt = world.elapsed - body.age + SPECIES_CATALOG.skimmer.maturityAge;
+    }
     expect(applyCurrent(world, { x: 640, y: 500 }, { x: 800, y: 500 }).status).toBe('applied');
     expect(applyCurrent(world, { x: 720, y: 420 }, { x: 720, y: 580 }).status).toBe('applied');
     expect(applyCurrent(world, { x: 650, y: 450 }, { x: 790, y: 550 }).status).toBe('applied');
@@ -432,7 +440,12 @@ describe('autonomous prism skimmer', () => {
         world.sediment.length > 600
       )
         throw new Error('Exceeded aggregate ecosystem budgets');
-      if (world.skimmers.some((body) => body.reserve < 0 || body.reserve > 1 || !isInPool(body.x, body.y, 11)))
+      if (
+        world.skimmers.some(
+          (body) =>
+            body.reserve < 0 || body.reserve > skimmerReserveCapacity(body.traits) || !isInPool(body.x, body.y, 11),
+        )
+      )
         throw new Error('Invalid bounded skimmer');
       if (tick % 1800 === 0) {
         expect(restored).toEqual(world);
@@ -455,4 +468,154 @@ describe('autonomous prism skimmer', () => {
       `Skimmer initial-max-budget profile (42 lucents/6 skimmers/8 grazers/16 nests/3 currents/600 grains/32 lights): 2 x 36,000 fixed steps, 20 exact trajectory samples, ${wallMs.toFixed(1)} ms total; ${(wallMs / 72000).toFixed(4)} ms/whole-world step.`,
     );
   }, 60_000);
+});
+
+describe('skimmer inheritance', () => {
+  it('gives founders baseline traits and spends parent reserve for a mutated child', () => {
+    const { world, skimmer: parent } = born();
+    const random = world.randomState;
+    expect(parent.traits).toEqual(baselineTraits());
+    expect(parent.parentId).toBeNull();
+    parent.age = 29.9;
+    parent.reserve = 0.5;
+    world.elapsed = 30;
+    world.tick = 1;
+    const beforeReserve = parent.reserve;
+    const beforePigment = pigment(world);
+    updateSkimmers(world, 0.1);
+    expect(world.skimmers).toHaveLength(2);
+    const child = world.skimmers[1];
+    expect(child.parentId).toBe(parent.id);
+    expect(child.reserve).toBe(SPECIES_CATALOG.skimmer.childReserve);
+    expect(child.body).toBe(SPECIES_CATALOG.skimmer.childBody);
+    expect(parent.reserve).toBeCloseTo(
+      beforeReserve -
+        SPECIES_CATALOG.skimmer.childCost -
+        SPECIES_CATALOG.skimmer.maintenanceRate * 0.1 * parent.traits.drive,
+      8,
+    );
+    expect(pigment(world)).toBeCloseTo(
+      beforePigment - SPECIES_CATALOG.skimmer.maintenanceRate * 0.1 * parent.traits.drive,
+      8,
+    );
+    expect(child.traits).not.toEqual(parent.traits);
+    expect(child.traits.drive).toBeGreaterThanOrEqual(TRAIT_MIN);
+    expect(child.traits.drive).toBeLessThanOrEqual(TRAIT_MAX);
+    expect(child.traits.bulk).toBeGreaterThanOrEqual(TRAIT_MIN);
+    expect(child.traits.bulk).toBeLessThanOrEqual(TRAIT_MAX);
+    expect(world.randomState).not.toBe(random);
+    expect(parent.nextBirthAt).toBe(world.elapsed + SPECIES_CATALOG.skimmer.breedingRest);
+  });
+
+  it('clamps inherited traits and does not draw the PRNG on a refused birth', () => {
+    const { world, skimmer: parent } = born();
+    parent.traits = { drive: TRAIT_MAX, bulk: TRAIT_MIN };
+    parent.age = 29.9;
+    parent.reserve = 0.5;
+    world.elapsed = 30;
+    world.tick = 1;
+    updateSkimmers(world, 0.1);
+    const child = world.skimmers[1];
+    expect(child.traits.drive).toBeGreaterThanOrEqual(TRAIT_MIN);
+    expect(child.traits.drive).toBeLessThanOrEqual(TRAIT_MAX);
+    expect(child.traits.bulk).toBeGreaterThanOrEqual(TRAIT_MIN);
+    expect(child.traits.bulk).toBeLessThanOrEqual(TRAIT_MAX);
+    const random = world.randomState;
+    const nextId = world.nextId;
+    parent.reserve = 0.5;
+    parent.nextBirthAt = world.elapsed;
+    updateSkimmers(world, 0.1);
+    expect(world.skimmers).toHaveLength(2);
+    expect(world.nextId).toBe(nextId);
+    expect(world.randomState).toBe(random);
+    parent.reserve = 0.2;
+    parent.nextBirthAt = world.elapsed;
+    world.tick += 6;
+    world.elapsed += 6;
+    const still = world.randomState;
+    updateSkimmers(world, 0.1);
+    expect(world.skimmers).toHaveLength(2);
+    expect(world.randomState).toBe(still);
+  });
+
+  it('keeps the same child traits for the same seed', () => {
+    function childOf(): { traits: { drive: number; bulk: number }; randomState: number } {
+      const { world, skimmer: parent } = born();
+      parent.age = 29.9;
+      parent.reserve = 0.5;
+      world.elapsed = 30;
+      world.tick = 1;
+      updateSkimmers(world, 0.1);
+      return { traits: world.skimmers[1].traits, randomState: world.randomState };
+    }
+    expect(childOf()).toEqual(childOf());
+  });
+
+  it('makes higher drive both hungrier and costlier, so neither pole is free', () => {
+    const keen = born();
+    const spare = born();
+    const hungry = keen.skimmer;
+    const thrifty = spare.skimmer;
+    hungry.traits = { drive: TRAIT_MAX, bulk: 1 };
+    thrifty.traits = { drive: TRAIT_MIN, bulk: 1 };
+    hungry.age = 10;
+    thrifty.age = 10;
+    const keenFood = grain(keen.world, hungry.x, hungry.y);
+    const spareFood = grain(spare.world, thrifty.x, thrifty.y);
+    keen.world.tick = (6 - (hungry.id % 6)) % 6;
+    spare.world.tick = (6 - (thrifty.id % 6)) % 6;
+    updateSkimmers(keen.world, 1);
+    updateSkimmers(spare.world, 1);
+    expect(keen.world.ecologyLedger.maintenancePigment).toBeGreaterThan(spare.world.ecologyLedger.maintenancePigment);
+    expect(keenFood.strength).toBeLessThan(spareFood.strength);
+    expect(hungry.reserve).toBeGreaterThan(thrifty.reserve);
+  });
+
+  it('lets a stouter skimmer hold more gathered pigment while reaching and traveling less far', () => {
+    const stout = born();
+    const slight = born();
+    const heavy = stout.skimmer;
+    const light = slight.skimmer;
+    heavy.traits = { drive: 1, bulk: TRAIT_MAX };
+    light.traits = { drive: 1, bulk: TRAIT_MIN };
+    expect(skimmerSeekReach(heavy.traits)).toBeLessThan(skimmerSeekReach(light.traits));
+    expect(traitMobility(heavy.traits)).toBeLessThan(traitMobility(light.traits));
+    expect(skimmerReserveCapacity(heavy.traits)).toBeGreaterThan(skimmerReserveCapacity(light.traits));
+    heavy.reserve = 0.1;
+    light.reserve = 0.1;
+    grain(stout.world, heavy.x, heavy.y, 1);
+    grain(stout.world, heavy.x, heavy.y, 1);
+    grain(slight.world, light.x, light.y, 1);
+    grain(slight.world, light.x, light.y, 1);
+    heavy.age = 10;
+    light.age = 10;
+    function fillLights(world: World) {
+      world.lights = Array.from({ length: LIMITS.lights }, (_, index) => ({
+        id: world.nextId + index,
+        x: 720,
+        y: 500,
+        energy: 1,
+        initialEnergy: 1,
+        age: 0,
+      }));
+      world.nextId += LIMITS.lights;
+    }
+    fillLights(stout.world);
+    fillLights(slight.world);
+    for (let step = 0; step < 80; step++) {
+      stout.world.tick++;
+      slight.world.tick++;
+      updateSkimmers(stout.world, 1);
+      updateSkimmers(slight.world, 1);
+    }
+    expect(heavy.reserve).toBeGreaterThan(light.reserve);
+    expect(heavy.reserve).toBeCloseTo(
+      skimmerReserveCapacity(heavy.traits) - SPECIES_CATALOG.skimmer.maintenanceRate,
+      8,
+    );
+    expect(light.reserve).toBeCloseTo(
+      skimmerReserveCapacity(light.traits) - SPECIES_CATALOG.skimmer.maintenanceRate,
+      8,
+    );
+  });
 });

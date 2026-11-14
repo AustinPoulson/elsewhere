@@ -31,6 +31,7 @@ import { MINERAL_SEAM } from './environment/mineral-seam';
 import { containingPool, isAuthoredHabitat, linkedHabitat, shoreRho } from './habitat';
 import { initializeGrazers } from './simulation';
 import { cargoMiteReserveCapacity } from './species/cargo-mite';
+import { skimmerReserveCapacity } from './species/skimmer';
 import { isFossilSource, isRemainSource } from './species/fossils';
 import { baselineTraits, traitMobility, TRAIT_MAX, TRAIT_MIN } from './traits';
 import { RAIN_CALL_COOLDOWN } from './weather';
@@ -169,7 +170,23 @@ function current(value: unknown, elapsed: number): boolean {
   );
 }
 
-function skimmer(value: unknown, elapsed: number, nextId: number, withTraits = false): boolean {
+function skimmer(value: unknown, elapsed: number, nextId: number, withTraits = false, withLineage = false): boolean {
+  if (withTraits && !traits(record(value) ? value.traits : undefined)) return false;
+  const policy = SPECIES_CATALOG.skimmer;
+  const reserveCap = withTraits ? skimmerReserveCapacity((value as { traits: Traits }).traits) : policy.reserveCapacity;
+  const birthAt = elapsed - (record(value) && typeof value.age === 'number' ? value.age : 0);
+  if (withLineage) {
+    if (
+      !record(value) ||
+      (value.parentId !== null && !integer(value.parentId, 1, (value.id as number) - 1)) ||
+      !range(value.nextBirthAt, 0, Math.min(MAX_NUMBER, elapsed + policy.breedingRest)) ||
+      (value.nextBirthAt as number) < birthAt + policy.maturityAge - 1e-6 ||
+      (typeof value.age === 'number' &&
+        value.age < policy.maturityAge - 1e-6 &&
+        Math.abs((value.nextBirthAt as number) - (birthAt + policy.maturityAge)) > 1e-6)
+    )
+      return false;
+  } else if (record(value) && ('parentId' in value || 'nextBirthAt' in value)) return false;
   return (
     point(value, 11) &&
     integer(value.id, 1) &&
@@ -180,7 +197,7 @@ function skimmer(value: unknown, elapsed: number, nextId: number, withTraits = f
     range(value.vy, -80, 80) &&
     range(value.hue, 0, 360) &&
     value.hue < 360 &&
-    range(value.reserve, 0, 1) &&
+    range(value.reserve, 0, reserveCap) &&
     range(value.age, 0, MAX_NUMBER) &&
     range(value.phase, 0, Math.PI * 2) &&
     integer(value.homeNestId, 1) &&
@@ -494,7 +511,12 @@ type Revision6Ledger = Omit<Revision7Ledger, (typeof GLASS_LIMPET_LEDGER_KEYS)[n
 type RainbellLedger = Omit<Revision6Ledger, (typeof SILTSTITCHER_LEDGER_KEYS)[number]>;
 type ReedwellLedger = Omit<RainbellLedger, (typeof RAINBELL_LEDGER_KEYS)[number]>;
 type PrismLedger = Omit<ReedwellLedger, (typeof REEDWELL_LEDGER_KEYS)[number]>;
-type Revision14World = Omit<World, 'schemaRevision' | 'awayTraces' | 'shoreMemory'> & {
+type Revision15Skimmer = Omit<Skimmer, 'parentId' | 'nextBirthAt'>;
+type Revision15World = Omit<World, 'schemaRevision' | 'skimmers'> & {
+  schemaRevision: 15;
+  skimmers: Revision15Skimmer[];
+};
+type Revision14World = Omit<Revision15World, 'schemaRevision' | 'awayTraces' | 'shoreMemory'> & {
   schemaRevision: 14;
 };
 type Revision13World = Omit<Revision14World, 'schemaRevision' | 'seamAccrued' | 'ecologyLedger'> & {
@@ -729,12 +751,28 @@ function migrateRevision13To14(previous: Revision13World): Revision14World {
   };
 }
 
-function migrateRevision14To15(previous: Revision14World): World {
+function migrateRevision14To15(previous: Revision14World): Revision15World {
   return {
     ...previous,
     schemaRevision: 15,
     awayTraces: [],
     shoreMemory: [],
+  };
+}
+
+function withSkimmerLineage(skimmer: Revision15Skimmer, elapsed: number): Skimmer {
+  return {
+    ...skimmer,
+    parentId: null,
+    nextBirthAt: elapsed - skimmer.age + SPECIES_CATALOG.skimmer.maturityAge,
+  };
+}
+
+function migrateRevision15To16(previous: Revision15World): World {
+  return {
+    ...previous,
+    schemaRevision: 16,
+    skimmers: previous.skimmers.map((skimmer) => withSkimmerLineage(skimmer, previous.elapsed)),
   };
 }
 
@@ -765,12 +803,12 @@ export function restoreWorld(input: string): World | null {
 
   if (
     (parsed.version === 3 &&
-      (!integer(parsed.schemaRevision, 1, 15) || !weatherCall(parsed.weatherCall, parsed.elapsed))) ||
+      (!integer(parsed.schemaRevision, 1, 16) || !weatherCall(parsed.weatherCall, parsed.elapsed))) ||
     (parsed.version !== 3 && ('schemaRevision' in parsed || 'weatherCall' in parsed || 'currents' in parsed))
   )
     return null;
   let currents: Current[] = [];
-  if (parsed.version === 3 && integer(parsed.schemaRevision, 2, 15)) {
+  if (parsed.version === 3 && integer(parsed.schemaRevision, 2, 16)) {
     if (
       !Array.isArray(parsed.currents) ||
       parsed.currents.length > MAX_CURRENTS ||
@@ -780,7 +818,8 @@ export function restoreWorld(input: string): World | null {
     currents = parsed.currents as Current[];
   } else if ('currents' in parsed) return null;
 
-  const tracesRevision = parsed.version === 3 && parsed.schemaRevision === 15;
+  const lineageRevision = parsed.version === 3 && parsed.schemaRevision === 16;
+  const tracesRevision = parsed.version === 3 && (parsed.schemaRevision === 15 || lineageRevision);
   const seamRevision = parsed.version === 3 && (parsed.schemaRevision === 14 || tracesRevision);
   const linkedRevision = parsed.version === 3 && (parsed.schemaRevision === 13 || seamRevision);
   const fossilsRevision = parsed.version === 3 && (parsed.schemaRevision === 12 || linkedRevision);
@@ -814,7 +853,7 @@ export function restoreWorld(input: string): World | null {
       parsed.skimmers.length > SKIMMER_CAP ||
       parsed.skimmers.length > NEW_TYPE_POPULATION_CAP ||
       !parsed.skimmers.every((entry) =>
-        skimmer(entry, parsed.elapsed as number, parsed.nextId as number, traitRevision),
+        skimmer(entry, parsed.elapsed as number, parsed.nextId as number, traitRevision, lineageRevision),
       ) ||
       !range(parsed.skimmerAdmissionAt, 0, Math.min(MAX_NUMBER, parsed.elapsed + 60)) ||
       !ledger(
@@ -1137,6 +1176,7 @@ export function restoreWorld(input: string): World | null {
     return null;
   const grazerIds = new Set(grazers.map((entry) => entry.id));
   const miteIds = new Set(cargoMites.map((entry) => entry.id));
+  const skimmerIds = new Set(skimmers.map((entry) => entry.id));
   if (
     cargoMites.some(
       (entry) =>
@@ -1144,6 +1184,11 @@ export function restoreWorld(input: string): World | null {
         (entry.targetHostId !== null && ids.has(entry.targetHostId) && !grazerIds.has(entry.targetHostId)) ||
         (entry.parentId !== null && ids.has(entry.parentId) && !miteIds.has(entry.parentId)),
     )
+  )
+    return null;
+  if (
+    lineageRevision &&
+    skimmers.some((entry) => entry.parentId !== null && ids.has(entry.parentId) && !skimmerIds.has(entry.parentId))
   )
     return null;
   const miteHostCounts = new Map<number, number>();
@@ -1334,7 +1379,7 @@ export function restoreWorld(input: string): World | null {
           ecologyLedger: { ...(parsed.ecologyLedger as EcologyLedger) },
         }
       : migrateRevision13To14(revision13);
-    return tracesRevision
+    const revision15: Revision15World = tracesRevision
       ? {
           ...revision14,
           schemaRevision: 15,
@@ -1342,21 +1387,30 @@ export function restoreWorld(input: string): World | null {
           shoreMemory: shoreMemoryEntries,
         }
       : migrateRevision14To15(revision14);
+    return lineageRevision
+      ? {
+          ...revision15,
+          schemaRevision: 16,
+          skimmers,
+        }
+      : migrateRevision15To16(revision15);
   }
   let legacy: LegacyWorld = { ...ecology, version: parsed.version };
   if (legacy.version === 1) legacy = migrateV1ToV2(legacy);
-  return migrateRevision14To15(
-    migrateRevision13To14(
-      migrateRevision12To13(
-        migrateRevision11To12(
-          migrateRevision10To11(
-            migrateRevision9To10(
-              migrateRevision8To9(
-                migrateRevision7To8(
-                  migrateRevision6To7(
-                    migrateRevision5To6(
-                      migrateRevision4To5(
-                        migrateRevision3To4(migrateRevision2To3(migrateRevision1To2(migrateV2ToV3(legacy)))),
+  return migrateRevision15To16(
+    migrateRevision14To15(
+      migrateRevision13To14(
+        migrateRevision12To13(
+          migrateRevision11To12(
+            migrateRevision10To11(
+              migrateRevision9To10(
+                migrateRevision8To9(
+                  migrateRevision7To8(
+                    migrateRevision6To7(
+                      migrateRevision5To6(
+                        migrateRevision4To5(
+                          migrateRevision3To4(migrateRevision2To3(migrateRevision1To2(migrateV2ToV3(legacy)))),
+                        ),
                       ),
                     ),
                   ),

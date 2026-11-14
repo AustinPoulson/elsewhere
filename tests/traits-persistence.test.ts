@@ -158,7 +158,7 @@ describe('heritable trait snapshot revision', () => {
         delete w.ecologyLedger.ambientHarvested;
       },
       (w) => {
-        w.schemaRevision = 16;
+        w.schemaRevision = 17;
       },
       (w) => {
         w.schemaRevision = 8;

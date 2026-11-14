@@ -46,7 +46,7 @@ function memoryStorage(entries = new Map<string, string>()) {
 
 describe('visitor kept eras', () => {
   it('keeps the live snapshot at revision 15 and stores kept eras beside it', () => {
-    expect(SCHEMA_REVISION).toBe(15);
+    expect(SCHEMA_REVISION).toBe(16);
     expect(namedEras()).toHaveLength(3);
     expect(namedEras().length).toBeLessThanOrEqual(MAX_NAMED_ERAS);
     expect(eraCatalogBytes()).toBeLessThanOrEqual(MAX_ERA_CATALOG_BYTES);

@@ -402,6 +402,9 @@ describe('rain-rooted daylight reedwell', () => {
     }
     expect(world.reedwells).toHaveLength(6);
     expect(world.skimmers).toHaveLength(6);
+    for (const body of world.skimmers) {
+      body.nextBirthAt = world.elapsed - body.age + SPECIES_CATALOG.skimmer.maturityAge;
+    }
     expect(applyCurrent(world, { x: 640, y: 500 }, { x: 800, y: 500 }).status).toBe('applied');
     expect(applyCurrent(world, { x: 720, y: 420 }, { x: 720, y: 580 }).status).toBe('applied');
     expect(applyCurrent(world, { x: 650, y: 450 }, { x: 790, y: 550 }).status).toBe('applied');

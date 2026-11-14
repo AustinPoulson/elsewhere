@@ -28,6 +28,9 @@ Eventually: several pools linked by slow currents, and the world keeps living wh
 - [x] **A visitor's own named eras** — Automated capture of the live pool onto the shelf, using the existing `elsewhere-era` format, the 8-era / 4 MB catalog, and the ordinary importer. Opening a kept era restores that frozen moment without gifts, catch-up, or return marks. _Success: a visitor can keep a reviewed snapshot of their own shore; the live world is unchanged; extinction is still allowed._
   - [x] **Keep a live shore** — first slice. A deliberate Keep this shore action (keyboard-accessible, works in portrait) captures the live pool in `elsewhere-era` format with a short field note written from recorded state and events, not hand-authored lore. Kept eras persist in a separate local shelf (`elsewhere-kept-eras` revision 1; a raw array of era files migrates) and count toward the existing 8-era / 4 MB catalog. The shelf says when it is full; a visitor can remove one of their own kept eras, not the three reviewed ones. Opening a kept era uses the ordinary snapshot importer, then holds the live pool aside so returning continues it unchanged: no gifts, catch-up, return marks, shore memory, free pigment, energy, or organisms. Keeping does not touch the live world, its save, or the world PRNG. Schema revision stays 15. _Success: a visitor can keep a snapshot of their own shore; harness ledgers for seeds 1 and 42 match main._
 
+- [x] **Life that changes on its own** — Heritable drift beyond cargo mites. When a body is born from a parent, it inherits drive and bulk through the existing mutation helper, with small bounded variation paid from the parent's reserves. Founders and opening worlds stay at baseline. Extinction is still allowed.
+  - [x] **Skimmer inheritance** — first slice. A mature skimmer can pay 0.3 reserve for a child (body 0.2 / reserve 0.1) that inherits mutated drive and bulk from `mutateTraits`. Drive raises sediment intake and maintenance together. Bulk raises paid reserve capacity and cuts seek reach and mobility. Nest-funded founders stay at baseline and do not draw the PRNG. Schema revision 16; revision-15 skimmers receive `parentId: null` and a first-birth deadline from their age, keep their existing traits, and receive no pigment, energy, or organisms. _Success: a 30-day harness on seeds 1 and 42 shows skimmer trait drift; the child is paid from the parent; remains and resource ledgers balance; extinction is still allowed._
+
 ## Standing Invariants
 
 These hold across all changes:
@@ -252,3 +255,23 @@ _This section records surprising population dynamics, extinctions, or runaway re
 | Loose pigment (inlet)                       | 1.33 (0.75)                 | 1.99 (0.78)                 |
 
 **What this slice does not do:** A kept era is local to this browser. Opening one does not make it the live save; returning restores the held shore. Visitor-written titles, comparing two eras, and replay tools beyond that visit remain later work. Extinction is still allowed.
+
+### Skimmer drift (seeds 1 and 42)
+
+**Parent-paid births, not a gift:** Nest-funded founders still open at drive/bulk 1 and do not draw the PRNG. A mature skimmer can pay 0.3 of its own reserve for a child (body 0.2 / reserve 0.1) that inherits through `mutateTraits`. Drive raises sediment intake and maintenance together. Bulk raises paid reserve capacity and cuts seek reach and mobility. Schema revision 16; revision-15 skimmers receive lineage fields and keep their traits. No pigment, energy, or organisms are granted.
+
+**Turnover roughly doubles, and traits move during the run:** Net census births are still per-step population change, so same-tick opposite events cancel. Seed 1 went 94 / 91 versus 42 / 40 on main; seed 42 went 117 / 114 versus 57 / 54. Mid-run samples left baseline: seed 1 at 1m 48s averaged drive 1.016 / bulk 1.022, and at 95m 0.982 / 0.990; seed 42 at 1m 48s averaged 0.978 / 0.975, and at 79m 0.985 / 0.998. The day-30 living set on both seeds sat at drive 1.000 / bulk 1.000 — recent nest founders after turnover, not a frozen lineage. Seed 1 even left two skimmer fossils from an empty tick, then re-founded.
+
+**Ledgers still balance, and extinction is still allowed:** Remains and fossils conserved on both seeds. Reedwells and rainbells still boom-bust on seed 42. Seed 1 lost siltstitchers at 129m and glass limpets at 147m (earlier than main). Seed 42 lost glass limpets at 104m after they had survived on main, and cargo mites emptied at 175m. The cap of six held.
+
+|                                             | Seed 1 main                 | Seed 1 skimmer drift            | Seed 42 main                | Seed 42 skimmer drift       |
+| ------------------------------------------- | --------------------------- | ------------------------------- | --------------------------- | --------------------------- |
+| Skimmers at day 30 (births / deaths)        | 2 (42 / 40)                 | 3 (94 / 91)                     | 3 (57 / 54)                 | 3 (117 / 114)               |
+| Mean skimmer drive / bulk at day 30         | 1.000 / 1.000               | 1.000 / 1.000                   | 1.000 / 1.000               | 1.000 / 1.000               |
+| Ambient harvest                             | 7442.42                     | 7439.11                         | 7449.66                     | 7452.80                     |
+| Remains created = held + consumed + decayed | 26.110 = 0 + 3.640 + 22.470 | 28.961 = 0.153 + 2.021 + 26.787 | 26.911 = 0 + 4.805 + 22.105 | 23.573 = 0 + 1.656 + 21.917 |
+| Fossils formed = held                       | 1.682                       | 1.146                           | 1.546                       | 1.494                       |
+| Nested pigment                              | 0.81                        | 0.87                            | 1.44                        | 2.19                        |
+| Loose pigment (inlet)                       | 1.33 (0.75)                 | 0.58 (0.58)                     | 1.99 (0.78)                 | 1.43 (1.13)                 |
+
+**What this slice does not do:** Lucents, grazers, reedwells, rainbells, siltstitchers, glass limpets, and marlgrubs still do not inherit. Their founders stay at baseline. Extinction is still allowed.

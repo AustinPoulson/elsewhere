@@ -1659,11 +1659,12 @@ export function App() {
                     <h3>The prism skimmer</h3>
                     <p>
                       A well-fed nest can give rise to a translucent diamond. Its small body and first meal come from
-                      stored color. It competes with grazers for loose pigment, then spends its reserve to release a
-                      little light that lucents can eat. A charged skimmer holds its color when the pool is full of
-                      light. None may appear if nests are empty or six already swim here. Each lives for at most eight
-                      world minutes; a minute without any reserve ends its life sooner, returning what remains to the
-                      pool. Pause holds its life, too.
+                      stored color. A grown skimmer can pay from its own reserve for a young one, whose appetite and
+                      frame may drift a little from its parent. It competes with grazers for loose pigment, then spends
+                      its reserve to release a little light that lucents can eat. A charged skimmer holds its color when
+                      the pool is full of light. None may appear if nests are empty or six already swim here. Each lives
+                      for at most eight world minutes; a minute without any reserve ends its life sooner, returning what
+                      remains to the pool. Pause holds its life, too.
                     </p>
                   </div>
                 </div>
@@ -2230,7 +2231,7 @@ export function App() {
                       {selected.species === 'grazer'
                         ? 'Its shell carries the color of its last finds. Watch the woven nest fill as it returns.'
                         : selected.species === 'skimmer'
-                          ? 'Its steady glow shows stored color. A bright diamond outline marks a gift of light. Its body and remaining reserve return to the pool when this short life ends.'
+                          ? 'Its steady glow shows stored color. A bright diamond outline marks a gift of light. A grown parent pays color from its own reserve for a young skimmer, whose appetite and frame may drift a little from its parent. A stouter frame holds more of that color but does not reach as far. Both return remaining color when their short lives end.'
                           : selected.species === 'reedwell'
                             ? 'Daylight is an external source of energy. Its leaves brighten as they store it; a pale ring marks ordinary feeding light released into the water. Its root returns to pigment after fifteen world minutes.'
                             : selected.species === 'rainbell'

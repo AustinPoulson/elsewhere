@@ -40,6 +40,8 @@ function inhabited(): World {
       starvedFor: 0,
       lastEmissionAt: null,
       emissionNextAllowedAt: 0,
+      parentId: null,
+      nextBirthAt: 112,
       traits: baselineTraits(),
     },
   ];
@@ -152,6 +154,9 @@ function previous(world: World): Record<string, any> {
     ...old
   } = structuredClone(world);
   const result: Record<string, any> = { ...old, schemaRevision: 5 };
+  result.skimmers = result.skimmers.map(
+    ({ parentId: _parentId, nextBirthAt: _nextBirthAt, ...rest }: Record<string, unknown>) => rest,
+  );
   for (const key of [
     ...ledgerKeys,
     ...limpetLedgerKeys,
@@ -245,7 +250,7 @@ describe('siltstitcher snapshot revision', () => {
       skimmerCandidateAfterId: _skimmerCandidate,
       ...old
     } = restored;
-    expect(restored.schemaRevision).toBe(15);
+    expect(restored.schemaRevision).toBe(16);
     expect(siltstitchers).toEqual([]);
     expect(siltstitcherAdmissionAt).toBe(source.elapsed);
     expect(siltstitcherCandidateAfterId).toBe(0);
@@ -266,7 +271,12 @@ describe('siltstitcher snapshot revision', () => {
       expect(oldLedger[key]).toBe(0);
       delete oldLedger[key];
     }
-    expect({ ...old, schemaRevision: 5, ecologyLedger: oldLedger }).toEqual(source);
+    expect({
+      ...old,
+      schemaRevision: 5,
+      ecologyLedger: oldLedger,
+      skimmers: old.skimmers.map(({ parentId: _parentId, nextBirthAt: _nextBirthAt, ...rest }) => rest),
+    }).toEqual(source);
     expect(JSON.stringify(source)).toBe(before);
     expect(restoreWorld(serializeWorld(restored))).toEqual(restored);
   });
@@ -285,7 +295,7 @@ describe('siltstitcher snapshot revision', () => {
       const before = JSON.stringify(source);
       const restored = restoreWorld(before)!;
       expect(restored).toMatchObject({
-        schemaRevision: 15,
+        schemaRevision: 16,
         siltstitchers: [],
         siltstitcherAdmissionAt: source.elapsed,
         siltstitcherCandidateAfterId: 0,
@@ -552,7 +562,7 @@ describe('siltstitcher snapshot revision', () => {
         w.siltstitchers = Array.from({ length: 7 }, () => ({ ...w.siltstitchers[0], id: w.nextId++ }));
       },
       (w) => {
-        w.schemaRevision = 16;
+        w.schemaRevision = 17;
       },
     ];
     for (const other of [

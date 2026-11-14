@@ -42,6 +42,7 @@ import { daylight } from '../world/environment/daylight';
 import { DEEP_BASIN, depthAt, lightScale, rainScale } from '../world/environment/depth';
 import { MINERAL_SEAM, seamRemaining } from '../world/environment/mineral-seam';
 import { seasonCausticColor, seasonWashColor } from '../world/environment/seasons';
+import { skimmerReserveCapacity } from '../world/species/skimmer';
 import { appearanceGlow, appearanceScale } from '../world/traits';
 import { TRACE_MARK_CAP, traceStrength, type AwayTrace } from '../world/traces';
 
@@ -972,7 +973,7 @@ export class TidepoolRenderer {
         this.skimmers.set(skimmer.id, visual);
       }
       visual.frame = this.frame;
-      const charge = Math.min(1, Math.max(0, skimmer.reserve));
+      const charge = Math.min(1, Math.max(0, skimmer.reserve / skimmerReserveCapacity(skimmer.traits)));
       const color = this.color(skimmer.hue);
       visual.node.position.set(skimmer.x, skimmer.y);
       visual.node.rotation = Math.atan2(skimmer.vy, skimmer.vx) + Math.PI / 2;

@@ -1,21 +1,29 @@
 import { confinePosition } from '../geometry';
-import { LIMITS, type Nest, type Sediment, type Skimmer, type World } from '../types';
-import { baselineTraits, traitMobility } from '../traits';
+import { LIMITS, type Nest, type Sediment, type Skimmer, type Traits, type World } from '../types';
+import { baselineTraits, mutateTraits, traitMobility } from '../traits';
 
 import { activeNewTypePopulation, NEW_TYPE_POPULATION_CAP, SKIMMER_CAP, SPECIES_CATALOG } from './catalog';
+import { tryEventFounding } from './founding';
 import { blendHue, safeId } from './resources';
 import { settleDeath } from './remains';
 
-const SKIMMER_MAINTENANCE = 0.002;
-const SKIMMER_INTAKE = 0.03;
+const RULE = SPECIES_CATALOG.skimmer;
 const SKIMMER_EMISSION_PIGMENT = 0.9;
 const SKIMMER_EMISSION_LIGHT = 1.35;
 const TAU = Math.PI * 2;
 const indexes = new WeakMap<World, Map<number, Sediment>>();
 
+export function skimmerReserveCapacity(traits: Pick<Traits, 'bulk'>): number {
+  return RULE.reserveCapacity * traits.bulk;
+}
+
+export function skimmerSeekReach(traits: Pick<Traits, 'bulk'>): number {
+  return RULE.seekReach * (1.15 - 0.15 * traits.bulk);
+}
+
 function findFood(world: World, skimmer: Skimmer): number | null {
   let best: Sediment | undefined;
-  let distance = 240;
+  let distance = skimmerSeekReach(skimmer.traits);
   for (const grain of world.sediment) {
     if (grain.strength <= 0.025) continue;
     const candidate = Math.hypot(grain.x - skimmer.x, grain.y - skimmer.y);
@@ -25,6 +33,49 @@ function findFood(world: World, skimmer: Skimmer): number | null {
     }
   }
   return best?.id ?? null;
+}
+
+function birth(world: World, parent: Skimmer): void {
+  if (
+    parent.age < RULE.maturityAge ||
+    world.elapsed < parent.nextBirthAt ||
+    parent.reserve < RULE.initialReserve ||
+    world.skimmers.length >= RULE.cap ||
+    world.elapsed > Number.MAX_SAFE_INTEGER - RULE.breedingRest
+  )
+    return;
+  tryEventFounding(world, (current) => {
+    if (parent.reserve < RULE.childCost || !safeId(current) || current.skimmers.length >= RULE.cap) return false;
+    const phase = (parent.phase + Math.PI) % TAU;
+    const child: Skimmer = {
+      id: current.nextId,
+      species: 'skimmer',
+      size: 8,
+      body: RULE.childBody,
+      x: parent.x + Math.cos(phase) * 16,
+      y: parent.y + Math.sin(phase) * 16,
+      vx: parent.vx,
+      vy: parent.vy,
+      hue: parent.hue,
+      reserve: RULE.childReserve,
+      age: 0,
+      phase,
+      homeNestId: parent.homeNestId,
+      targetSedimentId: null,
+      starvedFor: 0,
+      emissionNextAllowedAt: current.elapsed,
+      lastEmissionAt: null,
+      parentId: parent.id,
+      nextBirthAt: current.elapsed + RULE.maturityAge,
+      traits: mutateTraits(current, parent.traits),
+    };
+    confinePosition(child, 11);
+    parent.reserve -= RULE.childCost;
+    parent.nextBirthAt = current.elapsed + RULE.breedingRest;
+    current.nextId++;
+    current.skimmers.push(child);
+    return true;
+  });
 }
 
 function updateOne(world: World, skimmer: Skimmer, dt: number, index: Map<number, Sediment>): void {
@@ -42,7 +93,7 @@ function updateOne(world: World, skimmer: Skimmer, dt: number, index: Map<number
   const dx = targetX - skimmer.x;
   const dy = targetY - skimmer.y;
   const distance = Math.hypot(dx, dy);
-  const speed = Math.min(10 * traitMobility(skimmer.traits), distance / dt);
+  const speed = Math.min(RULE.speed * traitMobility(skimmer.traits), distance / dt);
   skimmer.vx = distance > 0.001 ? (dx / distance) * speed : 0;
   skimmer.vy = distance > 0.001 ? (dy / distance) * speed : 0;
   skimmer.x += skimmer.vx * dt;
@@ -51,8 +102,8 @@ function updateOne(world: World, skimmer: Skimmer, dt: number, index: Map<number
   if (edible && Math.hypot(edible.x - skimmer.x, edible.y - skimmer.y) <= 16 + edible.radius) {
     const gathered = Math.min(
       edible.strength,
-      Math.max(0, 1 - skimmer.reserve),
-      dt * SKIMMER_INTAKE * skimmer.traits.drive,
+      Math.max(0, skimmerReserveCapacity(skimmer.traits) - skimmer.reserve),
+      dt * RULE.intakeRate * skimmer.traits.drive,
     );
     if (gathered > 0) {
       skimmer.hue = blendHue(skimmer.hue, edible.hue, skimmer.reserve, gathered);
@@ -60,11 +111,12 @@ function updateOne(world: World, skimmer: Skimmer, dt: number, index: Map<number
       skimmer.reserve += gathered;
     }
   }
-  const maintenance = Math.min(skimmer.reserve, dt * SKIMMER_MAINTENANCE * skimmer.traits.drive);
+  const maintenance = Math.min(skimmer.reserve, dt * RULE.maintenanceRate * skimmer.traits.drive);
   skimmer.reserve -= maintenance;
   world.ecologyLedger.maintenancePigment += maintenance;
   skimmer.starvedFor = skimmer.reserve <= 0 ? skimmer.starvedFor + dt : 0;
   if (skimmer.starvedFor >= SPECIES_CATALOG.skimmer.starvationLimit) return;
+  birth(world, skimmer);
   if (
     skimmer.reserve >= SKIMMER_EMISSION_PIGMENT &&
     world.elapsed >= skimmer.emissionNextAllowedAt &&
@@ -126,6 +178,8 @@ export function admitSkimmer(world: World): boolean {
     starvedFor: 0,
     emissionNextAllowedAt: world.elapsed,
     lastEmissionAt: null,
+    parentId: null,
+    nextBirthAt: world.elapsed + RULE.maturityAge,
     traits: baselineTraits(),
   };
   confinePosition(body, 11);
@@ -155,7 +209,8 @@ export function updateSkimmers(world: World, dt: number, allowStandaloneAdmissio
   }
   index.clear();
   for (const grain of world.sediment) index.set(grain.id, grain);
-  for (const skimmer of world.skimmers) updateOne(world, skimmer, dt, index);
+  const initialCount = world.skimmers.length;
+  for (let i = 0; i < initialCount; i++) updateOne(world, world.skimmers[i], dt, index);
   // Stage exits before admissions; no in-loop removal or hidden remains.
   let write = 0;
   for (const skimmer of world.skimmers) {

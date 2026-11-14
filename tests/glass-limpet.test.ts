@@ -178,6 +178,8 @@ describe('glass limpet current capture', () => {
       starvedFor: 0,
       emissionNextAllowedAt: 0,
       lastEmissionAt: null,
+      parentId: null,
+      nextBirthAt: full.elapsed + 30,
       traits: baselineTraits(),
     }));
     expect(admitGlassLimpet(full)).toBe(false);

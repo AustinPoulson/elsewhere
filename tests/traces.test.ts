@@ -247,7 +247,7 @@ describe('catch-up writes traces into the save without touching ledgers', () => 
   });
 
   it('stores unfaded marks in revision 15 without changing the simulated world', () => {
-    expect(SCHEMA_REVISION).toBe(15);
+    expect(SCHEMA_REVISION).toBe(16);
     const world = createWorld(1);
     const live = createWorld(1);
     expect(world.awayTraces).toEqual([]);
@@ -264,7 +264,7 @@ describe('catch-up writes traces into the save without touching ledgers', () => 
     expect(report.traces.some((trace) => trace.kind === 'seam')).toBe(true);
     expect(world.awayTraces).toEqual(report.traces);
     const snapshot = JSON.parse(serializeWorld(world)) as Record<string, unknown>;
-    expect(snapshot.schemaRevision).toBe(15);
+    expect(snapshot.schemaRevision).toBe(16);
     expect(snapshot.awayTraces).toEqual(report.traces);
     expect(restoreWorld(serializeWorld(world))).toEqual(world);
     expect(live.awayTraces).toEqual([]);

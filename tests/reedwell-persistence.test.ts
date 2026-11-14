@@ -62,6 +62,8 @@ function inhabited(): World {
       starvedFor: 0,
       lastEmissionAt: null,
       emissionNextAllowedAt: 0,
+      parentId: null,
+      nextBirthAt: 101,
       traits: baselineTraits(),
     },
   ];
@@ -115,6 +117,9 @@ function revision3(world: World): Record<string, any> {
     ...previous
   } = structuredClone(world);
   const result: Record<string, any> = { ...previous, schemaRevision: 3 };
+  result.skimmers = result.skimmers.map(
+    ({ parentId: _parentId, nextBirthAt: _nextBirthAt, ...rest }: Record<string, unknown>) => rest,
+  );
   for (const key of [
     ...reedwellLedgerKeys,
     ...rainbellLedgerKeys,
@@ -200,7 +205,12 @@ describe('reedwell snapshot revision', () => {
       expect(oldLedger[key]).toBe(0);
       delete oldLedger[key];
     }
-    expect({ ...oldFields, schemaRevision: 3, ecologyLedger: oldLedger }).toEqual(source);
+    expect({
+      ...oldFields,
+      schemaRevision: 3,
+      ecologyLedger: oldLedger,
+      skimmers: oldFields.skimmers.map(({ parentId: _parentId, nextBirthAt: _nextBirthAt, ...rest }) => rest),
+    }).toEqual(source);
     expect(JSON.stringify(source)).toBe(before);
     expect(restoreWorld(serializeWorld(restored))).toEqual(restored);
   });
@@ -209,7 +219,7 @@ describe('reedwell snapshot revision', () => {
     const before = JSON.stringify(historicalStudy);
     const restored = restoreWorld(before)!;
     expect(restored).toMatchObject({
-      schemaRevision: 15,
+      schemaRevision: 16,
       reedwells: [],
       reedwellAdmissionAt: historicalStudy.elapsed,
       reedwellCandidateAfterId: 0,
@@ -390,7 +400,7 @@ describe('reedwell snapshot revision', () => {
         w.nextId += 7;
       },
       (w) => {
-        w.schemaRevision = 16;
+        w.schemaRevision = 17;
       },
     ];
     for (const key of reedwellLedgerKeys) {
