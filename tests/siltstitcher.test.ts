@@ -6,12 +6,7 @@ import { addLight, createWorld, stepWorld } from '../src/world/simulation';
 import { activeNewTypePopulation, SPECIES_CATALOG } from '../src/world/species/catalog';
 import { updateRainbells } from '../src/world/species/rainbell';
 import { updateReedwells } from '../src/world/species/reedwell';
-import {
-  siltstitcherBirthStake,
-  siltstitcherReserveCapacity,
-  siltstitcherSurvivalFloor,
-  updateSiltstitchers,
-} from '../src/world/species/siltstitcher';
+import { siltstitcherReserveCapacity, updateSiltstitchers } from '../src/world/species/siltstitcher';
 import { updateSkimmers } from '../src/world/species/skimmer';
 import { baselineTraits, traitMobility, TRAIT_MAX, TRAIT_MIN } from '../src/world/traits';
 import { FIXED_STEP, LIMITS, isInPool, type Point, type Siltstitcher, type World } from '../src/world/types';
@@ -577,17 +572,13 @@ describe('siltstitcher inheritance', () => {
     expect(child.traits.bulk).toBeLessThanOrEqual(TRAIT_MAX);
     expect(world.randomState).not.toBe(random);
     expect(parent.nextBirthAt).toBe(world.elapsed + SPECIES_CATALOG.siltstitcher.breedingRest);
-    expect(parent.reserve).toBeGreaterThanOrEqual(
-      siltstitcherSurvivalFloor(parent.traits) -
-        SPECIES_CATALOG.siltstitcher.maintenanceRate * 0.1 * parent.traits.drive -
-        1e-9,
-    );
   });
 
-  it('does not let a founder pay a child from the nest-funded starting reserve', () => {
+  it('does not let a nest-funded founder pay a child from remaining starting reserve after maturity', () => {
     const { world, body: parent } = born();
     expect(parent.reserve).toBe(SPECIES_CATALOG.siltstitcher.initialReserve);
-    expect(parent.reserve).toBeLessThan(siltstitcherBirthStake(parent.traits));
+    expect(parent.reserve).toBeLessThan(SPECIES_CATALOG.siltstitcher.childCost);
+    expect(parent.traits).toEqual(baselineTraits());
     world.nests[0].pigment = SPECIES_CATALOG.siltstitcher.protectedStock;
     parent.age = SPECIES_CATALOG.siltstitcher.maturityAge - 0.1;
     parent.nextBirthAt = 30;
@@ -600,63 +591,48 @@ describe('siltstitcher inheritance', () => {
     expect(parent.reserve).toBeLessThan(SPECIES_CATALOG.siltstitcher.childCost);
   });
 
-  it('stocks a birth from nest surplus into parent reserve, then keeps a survival floor', () => {
+  it('does not let a founder give birth until it has saved the child cost from nest surplus', () => {
     const { world, body: parent } = born();
+    expect(parent.reserve).toBe(SPECIES_CATALOG.siltstitcher.initialReserve);
+    expect(siltstitcherReserveCapacity(parent.traits)).toBeGreaterThan(SPECIES_CATALOG.siltstitcher.childCost);
     parent.age = SPECIES_CATALOG.siltstitcher.maturityAge;
-    parent.nextBirthAt = 30;
+    parent.nextBirthAt = 0;
     world.elapsed = 30;
     world.tick = 1;
-    world.nests[0].pigment = 2;
-    const nestBefore = world.nests[0].pigment;
+    if ((world.tick + parent.id) % 6 === 0) world.tick++;
+    world.nests[0].pigment = SPECIES_CATALOG.siltstitcher.protectedStock;
     const random = world.randomState;
     updateSiltstitchers(world, 1);
     expect(world.siltstitchers).toHaveLength(1);
     expect(world.randomState).toBe(random);
-    expect(parent.mode).toBe('home');
-    expect(parent.cargo).toBe(0);
-    expect(world.nests[0].pigment).toBeLessThan(nestBefore);
-    parent.reserve = siltstitcherBirthStake(parent.traits);
-    world.tick += 6;
-    world.elapsed += 6;
-    const beforeReserve = parent.reserve;
-    const beforePigment = pigment(world);
-    updateSiltstitchers(world, 0.1);
-    expect(world.siltstitchers).toHaveLength(2);
-    expect(world.siltstitchers[1].parentId).toBe(parent.id);
-    expect(parent.reserve).toBeCloseTo(
-      beforeReserve -
-        SPECIES_CATALOG.siltstitcher.childCost -
-        SPECIES_CATALOG.siltstitcher.maintenanceRate * 0.1 * parent.traits.drive,
-      8,
-    );
-    expect(parent.reserve).toBeGreaterThanOrEqual(
-      siltstitcherSurvivalFloor(parent.traits) -
-        SPECIES_CATALOG.siltstitcher.maintenanceRate * 0.1 * parent.traits.drive -
-        1e-9,
-    );
-    expect(pigment(world)).toBeCloseTo(
-      beforePigment - SPECIES_CATALOG.siltstitcher.maintenanceRate * 0.1 * parent.traits.drive,
-      8,
-    );
-  });
+    expect(parent.reserve).toBeLessThan(SPECIES_CATALOG.siltstitcher.childCost);
 
-  it('refuses a second child on a nest that already holds a parent and child', () => {
-    const { world, body: parent } = born();
-    parent.age = 30;
-    parent.reserve = siltstitcherBirthStake(parent.traits);
-    parent.nextBirthAt = 30;
-    world.elapsed = 30;
-    world.tick = 1;
-    updateSiltstitchers(world, 0.1);
-    expect(world.siltstitchers).toHaveLength(2);
-    parent.reserve = siltstitcherBirthStake(parent.traits);
+    world.nests[0].pigment = SPECIES_CATALOG.siltstitcher.protectedStock + 1;
     parent.nextBirthAt = world.elapsed;
-    world.tick += 6;
-    world.elapsed += 6;
-    const random = world.randomState;
-    updateSiltstitchers(world, 0.1);
+    const beforePigment = pigment(world);
+    const beforeMaintenance = world.ecologyLedger.siltstitcherMaintenancePigment;
+    const nestBefore = world.nests[0].pigment;
+    for (let step = 0; step < 60 && world.siltstitchers.length === 1; step++) {
+      parent.nextBirthAt = world.elapsed;
+      if ((world.tick + parent.id) % 6 === 0) world.tick++;
+      updateSiltstitchers(world, 1);
+    }
     expect(world.siltstitchers).toHaveLength(2);
-    expect(world.randomState).toBe(random);
+    const child = world.siltstitchers[1];
+    expect(child.parentId).toBe(parent.id);
+    expect(child.homeNestId).toBe(parent.homeNestId);
+    expect(child.body).toBe(SPECIES_CATALOG.siltstitcher.childBody);
+    expect(child.reserve).toBe(SPECIES_CATALOG.siltstitcher.childReserve);
+    expect(parent.reserve).toBeLessThan(SPECIES_CATALOG.siltstitcher.childCost);
+    expect(world.nests[0].pigment).toBeLessThan(nestBefore);
+    expect(world.nests[0].pigment).toBeGreaterThanOrEqual(SPECIES_CATALOG.siltstitcher.protectedStock);
+    expect(world.ecologyLedger.siltstitcherNestReserve).toBeGreaterThanOrEqual(
+      SPECIES_CATALOG.siltstitcher.childCost - SPECIES_CATALOG.siltstitcher.initialReserve,
+    );
+    expect(pigment(world) + world.ecologyLedger.siltstitcherMaintenancePigment).toBeCloseTo(
+      beforePigment + beforeMaintenance,
+      8,
+    );
   });
 
   it('clamps inherited traits and does not draw the PRNG on a refused birth', () => {

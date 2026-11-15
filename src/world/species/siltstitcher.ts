@@ -22,14 +22,6 @@ export function siltstitcherReserveCapacity(traits: Pick<Traits, 'bulk'>): numbe
   return RULE.reserveCapacity * traits.bulk;
 }
 
-export function siltstitcherSurvivalFloor(traits: Pick<Traits, 'bulk'>): number {
-  return Math.min(RULE.initialReserve, Math.max(0, siltstitcherReserveCapacity(traits) - RULE.childCost));
-}
-
-export function siltstitcherBirthStake(traits: Pick<Traits, 'bulk'>): number {
-  return RULE.childCost + siltstitcherSurvivalFloor(traits);
-}
-
 function move(body: Siltstitcher, target: Point, dt: number): boolean {
   const dx = target.x - body.x;
   const dy = target.y - body.y;
@@ -149,19 +141,13 @@ function birth(world: World, parent: Siltstitcher): void {
   if (
     parent.age < RULE.maturityAge ||
     world.elapsed < parent.nextBirthAt ||
-    parent.reserve < siltstitcherBirthStake(parent.traits) ||
+    parent.reserve < RULE.childCost ||
     world.siltstitchers.length >= RULE.cap ||
     world.elapsed > Number.MAX_SAFE_INTEGER - RULE.breedingRest
   )
     return;
   tryEventFounding(world, (current) => {
-    if (
-      parent.reserve < siltstitcherBirthStake(parent.traits) ||
-      !safeId(current) ||
-      current.siltstitchers.length >= RULE.cap ||
-      current.siltstitchers.filter((body) => body.homeNestId === parent.homeNestId).length >= 2
-    )
-      return false;
+    if (parent.reserve < RULE.childCost || !safeId(current) || current.siltstitchers.length >= RULE.cap) return false;
     const angle = ((parent.id % 4096) * 2.39996322973) % TAU;
     const child: Siltstitcher = {
       id: current.nextId,
@@ -207,16 +193,11 @@ function updateOne(world: World, body: Siltstitcher, dt: number): void {
     else {
       if (body.mode === 'returning' && body.cargo === 0) body.mode = 'home';
       const loading = body.mode === 'home';
-      const stocking =
-        siltstitcherReserveCapacity(body.traits) >= RULE.childCost &&
-        body.age >= RULE.maturityAge &&
-        body.reserve < siltstitcherBirthStake(body.traits) &&
-        home.pigment > RULE.protectedStock;
-      refill(world, body, home, dt, loading && !stocking);
+      refill(world, body, home, dt, loading);
       const loaded =
         body.cargo >= RULE.cargoCapacity ||
         (body.cargo >= RULE.minimumPartialCargo && (!loading || home.pigment <= RULE.protectedStock));
-      if (loaded && phase && !stocking) {
+      if (loaded && phase) {
         const destination = candidate(world, body, home);
         if (destination) {
           body.destination = destination;
@@ -235,11 +216,11 @@ function updateOne(world: World, body: Siltstitcher, dt: number): void {
       if (body.blockedFor >= RULE.blockedLimit) returnHome(body);
     }
   } else returnHome(body);
-  if (body.reserve > 0) birth(world, body);
   const maintenance = Math.min(body.reserve, dt * RULE.maintenanceRate * body.traits.drive);
   body.reserve -= maintenance;
   world.ecologyLedger.siltstitcherMaintenancePigment += maintenance;
   body.starvedFor = body.reserve <= 0 ? body.starvedFor + dt : 0;
+  if (body.starvedFor < RULE.starvationLimit) birth(world, body);
 }
 
 export function admitSiltstitcher(world: World): boolean {
