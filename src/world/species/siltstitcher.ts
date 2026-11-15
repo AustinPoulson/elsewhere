@@ -1,12 +1,26 @@
 import { confinePosition } from '../geometry';
-import { LIMITS, isInPool, type Nest, type Point, type Sediment, type Siltstitcher, type World } from '../types';
-import { baselineTraits, traitMobility } from '../traits';
+import {
+  LIMITS,
+  isInPool,
+  type Nest,
+  type Point,
+  type Sediment,
+  type Siltstitcher,
+  type Traits,
+  type World,
+} from '../types';
+import { baselineTraits, mutateTraits, traitMobility } from '../traits';
 import { activeNewTypePopulation, NEW_TYPE_POPULATION_CAP, SILTSTITCHER_CAP, SPECIES_CATALOG } from './catalog';
+import { tryEventFounding } from './founding';
 import { blendHue, safeId } from './resources';
 import { settleDeath } from './remains';
 
 const RULE = SPECIES_CATALOG.siltstitcher;
 const TAU = 2 * Math.PI;
+
+export function siltstitcherReserveCapacity(traits: Pick<Traits, 'bulk'>): number {
+  return RULE.reserveCapacity * traits.bulk;
+}
 
 function move(body: Siltstitcher, target: Point, dt: number): boolean {
   const dx = target.x - body.x;
@@ -30,8 +44,8 @@ function returnHome(body: Siltstitcher): void {
 function refill(world: World, body: Siltstitcher, nest: Nest, dt: number, mayLoadCargo: boolean): void {
   const reserve = Math.min(
     Math.max(0, nest.pigment - RULE.protectedStock),
-    Math.max(0, RULE.reserveCapacity - body.reserve),
-    dt * RULE.reserveRefillRate,
+    Math.max(0, siltstitcherReserveCapacity(body.traits) - body.reserve),
+    dt * RULE.reserveRefillRate * body.traits.drive,
   );
   if (reserve > 0) {
     body.hue = blendHue(body.hue, nest.hue, body.body + body.reserve + body.cargo, reserve);
@@ -43,7 +57,7 @@ function refill(world: World, body: Siltstitcher, nest: Nest, dt: number, mayLoa
   const cargo = Math.min(
     Math.max(0, nest.pigment - RULE.protectedStock),
     Math.max(0, RULE.cargoCapacity - body.cargo),
-    dt * RULE.cargoRefillRate,
+    dt * RULE.cargoRefillRate * body.traits.drive,
   );
   if (cargo > 0) {
     body.hue = blendHue(body.hue, nest.hue, body.body + body.reserve + body.cargo, cargo);
@@ -123,6 +137,48 @@ function tryDelivery(world: World, body: Siltstitcher, maySearch: boolean): bool
   return true;
 }
 
+function birth(world: World, parent: Siltstitcher): void {
+  if (
+    parent.age < RULE.maturityAge ||
+    world.elapsed < parent.nextBirthAt ||
+    parent.reserve < RULE.childCost ||
+    world.siltstitchers.length >= RULE.cap ||
+    world.elapsed > Number.MAX_SAFE_INTEGER - RULE.breedingRest
+  )
+    return;
+  tryEventFounding(world, (current) => {
+    if (parent.reserve < RULE.childCost || !safeId(current) || current.siltstitchers.length >= RULE.cap) return false;
+    const angle = ((parent.id % 4096) * 2.39996322973) % TAU;
+    const child: Siltstitcher = {
+      id: current.nextId,
+      species: 'siltstitcher',
+      x: parent.x + Math.cos(angle) * 16,
+      y: parent.y + Math.sin(angle) * 16,
+      vx: parent.vx,
+      vy: parent.vy,
+      body: RULE.childBody,
+      reserve: RULE.childReserve,
+      cargo: 0,
+      age: 0,
+      hue: parent.hue,
+      homeNestId: parent.homeNestId,
+      starvedFor: 0,
+      mode: 'home',
+      destination: null,
+      blockedFor: 0,
+      parentId: parent.id,
+      nextBirthAt: current.elapsed + RULE.maturityAge,
+      traits: mutateTraits(current, parent.traits),
+    };
+    confinePosition(child, RULE.margin);
+    parent.reserve -= RULE.childCost;
+    parent.nextBirthAt = current.elapsed + RULE.breedingRest;
+    current.nextId++;
+    current.siltstitchers.push(child);
+    return true;
+  });
+}
+
 function updateOne(world: World, body: Siltstitcher, dt: number): void {
   body.age += dt;
   if (body.age >= RULE.lifespan || body.starvedFor >= RULE.starvationLimit) return;
@@ -164,6 +220,7 @@ function updateOne(world: World, body: Siltstitcher, dt: number): void {
   body.reserve -= maintenance;
   world.ecologyLedger.siltstitcherMaintenancePigment += maintenance;
   body.starvedFor = body.reserve <= 0 ? body.starvedFor + dt : 0;
+  if (body.starvedFor < RULE.starvationLimit) birth(world, body);
 }
 
 export function admitSiltstitcher(world: World): boolean {
@@ -201,8 +258,8 @@ export function admitSiltstitcher(world: World): boolean {
     y: home.y,
     vx: 0,
     vy: 0,
-    body: 0.2,
-    reserve: 0.1,
+    body: RULE.bodyPigment,
+    reserve: RULE.initialReserve,
     cargo: 0,
     age: 0,
     hue: home.hue,
@@ -211,6 +268,8 @@ export function admitSiltstitcher(world: World): boolean {
     mode: 'home',
     destination: null,
     blockedFor: 0,
+    parentId: null,
+    nextBirthAt: world.elapsed + RULE.maturityAge,
     traits: baselineTraits(),
   });
   world.siltstitcherAdmissionAt = world.elapsed + RULE.admissionRest;
@@ -218,7 +277,8 @@ export function admitSiltstitcher(world: World): boolean {
 }
 
 export function updateSiltstitchers(world: World, dt: number, allowStandaloneAdmission = true): void {
-  for (const body of world.siltstitchers) updateOne(world, body, dt);
+  const initialCount = world.siltstitchers.length;
+  for (let i = 0; i < initialCount; i++) updateOne(world, world.siltstitchers[i], dt);
   let write = 0;
   for (const body of world.siltstitchers) {
     if (body.age >= RULE.lifespan || body.starvedFor >= RULE.starvationLimit)

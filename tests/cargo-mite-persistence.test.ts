@@ -79,7 +79,7 @@ describe('cargo mite snapshot revision', () => {
     const migrated = restoreWorld(source)!;
     expect(migrated).not.toBeNull();
     expect(migrated).toMatchObject({
-      schemaRevision: 16,
+      schemaRevision: 17,
       lastSeenAt: null,
       cargoMites: [],
       cargoMiteAdmissionAt: old.elapsed,

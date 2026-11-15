@@ -69,7 +69,7 @@ describe('mineral seam snapshot revision', () => {
         w.schemaRevision = 13;
       },
       (w) => {
-        w.schemaRevision = 17;
+        w.schemaRevision = 18;
       },
       (w) => {
         w.seamAccrued = 2;

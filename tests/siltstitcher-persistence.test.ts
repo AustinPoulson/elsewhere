@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import historicalStudy from '../src/app/shower-study.json';
 import { restoreWorld, serializeWorld } from '../src/world/persistence';
 import { createWorld, stepWorld } from '../src/world/simulation';
+import { SPECIES_CATALOG } from '../src/world/species/catalog';
+import { siltstitcherReserveCapacity } from '../src/world/species/siltstitcher';
 import { baselineTraits } from '../src/world/traits';
-import { LIMITS, type World } from '../src/world/types';
+import { LIMITS, SCHEMA_REVISION, type World } from '../src/world/types';
 
 const ledgerKeys = [
   'siltstitcherNestReserve',
@@ -98,6 +100,8 @@ function inhabited(): World {
       mode: 'outbound',
       destination: { x: 800, y: 500 },
       blockedFor: 0,
+      parentId: null,
+      nextBirthAt: 106,
       traits: baselineTraits(),
     },
   ];
@@ -250,7 +254,7 @@ describe('siltstitcher snapshot revision', () => {
       skimmerCandidateAfterId: _skimmerCandidate,
       ...old
     } = restored;
-    expect(restored.schemaRevision).toBe(16);
+    expect(restored.schemaRevision).toBe(17);
     expect(siltstitchers).toEqual([]);
     expect(siltstitcherAdmissionAt).toBe(source.elapsed);
     expect(siltstitcherCandidateAfterId).toBe(0);
@@ -295,7 +299,7 @@ describe('siltstitcher snapshot revision', () => {
       const before = JSON.stringify(source);
       const restored = restoreWorld(before)!;
       expect(restored).toMatchObject({
-        schemaRevision: 16,
+        schemaRevision: 17,
         siltstitchers: [],
         siltstitcherAdmissionAt: source.elapsed,
         siltstitcherCandidateAfterId: 0,
@@ -473,7 +477,7 @@ describe('siltstitcher snapshot revision', () => {
         w.siltstitchers[0].reserve = -0.01;
       },
       (w) => {
-        w.siltstitchers[0].reserve = 0.100001;
+        w.siltstitchers[0].reserve = siltstitcherReserveCapacity(w.siltstitchers[0].traits) + 0.000001;
       },
       (w) => {
         w.siltstitchers[0].cargo = -0.01;
@@ -556,13 +560,25 @@ describe('siltstitcher snapshot revision', () => {
         w.siltstitchers[0].mode = 'returning';
       },
       (w) => {
-        w.siltstitchers.push({ ...structuredClone(w.siltstitchers[0]), id: w.nextId++ });
-      },
-      (w) => {
         w.siltstitchers = Array.from({ length: 7 }, () => ({ ...w.siltstitchers[0], id: w.nextId++ }));
       },
       (w) => {
-        w.schemaRevision = 17;
+        w.schemaRevision = 18;
+      },
+      (w) => {
+        delete w.siltstitchers[0].parentId;
+      },
+      (w) => {
+        w.siltstitchers[0].parentId = w.organisms[0].id;
+      },
+      (w) => {
+        w.siltstitchers[0].parentId = w.siltstitchers[0].id;
+      },
+      (w) => {
+        w.siltstitchers[0].nextBirthAt = w.elapsed;
+      },
+      (w) => {
+        w.siltstitchers[0].nextBirthAt = w.elapsed + 61;
       },
     ];
     for (const other of [
@@ -604,6 +620,8 @@ describe('siltstitcher snapshot revision', () => {
       'mode',
       'destination',
       'blockedFor',
+      'parentId',
+      'nextBirthAt',
     ]) {
       changes.push((w) => {
         delete w.siltstitchers[0][key];
@@ -647,5 +665,90 @@ describe('siltstitcher snapshot revision', () => {
         expect(restoreWorld(JSON.stringify(source))).toBeNull();
       }
     }
+  });
+
+  it('migrates revision 16 siltstitchers with lineage fields and no gifted resources', () => {
+    const world = inhabited();
+    const held =
+      world.nests.reduce((sum, nest) => sum + nest.pigment, 0) +
+      world.sediment.reduce((sum, grain) => sum + grain.strength, 0) +
+      world.siltstitchers.reduce((sum, body) => sum + body.body + body.reserve + body.cargo, 0);
+    const previous = structuredClone(world) as Record<string, any>;
+    previous.schemaRevision = 16;
+    previous.siltstitchers = previous.siltstitchers.map(
+      ({ parentId: _parentId, nextBirthAt: _nextBirthAt, ...rest }: Record<string, unknown>) => rest,
+    );
+    const source = JSON.stringify(previous);
+    const restored = restoreWorld(source)!;
+    expect(restored).not.toBeNull();
+    expect(restored.schemaRevision).toBe(SCHEMA_REVISION);
+    expect(restored.siltstitchers).toHaveLength(1);
+    expect(restored.siltstitchers[0].parentId).toBeNull();
+    expect(restored.siltstitchers[0].nextBirthAt).toBe(
+      world.elapsed - world.siltstitchers[0].age + SPECIES_CATALOG.siltstitcher.maturityAge,
+    );
+    expect(restored.siltstitchers[0].traits).toEqual(baselineTraits());
+    expect(restored.randomState).toBe(world.randomState);
+    expect(restored.nextId).toBe(world.nextId);
+    expect(restored.sediment).toEqual(world.sediment);
+    expect(
+      restored.nests.reduce((sum, nest) => sum + nest.pigment, 0) +
+        restored.sediment.reduce((sum, grain) => sum + grain.strength, 0) +
+        restored.siltstitchers.reduce((sum, body) => sum + body.body + body.reserve + body.cargo, 0),
+    ).toBeCloseTo(held, 12);
+    expect(JSON.stringify(previous)).toBe(source);
+    expect(restoreWorld(serializeWorld(restored))).toEqual(restored);
+  });
+
+  it('keeps living siltstitcher traits through a round trip and continues the lineage', () => {
+    const world = inhabited();
+    world.siltstitchers[0].traits = { drive: 1.12, bulk: 0.88 };
+    const resumed = restoreWorld(serializeWorld(world))!;
+    expect(resumed).toEqual(world);
+    expect(resumed.siltstitchers[0].traits).toEqual({ drive: 1.12, bulk: 0.88 });
+    for (let tick = 0; tick < 60; tick++) {
+      stepWorld(world);
+      stepWorld(resumed);
+    }
+    expect(resumed).toEqual(world);
+  });
+
+  it('keeps a stout siltstitcher larger paid reserve and rejects overflow on a slighter frame', () => {
+    const world = inhabited();
+    world.siltstitchers[0].traits = { drive: 1, bulk: 1.3 };
+    world.siltstitchers[0].reserve = 0.5;
+    world.siltstitchers[0].vx = 7;
+    world.siltstitchers[0].vy = 0;
+    expect(restoreWorld(serializeWorld(world))).toEqual(world);
+    const overfull = structuredClone(world) as Record<string, any>;
+    overfull.siltstitchers[0].traits = { drive: 1, bulk: 0.7 };
+    expect(restoreWorld(JSON.stringify(overfull))).toBeNull();
+  });
+
+  it('rejects lineage fields left on a revision-16 siltstitcher rather than filling them', () => {
+    const previous = structuredClone(inhabited()) as Record<string, any>;
+    previous.schemaRevision = 16;
+    expect(restoreWorld(JSON.stringify(previous))).toBeNull();
+  });
+
+  it('allows a parent-paid child to share its home nest', () => {
+    const world = inhabited();
+    const parent = world.siltstitchers[0];
+    world.siltstitchers.push({
+      ...structuredClone(parent),
+      id: world.nextId++,
+      parentId: parent.id,
+      nextBirthAt: world.elapsed + SPECIES_CATALOG.siltstitcher.maturityAge,
+      age: 0,
+      cargo: 0,
+      mode: 'home',
+      destination: null,
+      blockedFor: 0,
+      vx: 0,
+      vy: 0,
+      x: parent.x,
+      y: parent.y,
+    });
+    expect(restoreWorld(serializeWorld(world))).toEqual(world);
   });
 });

@@ -6,8 +6,9 @@ import { addLight, createWorld, stepWorld } from '../src/world/simulation';
 import { activeNewTypePopulation, SPECIES_CATALOG } from '../src/world/species/catalog';
 import { updateRainbells } from '../src/world/species/rainbell';
 import { updateReedwells } from '../src/world/species/reedwell';
-import { updateSiltstitchers } from '../src/world/species/siltstitcher';
+import { siltstitcherReserveCapacity, updateSiltstitchers } from '../src/world/species/siltstitcher';
 import { updateSkimmers } from '../src/world/species/skimmer';
+import { baselineTraits, traitMobility, TRAIT_MAX, TRAIT_MIN } from '../src/world/traits';
 import { FIXED_STEP, LIMITS, isInPool, type Point, type Siltstitcher, type World } from '../src/world/types';
 import { DEATH_SEDIMENT_FRACTION } from '../src/world/species/remains';
 
@@ -71,16 +72,16 @@ describe('siltstitcher outward nest disperser', () => {
     expect(activeNewTypePopulation(world)).toBe(1);
   });
 
-  it('pays .3 only from a nest holding at least1.5, separates .2 body/.1 health, and draws no random numbers', () => {
-    const world = habitat(1.5);
+  it('pays .6 only from a nest holding at least1.8, separates .2 body/.4 health, and draws no random numbers', () => {
+    const world = habitat(1.8);
     const before = structuredClone(world);
     updateSiltstitchers(world, FIXED_STEP);
-    expect(world.nests[0].pigment).toBe(1.2);
+    expect(world.nests[0].pigment).toBeCloseTo(1.2, 12);
     expect(world.siltstitchers[0]).toMatchObject({
       x: 720,
       y: 500,
       body: 0.2,
-      reserve: 0.1,
+      reserve: 0.4,
       cargo: 0,
       age: 0,
       mode: 'home',
@@ -88,12 +89,14 @@ describe('siltstitcher outward nest disperser', () => {
       blockedFor: 0,
       starvedFor: 0,
       homeNestId: world.nests[0].id,
+      parentId: null,
+      traits: baselineTraits(),
     });
     expect(pigment(world)).toBeCloseTo(pigment(before), 12);
     expect(world.nextId).toBe(before.nextId + 1);
     expect(world.randomState).toBe(before.randomState);
     expect(world.siltstitcherAdmissionAt).toBe(60);
-    const poor = habitat(1.5 - Number.EPSILON);
+    const poor = habitat(1.8 - Number.EPSILON);
     const snapshot = structuredClone(poor);
     updateSiltstitchers(poor, FIXED_STEP);
     expect(poor).toEqual(snapshot);
@@ -222,9 +225,9 @@ describe('siltstitcher outward nest disperser', () => {
   });
 
   it('allows an actually funded partial trip after protected stock stops loading, without turning cargo into health', () => {
-    const { world, body } = born(1.6);
+    const { world, body } = born(1.9);
     advance(world, 8);
-    expect(world.nests[0].pigment).toBe(1.2);
+    expect(world.nests[0].pigment).toBeCloseTo(1.2, 12);
     expect(body.cargo).toBeGreaterThanOrEqual(0.06);
     expect(body.cargo).toBeLessThan(0.3);
     expect(body.mode).toBe('outbound');
@@ -417,7 +420,7 @@ describe('siltstitcher outward nest disperser', () => {
     world.siltstitcherAdmissionAt = 2000;
     const initial = pigment(world);
     advance(world, 1200);
-    expect(world.siltstitchers).toHaveLength(0);
+    expect(world.siltstitchers.length).toBeLessThanOrEqual(6);
     expect(world.sediment.length).toBeLessThanOrEqual(600);
     expect(world.ecologyLedger.siltstitcherOutwardPigment).toBeGreaterThan(0);
     expect(world.ecologyLedger.siltstitcherNestCargo).toBeGreaterThan(0);
@@ -482,6 +485,9 @@ describe('siltstitcher outward nest disperser', () => {
     for (const body of world.skimmers) {
       body.nextBirthAt = world.elapsed - body.age + SPECIES_CATALOG.skimmer.maturityAge;
     }
+    for (const body of world.siltstitchers) {
+      body.nextBirthAt = world.elapsed - body.age + SPECIES_CATALOG.siltstitcher.maturityAge;
+    }
     for (let i = 0; i < 3; i++)
       expect(applyCurrent(world, { x: 640, y: 500 }, { x: 800, y: 500 }).status).toBe('applied');
     const restored = restoreWorld(serializeWorld(world))!;
@@ -511,7 +517,7 @@ describe('siltstitcher outward nest disperser', () => {
           world.siltstitchers.every(
             (body) =>
               body.reserve >= 0 &&
-              body.reserve <= 0.1 &&
+              body.reserve <= siltstitcherReserveCapacity(body.traits) &&
               body.cargo >= 0 &&
               body.cargo <= 0.3 &&
               isInPool(body.x, body.y, 11),
@@ -528,4 +534,169 @@ describe('siltstitcher outward nest disperser', () => {
       `Siltstitcher initial-max-budget profile: 42 lucents/6 skimmers/6 reedwells/4 rainbells/6 siltstitchers/8 grazers/16 nests/3 currents/600 grains/32 lights; 2 x 36,000 fixed steps, 20 exact samples, ${wallMs.toFixed(1)} ms total; ${(wallMs / 72000).toFixed(4)} ms/world step.`,
     );
   }, 60_000);
+});
+
+describe('siltstitcher inheritance', () => {
+  it('gives founders baseline traits and spends parent reserve for a mutated child', () => {
+    const { world, body: parent } = born();
+    const random = world.randomState;
+    expect(parent.traits).toEqual(baselineTraits());
+    expect(parent.parentId).toBeNull();
+    parent.age = 29.9;
+    parent.reserve = 0.4;
+    world.elapsed = 30;
+    world.tick = 1;
+    const beforeReserve = parent.reserve;
+    const beforePigment = pigment(world);
+    updateSiltstitchers(world, 0.1);
+    expect(world.siltstitchers).toHaveLength(2);
+    const child = world.siltstitchers[1];
+    expect(child.parentId).toBe(parent.id);
+    expect(child.homeNestId).toBe(parent.homeNestId);
+    expect(child.reserve).toBe(SPECIES_CATALOG.siltstitcher.childReserve);
+    expect(child.body).toBe(SPECIES_CATALOG.siltstitcher.childBody);
+    expect(parent.reserve).toBeCloseTo(
+      beforeReserve -
+        SPECIES_CATALOG.siltstitcher.childCost -
+        SPECIES_CATALOG.siltstitcher.maintenanceRate * 0.1 * parent.traits.drive,
+      8,
+    );
+    expect(pigment(world)).toBeCloseTo(
+      beforePigment - SPECIES_CATALOG.siltstitcher.maintenanceRate * 0.1 * parent.traits.drive,
+      8,
+    );
+    expect(child.traits).not.toEqual(parent.traits);
+    expect(child.traits.drive).toBeGreaterThanOrEqual(TRAIT_MIN);
+    expect(child.traits.drive).toBeLessThanOrEqual(TRAIT_MAX);
+    expect(child.traits.bulk).toBeGreaterThanOrEqual(TRAIT_MIN);
+    expect(child.traits.bulk).toBeLessThanOrEqual(TRAIT_MAX);
+    expect(world.randomState).not.toBe(random);
+    expect(parent.nextBirthAt).toBe(world.elapsed + SPECIES_CATALOG.siltstitcher.breedingRest);
+  });
+
+  it('lets a nest-funded founder pay a child from remaining starting reserve after maturity', () => {
+    const { world, body: parent } = born();
+    expect(parent.reserve).toBe(SPECIES_CATALOG.siltstitcher.initialReserve);
+    expect(parent.traits).toEqual(baselineTraits());
+    world.nests[0].pigment = SPECIES_CATALOG.siltstitcher.protectedStock;
+    parent.age = SPECIES_CATALOG.siltstitcher.maturityAge - 0.1;
+    parent.nextBirthAt = 30;
+    world.elapsed = 30;
+    world.tick = 1;
+    const random = world.randomState;
+    updateSiltstitchers(world, 0.1);
+    expect(world.siltstitchers).toHaveLength(2);
+    expect(world.siltstitchers[1].parentId).toBe(parent.id);
+    expect(world.siltstitchers[1].traits).not.toEqual(baselineTraits());
+    expect(world.randomState).not.toBe(random);
+    expect(parent.reserve).toBeLessThan(
+      SPECIES_CATALOG.siltstitcher.initialReserve - SPECIES_CATALOG.siltstitcher.childCost + 1e-6,
+    );
+  });
+
+  it('clamps inherited traits and does not draw the PRNG on a refused birth', () => {
+    const { world, body: parent } = born();
+    parent.traits = { drive: TRAIT_MAX, bulk: TRAIT_MIN };
+    parent.age = 29.9;
+    parent.reserve = 0.4;
+    world.elapsed = 30;
+    world.tick = 1;
+    updateSiltstitchers(world, 0.1);
+    const child = world.siltstitchers[1];
+    expect(child.traits.drive).toBeGreaterThanOrEqual(TRAIT_MIN);
+    expect(child.traits.drive).toBeLessThanOrEqual(TRAIT_MAX);
+    expect(child.traits.bulk).toBeGreaterThanOrEqual(TRAIT_MIN);
+    expect(child.traits.bulk).toBeLessThanOrEqual(TRAIT_MAX);
+    const random = world.randomState;
+    const nextId = world.nextId;
+    parent.reserve = 0.4;
+    parent.nextBirthAt = world.elapsed;
+    updateSiltstitchers(world, 0.1);
+    expect(world.siltstitchers).toHaveLength(2);
+    expect(world.nextId).toBe(nextId);
+    expect(world.randomState).toBe(random);
+    parent.reserve = 0.2;
+    parent.nextBirthAt = world.elapsed;
+    world.tick += 6;
+    world.elapsed += 6;
+    const still = world.randomState;
+    updateSiltstitchers(world, 0.1);
+    expect(world.siltstitchers).toHaveLength(2);
+    expect(world.randomState).toBe(still);
+  });
+
+  it('keeps the same child traits for the same seed', () => {
+    function childOf(): { traits: { drive: number; bulk: number }; randomState: number } {
+      const { world, body: parent } = born();
+      parent.age = 29.9;
+      parent.reserve = 0.4;
+      world.elapsed = 30;
+      world.tick = 1;
+      updateSiltstitchers(world, 0.1);
+      return { traits: world.siltstitchers[1].traits, randomState: world.randomState };
+    }
+    expect(childOf()).toEqual(childOf());
+  });
+
+  it('makes higher drive both faster to load and costlier, so neither pole is free', () => {
+    const keen = born();
+    const spare = born();
+    const hungry = keen.body;
+    const thrifty = spare.body;
+    hungry.traits = { drive: TRAIT_MAX, bulk: 1 };
+    thrifty.traits = { drive: TRAIT_MIN, bulk: 1 };
+    hungry.age = 10;
+    thrifty.age = 10;
+    hungry.reserve = 0.05;
+    thrifty.reserve = 0.05;
+    keen.world.nests[0].pigment = 2;
+    spare.world.nests[0].pigment = 2;
+    updateSiltstitchers(keen.world, 1);
+    updateSiltstitchers(spare.world, 1);
+    expect(keen.world.ecologyLedger.siltstitcherMaintenancePigment).toBeGreaterThan(
+      spare.world.ecologyLedger.siltstitcherMaintenancePigment,
+    );
+    expect(keen.world.ecologyLedger.siltstitcherNestReserve).toBeGreaterThan(
+      spare.world.ecologyLedger.siltstitcherNestReserve,
+    );
+    expect(hungry.reserve).toBeGreaterThan(thrifty.reserve);
+  });
+
+  it('lets a stouter carrier hold more reserve while traveling less far', () => {
+    const stout = born();
+    const slight = born();
+    const heavy = stout.body;
+    const light = slight.body;
+    heavy.traits = { drive: 1, bulk: TRAIT_MAX };
+    light.traits = { drive: 1, bulk: TRAIT_MIN };
+    expect(traitMobility(heavy.traits)).toBeLessThan(traitMobility(light.traits));
+    expect(siltstitcherReserveCapacity(heavy.traits)).toBeGreaterThan(siltstitcherReserveCapacity(light.traits));
+    heavy.reserve = 0.05;
+    light.reserve = 0.05;
+    stout.world.nests[0].pigment = 3;
+    slight.world.nests[0].pigment = 3;
+    heavy.age = 10;
+    light.age = 10;
+    stout.world.tick = (heavy.id % 6) + 1;
+    slight.world.tick = (light.id % 6) + 1;
+    for (let step = 0; step < 40; step++) {
+      updateSiltstitchers(stout.world, 1);
+      updateSiltstitchers(slight.world, 1);
+    }
+    expect(heavy.reserve).toBeGreaterThan(light.reserve);
+    expect(heavy.reserve).toBeGreaterThan(SPECIES_CATALOG.siltstitcher.childCost);
+    expect(light.reserve).toBeCloseTo(
+      siltstitcherReserveCapacity(light.traits) - SPECIES_CATALOG.siltstitcher.maintenanceRate,
+      8,
+    );
+    heavy.mode = 'returning';
+    light.mode = 'returning';
+    heavy.x = stout.world.nests[0].x + 80;
+    light.x = slight.world.nests[0].x + 80;
+    const heavyStart = heavy.x;
+    const lightStart = light.x;
+    updateSiltstitchers(stout.world, 1);
+    updateSiltstitchers(slight.world, 1);
+    expect(heavyStart - heavy.x).toBeLessThan(lightStart - light.x);
+  });
 });

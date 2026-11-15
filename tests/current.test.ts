@@ -221,7 +221,7 @@ describe('current save revisions', () => {
     expect(migrated).toEqual({
       ...world,
       elapsed: 12,
-      schemaRevision: 16,
+      schemaRevision: 17,
       skimmerAdmissionAt: 12,
       reedwellAdmissionAt: 12,
       rainbellAdmissionAt: 12,
@@ -245,7 +245,7 @@ describe('current save revisions', () => {
         w.currents = null;
       },
       (w) => {
-        w.schemaRevision = 17;
+        w.schemaRevision = 18;
       },
       (w) => {
         w.currents[0].x = 0;

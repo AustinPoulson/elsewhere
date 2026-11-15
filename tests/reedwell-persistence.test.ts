@@ -219,7 +219,7 @@ describe('reedwell snapshot revision', () => {
     const before = JSON.stringify(historicalStudy);
     const restored = restoreWorld(before)!;
     expect(restored).toMatchObject({
-      schemaRevision: 16,
+      schemaRevision: 17,
       reedwells: [],
       reedwellAdmissionAt: historicalStudy.elapsed,
       reedwellCandidateAfterId: 0,
@@ -400,7 +400,7 @@ describe('reedwell snapshot revision', () => {
         w.nextId += 7;
       },
       (w) => {
-        w.schemaRevision = 17;
+        w.schemaRevision = 18;
       },
     ];
     for (const key of reedwellLedgerKeys) {
