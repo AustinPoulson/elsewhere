@@ -1702,10 +1702,11 @@ export function App() {
                     <p>
                       When a nest has surplus color, a small carrier can form from that stored pigment. It refills its
                       own reserve and loads a separate bundle only from color the nest can spare, then walks toward a
-                      poorer edge of the feeding grounds. It places the bundle as ordinary loose pigment for grazers to
-                      gather again. If that patch is full, it brings the bundle home and tries later. A missing home,
-                      exhausted reserve or eight world minutes can end the journey; its remaining color returns. Some
-                      nests never support one.
+                      poorer edge of the feeding grounds. A grown carrier can pay from its own reserve for a young one,
+                      whose appetite and frame may drift a little from its parent. It places the bundle as ordinary
+                      loose pigment for grazers to gather again. If that patch is full, it brings the bundle home and
+                      tries later. A missing home, exhausted reserve or eight world minutes can end the journey; its
+                      remaining color returns. Some nests never support one.
                     </p>
                   </div>
                 </div>

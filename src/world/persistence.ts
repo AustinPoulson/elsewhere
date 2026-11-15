@@ -31,6 +31,7 @@ import { MINERAL_SEAM } from './environment/mineral-seam';
 import { containingPool, isAuthoredHabitat, linkedHabitat, shoreRho } from './habitat';
 import { initializeGrazers } from './simulation';
 import { cargoMiteReserveCapacity } from './species/cargo-mite';
+import { siltstitcherReserveCapacity } from './species/siltstitcher';
 import { skimmerReserveCapacity } from './species/skimmer';
 import { isFossilSource, isRemainSource } from './species/fossils';
 import { baselineTraits, traitMobility, TRAIT_MAX, TRAIT_MIN } from './traits';
@@ -331,20 +332,44 @@ function rainbell(value: unknown, elapsed: number, nextId: number, withTraits = 
   );
 }
 
-function siltstitcher(value: unknown, nextId: number, withTraits = false): boolean {
+function siltstitcher(
+  value: unknown,
+  elapsed: number,
+  nextId: number,
+  withTraits = false,
+  withLineage = false,
+): boolean {
   const policy = SPECIES_CATALOG.siltstitcher;
+  if (withTraits && !traits(record(value) ? value.traits : undefined)) return false;
+  const reserveCap = withTraits
+    ? siltstitcherReserveCapacity((value as { traits: Traits }).traits)
+    : policy.reserveCapacity;
+  const walkSpeed = withTraits ? policy.speed * traitMobility((value as { traits: Traits }).traits) : policy.speed;
+  const birthAt = elapsed - (record(value) && typeof value.age === 'number' ? value.age : 0);
+  if (withLineage) {
+    if (
+      !record(value) ||
+      (value.parentId !== null && !integer(value.parentId, 1, (value.id as number) - 1)) ||
+      !range(value.nextBirthAt, 0, Math.min(MAX_NUMBER, elapsed + policy.breedingRest)) ||
+      (value.nextBirthAt as number) < birthAt + policy.maturityAge - 1e-6 ||
+      (typeof value.age === 'number' &&
+        value.age < policy.maturityAge - 1e-6 &&
+        Math.abs((value.nextBirthAt as number) - (birthAt + policy.maturityAge)) > 1e-6)
+    )
+      return false;
+  } else if (record(value) && ('parentId' in value || 'nextBirthAt' in value)) return false;
   if (
     !point(value, policy.margin) ||
     !integer(value.id, 1) ||
     value.species !== 'siltstitcher' ||
     value.body !== policy.bodyPigment ||
     !range(value.age, 0, policy.lifespan) ||
-    !range(value.vx, -policy.speed, policy.speed) ||
-    !range(value.vy, -policy.speed, policy.speed) ||
-    Math.hypot(value.vx, value.vy) > policy.speed + 1e-9 ||
+    !range(value.vx, -80, 80) ||
+    !range(value.vy, -80, 80) ||
+    Math.hypot(value.vx as number, value.vy as number) > walkSpeed + 1e-9 ||
     !range(value.hue, 0, 360) ||
     value.hue >= 360 ||
-    !range(value.reserve, 0, policy.reserveCapacity) ||
+    !range(value.reserve, 0, reserveCap) ||
     !range(value.cargo, 0, policy.cargoCapacity) ||
     !range(value.starvedFor, 0, policy.starvationLimit) ||
     !range(value.blockedFor, 0, policy.blockedLimit) ||
@@ -511,8 +536,13 @@ type Revision6Ledger = Omit<Revision7Ledger, (typeof GLASS_LIMPET_LEDGER_KEYS)[n
 type RainbellLedger = Omit<Revision6Ledger, (typeof SILTSTITCHER_LEDGER_KEYS)[number]>;
 type ReedwellLedger = Omit<RainbellLedger, (typeof RAINBELL_LEDGER_KEYS)[number]>;
 type PrismLedger = Omit<ReedwellLedger, (typeof REEDWELL_LEDGER_KEYS)[number]>;
+type Revision16Siltstitcher = Omit<Siltstitcher, 'parentId' | 'nextBirthAt'>;
+type Revision16World = Omit<World, 'schemaRevision' | 'siltstitchers'> & {
+  schemaRevision: 16;
+  siltstitchers: Revision16Siltstitcher[];
+};
 type Revision15Skimmer = Omit<Skimmer, 'parentId' | 'nextBirthAt'>;
-type Revision15World = Omit<World, 'schemaRevision' | 'skimmers'> & {
+type Revision15World = Omit<Revision16World, 'schemaRevision' | 'skimmers'> & {
   schemaRevision: 15;
   skimmers: Revision15Skimmer[];
 };
@@ -768,11 +798,27 @@ function withSkimmerLineage(skimmer: Revision15Skimmer, elapsed: number): Skimme
   };
 }
 
-function migrateRevision15To16(previous: Revision15World): World {
+function migrateRevision15To16(previous: Revision15World): Revision16World {
   return {
     ...previous,
     schemaRevision: 16,
     skimmers: previous.skimmers.map((skimmer) => withSkimmerLineage(skimmer, previous.elapsed)),
+  };
+}
+
+function withSiltstitcherLineage(body: Revision16Siltstitcher, elapsed: number): Siltstitcher {
+  return {
+    ...body,
+    parentId: null,
+    nextBirthAt: elapsed - body.age + SPECIES_CATALOG.siltstitcher.maturityAge,
+  };
+}
+
+function migrateRevision16To17(previous: Revision16World): World {
+  return {
+    ...previous,
+    schemaRevision: 17,
+    siltstitchers: previous.siltstitchers.map((body) => withSiltstitcherLineage(body, previous.elapsed)),
   };
 }
 
@@ -803,12 +849,12 @@ export function restoreWorld(input: string): World | null {
 
   if (
     (parsed.version === 3 &&
-      (!integer(parsed.schemaRevision, 1, 16) || !weatherCall(parsed.weatherCall, parsed.elapsed))) ||
+      (!integer(parsed.schemaRevision, 1, 17) || !weatherCall(parsed.weatherCall, parsed.elapsed))) ||
     (parsed.version !== 3 && ('schemaRevision' in parsed || 'weatherCall' in parsed || 'currents' in parsed))
   )
     return null;
   let currents: Current[] = [];
-  if (parsed.version === 3 && integer(parsed.schemaRevision, 2, 16)) {
+  if (parsed.version === 3 && integer(parsed.schemaRevision, 2, 17)) {
     if (
       !Array.isArray(parsed.currents) ||
       parsed.currents.length > MAX_CURRENTS ||
@@ -818,7 +864,8 @@ export function restoreWorld(input: string): World | null {
     currents = parsed.currents as Current[];
   } else if ('currents' in parsed) return null;
 
-  const lineageRevision = parsed.version === 3 && parsed.schemaRevision === 16;
+  const stitcherLineageRevision = parsed.version === 3 && parsed.schemaRevision === 17;
+  const lineageRevision = parsed.version === 3 && (parsed.schemaRevision === 16 || stitcherLineageRevision);
   const tracesRevision = parsed.version === 3 && (parsed.schemaRevision === 15 || lineageRevision);
   const seamRevision = parsed.version === 3 && (parsed.schemaRevision === 14 || tracesRevision);
   const linkedRevision = parsed.version === 3 && (parsed.schemaRevision === 13 || seamRevision);
@@ -932,7 +979,9 @@ export function restoreWorld(input: string): World | null {
       !Array.isArray(parsed.siltstitchers) ||
       parsed.siltstitchers.length > SILTSTITCHER_CAP ||
       skimmers.length + reedwells.length + rainbells.length + parsed.siltstitchers.length > NEW_TYPE_POPULATION_CAP ||
-      !parsed.siltstitchers.every((entry) => siltstitcher(entry, parsed.nextId as number, traitRevision)) ||
+      !parsed.siltstitchers.every((entry) =>
+        siltstitcher(entry, parsed.elapsed as number, parsed.nextId as number, traitRevision, stitcherLineageRevision),
+      ) ||
       !integer(parsed.siltstitcherCandidateAfterId, 0, parsed.nextId - 1) ||
       !range(
         parsed.siltstitcherAdmissionAt,
@@ -1191,6 +1240,14 @@ export function restoreWorld(input: string): World | null {
     skimmers.some((entry) => entry.parentId !== null && ids.has(entry.parentId) && !skimmerIds.has(entry.parentId))
   )
     return null;
+  const siltstitcherIds = new Set(siltstitchers.map((entry) => entry.id));
+  if (
+    stitcherLineageRevision &&
+    siltstitchers.some(
+      (entry) => entry.parentId !== null && ids.has(entry.parentId) && !siltstitcherIds.has(entry.parentId),
+    )
+  )
+    return null;
   const miteHostCounts = new Map<number, number>();
   for (const entry of cargoMites)
     if (entry.hostId !== null) {
@@ -1219,7 +1276,8 @@ export function restoreWorld(input: string): World | null {
   )
     return null;
   if (siltstitchers.some((entry) => ids.has(entry.homeNestId) && !nestIds.has(entry.homeNestId))) return null;
-  if (new Set(siltstitchers.map((entry) => entry.homeNestId)).size !== siltstitchers.length) return null;
+  if (!stitcherLineageRevision && new Set(siltstitchers.map((entry) => entry.homeNestId)).size !== siltstitchers.length)
+    return null;
   const homes = new Map(nests.map((entry) => [entry.id, entry]));
   const stitcherPolicy = SPECIES_CATALOG.siltstitcher;
   if (
@@ -1387,29 +1445,39 @@ export function restoreWorld(input: string): World | null {
           shoreMemory: shoreMemoryEntries,
         }
       : migrateRevision14To15(revision14);
-    return lineageRevision
+    const revision16: Revision16World =
+      parsed.schemaRevision === 16 || stitcherLineageRevision
+        ? {
+            ...revision15,
+            schemaRevision: 16,
+            skimmers,
+          }
+        : migrateRevision15To16(revision15);
+    return stitcherLineageRevision
       ? {
-          ...revision15,
-          schemaRevision: 16,
-          skimmers,
+          ...revision16,
+          schemaRevision: 17,
+          siltstitchers,
         }
-      : migrateRevision15To16(revision15);
+      : migrateRevision16To17(revision16);
   }
   let legacy: LegacyWorld = { ...ecology, version: parsed.version };
   if (legacy.version === 1) legacy = migrateV1ToV2(legacy);
-  return migrateRevision15To16(
-    migrateRevision14To15(
-      migrateRevision13To14(
-        migrateRevision12To13(
-          migrateRevision11To12(
-            migrateRevision10To11(
-              migrateRevision9To10(
-                migrateRevision8To9(
-                  migrateRevision7To8(
-                    migrateRevision6To7(
-                      migrateRevision5To6(
-                        migrateRevision4To5(
-                          migrateRevision3To4(migrateRevision2To3(migrateRevision1To2(migrateV2ToV3(legacy)))),
+  return migrateRevision16To17(
+    migrateRevision15To16(
+      migrateRevision14To15(
+        migrateRevision13To14(
+          migrateRevision12To13(
+            migrateRevision11To12(
+              migrateRevision10To11(
+                migrateRevision9To10(
+                  migrateRevision8To9(
+                    migrateRevision7To8(
+                      migrateRevision6To7(
+                        migrateRevision5To6(
+                          migrateRevision4To5(
+                            migrateRevision3To4(migrateRevision2To3(migrateRevision1To2(migrateV2ToV3(legacy)))),
+                          ),
                         ),
                       ),
                     ),

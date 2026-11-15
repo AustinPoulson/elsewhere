@@ -2,7 +2,7 @@ export const OPENING_WIDTH = 1440;
 export const OPENING_HEIGHT = 1000;
 export const WORLD_WIDTH = 1440;
 export const WORLD_HEIGHT = 1560;
-export const SCHEMA_REVISION = 16;
+export const SCHEMA_REVISION = 17;
 export const FIXED_STEP = 1 / 30;
 export const MAX_POOLS = 2;
 export const MAX_LINKS = 1;
@@ -130,6 +130,8 @@ export interface Siltstitcher extends Point {
   mode: 'home' | 'outbound' | 'blocked' | 'returning';
   destination: Point | null;
   blockedFor: number;
+  parentId: number | null;
+  nextBirthAt: number;
   traits: Traits;
 }
 export interface GlassLimpet extends Point {
@@ -271,7 +273,7 @@ export interface ShoreMemory {
 }
 export interface World {
   version: 3;
-  schemaRevision: 16;
+  schemaRevision: 17;
   lastSeenAt: number | null;
   seamAccrued: number;
   pools: HabitatPool[];
