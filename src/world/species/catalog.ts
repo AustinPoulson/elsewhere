@@ -66,9 +66,9 @@ export const SPECIES_CATALOG = {
   siltstitcher: {
     cap: SILTSTITCHER_CAP,
     bodyPigment: 0.2,
-    initialReserve: 0.4,
-    admissionThreshold: 1.8,
-    admissionPigment: 0.6,
+    initialReserve: 0.1,
+    admissionThreshold: 1.5,
+    admissionPigment: 0.3,
     admissionRest: 60,
     protectedStock: 1.2,
     reserveCapacity: 0.4,

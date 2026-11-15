@@ -6,7 +6,12 @@ import { addLight, createWorld, stepWorld } from '../src/world/simulation';
 import { activeNewTypePopulation, SPECIES_CATALOG } from '../src/world/species/catalog';
 import { updateRainbells } from '../src/world/species/rainbell';
 import { updateReedwells } from '../src/world/species/reedwell';
-import { siltstitcherReserveCapacity, updateSiltstitchers } from '../src/world/species/siltstitcher';
+import {
+  siltstitcherBirthStake,
+  siltstitcherReserveCapacity,
+  siltstitcherSurvivalFloor,
+  updateSiltstitchers,
+} from '../src/world/species/siltstitcher';
 import { updateSkimmers } from '../src/world/species/skimmer';
 import { baselineTraits, traitMobility, TRAIT_MAX, TRAIT_MIN } from '../src/world/traits';
 import { FIXED_STEP, LIMITS, isInPool, type Point, type Siltstitcher, type World } from '../src/world/types';
@@ -72,16 +77,16 @@ describe('siltstitcher outward nest disperser', () => {
     expect(activeNewTypePopulation(world)).toBe(1);
   });
 
-  it('pays .6 only from a nest holding at least1.8, separates .2 body/.4 health, and draws no random numbers', () => {
-    const world = habitat(1.8);
+  it('pays .3 only from a nest holding at least1.5, separates .2 body/.1 health, and draws no random numbers', () => {
+    const world = habitat(1.5);
     const before = structuredClone(world);
     updateSiltstitchers(world, FIXED_STEP);
-    expect(world.nests[0].pigment).toBeCloseTo(1.2, 12);
+    expect(world.nests[0].pigment).toBe(1.2);
     expect(world.siltstitchers[0]).toMatchObject({
       x: 720,
       y: 500,
       body: 0.2,
-      reserve: 0.4,
+      reserve: 0.1,
       cargo: 0,
       age: 0,
       mode: 'home',
@@ -96,7 +101,7 @@ describe('siltstitcher outward nest disperser', () => {
     expect(world.nextId).toBe(before.nextId + 1);
     expect(world.randomState).toBe(before.randomState);
     expect(world.siltstitcherAdmissionAt).toBe(60);
-    const poor = habitat(1.8 - Number.EPSILON);
+    const poor = habitat(1.5 - Number.EPSILON);
     const snapshot = structuredClone(poor);
     updateSiltstitchers(poor, FIXED_STEP);
     expect(poor).toEqual(snapshot);
@@ -225,7 +230,7 @@ describe('siltstitcher outward nest disperser', () => {
   });
 
   it('allows an actually funded partial trip after protected stock stops loading, without turning cargo into health', () => {
-    const { world, body } = born(1.9);
+    const { world, body } = born(1.6);
     advance(world, 8);
     expect(world.nests[0].pigment).toBeCloseTo(1.2, 12);
     expect(body.cargo).toBeGreaterThanOrEqual(0.06);
@@ -572,12 +577,17 @@ describe('siltstitcher inheritance', () => {
     expect(child.traits.bulk).toBeLessThanOrEqual(TRAIT_MAX);
     expect(world.randomState).not.toBe(random);
     expect(parent.nextBirthAt).toBe(world.elapsed + SPECIES_CATALOG.siltstitcher.breedingRest);
+    expect(parent.reserve).toBeGreaterThanOrEqual(
+      siltstitcherSurvivalFloor(parent.traits) -
+        SPECIES_CATALOG.siltstitcher.maintenanceRate * 0.1 * parent.traits.drive -
+        1e-9,
+    );
   });
 
-  it('lets a nest-funded founder pay a child from remaining starting reserve after maturity', () => {
+  it('does not let a founder pay a child from the nest-funded starting reserve', () => {
     const { world, body: parent } = born();
     expect(parent.reserve).toBe(SPECIES_CATALOG.siltstitcher.initialReserve);
-    expect(parent.traits).toEqual(baselineTraits());
+    expect(parent.reserve).toBeLessThan(siltstitcherBirthStake(parent.traits));
     world.nests[0].pigment = SPECIES_CATALOG.siltstitcher.protectedStock;
     parent.age = SPECIES_CATALOG.siltstitcher.maturityAge - 0.1;
     parent.nextBirthAt = 30;
@@ -585,13 +595,68 @@ describe('siltstitcher inheritance', () => {
     world.tick = 1;
     const random = world.randomState;
     updateSiltstitchers(world, 0.1);
+    expect(world.siltstitchers).toHaveLength(1);
+    expect(world.randomState).toBe(random);
+    expect(parent.reserve).toBeLessThan(SPECIES_CATALOG.siltstitcher.childCost);
+  });
+
+  it('stocks a birth from nest surplus into parent reserve, then keeps a survival floor', () => {
+    const { world, body: parent } = born();
+    parent.age = SPECIES_CATALOG.siltstitcher.maturityAge;
+    parent.nextBirthAt = 30;
+    world.elapsed = 30;
+    world.tick = 1;
+    world.nests[0].pigment = 2;
+    const nestBefore = world.nests[0].pigment;
+    const random = world.randomState;
+    updateSiltstitchers(world, 1);
+    expect(world.siltstitchers).toHaveLength(1);
+    expect(world.randomState).toBe(random);
+    expect(parent.mode).toBe('home');
+    expect(parent.cargo).toBe(0);
+    expect(world.nests[0].pigment).toBeLessThan(nestBefore);
+    parent.reserve = siltstitcherBirthStake(parent.traits);
+    world.tick += 6;
+    world.elapsed += 6;
+    const beforeReserve = parent.reserve;
+    const beforePigment = pigment(world);
+    updateSiltstitchers(world, 0.1);
     expect(world.siltstitchers).toHaveLength(2);
     expect(world.siltstitchers[1].parentId).toBe(parent.id);
-    expect(world.siltstitchers[1].traits).not.toEqual(baselineTraits());
-    expect(world.randomState).not.toBe(random);
-    expect(parent.reserve).toBeLessThan(
-      SPECIES_CATALOG.siltstitcher.initialReserve - SPECIES_CATALOG.siltstitcher.childCost + 1e-6,
+    expect(parent.reserve).toBeCloseTo(
+      beforeReserve -
+        SPECIES_CATALOG.siltstitcher.childCost -
+        SPECIES_CATALOG.siltstitcher.maintenanceRate * 0.1 * parent.traits.drive,
+      8,
     );
+    expect(parent.reserve).toBeGreaterThanOrEqual(
+      siltstitcherSurvivalFloor(parent.traits) -
+        SPECIES_CATALOG.siltstitcher.maintenanceRate * 0.1 * parent.traits.drive -
+        1e-9,
+    );
+    expect(pigment(world)).toBeCloseTo(
+      beforePigment - SPECIES_CATALOG.siltstitcher.maintenanceRate * 0.1 * parent.traits.drive,
+      8,
+    );
+  });
+
+  it('refuses a second child on a nest that already holds a parent and child', () => {
+    const { world, body: parent } = born();
+    parent.age = 30;
+    parent.reserve = siltstitcherBirthStake(parent.traits);
+    parent.nextBirthAt = 30;
+    world.elapsed = 30;
+    world.tick = 1;
+    updateSiltstitchers(world, 0.1);
+    expect(world.siltstitchers).toHaveLength(2);
+    parent.reserve = siltstitcherBirthStake(parent.traits);
+    parent.nextBirthAt = world.elapsed;
+    world.tick += 6;
+    world.elapsed += 6;
+    const random = world.randomState;
+    updateSiltstitchers(world, 0.1);
+    expect(world.siltstitchers).toHaveLength(2);
+    expect(world.randomState).toBe(random);
   });
 
   it('clamps inherited traits and does not draw the PRNG on a refused birth', () => {
