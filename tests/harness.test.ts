@@ -87,6 +87,7 @@ describe('headless harness', () => {
     const quiet = runHarness({ days: 2, seed: 1, visitorLight: false });
     expect(quiet.traitDrift.length).toBeGreaterThan(1);
     expect(quiet.traitDrift[0].lucents).toMatchObject({ count: 24, drive: 1, bulk: 1 });
+    expect(quiet.lifetimeTraits.lucents).toMatchObject({ count: expect.any(Number), drive: 1, bulk: 1 });
     expect(quiet.resources.ambientHarvested).toBeGreaterThan(0);
     expect(quiet.conservationCheck.remainsBalanced).toBe(true);
     expect(quiet.conservationCheck.fossilsBalanced).toBe(true);

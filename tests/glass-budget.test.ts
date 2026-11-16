@@ -190,6 +190,8 @@ function mixedMaximum(): World {
       hue: 40,
       starvedFor: 0,
       targetRemainId: null,
+      parentId: null,
+      nextBirthAt: 30,
       traits: baselineTraits(),
     });
   }
@@ -262,6 +264,7 @@ function stepStress(world: World, index: number): void {
   for (const body of world.marlgrubs) {
     body.age %= 359;
     body.starvedFor = 0;
+    body.nextBirthAt = world.elapsed - body.age + 30;
   }
   stepWorld(world, FIXED_STEP);
   while (world.sediment.length < LIMITS.sediment) {

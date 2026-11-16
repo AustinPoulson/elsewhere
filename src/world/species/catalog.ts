@@ -156,6 +156,12 @@ export const SPECIES_CATALOG = {
     seekReach: 140,
     spacing: 48,
     margin: 11,
+    childCost: 0.1,
+    childBody: 0.1,
+    childReserve: 0,
+    survivalFloor: 0.05,
+    maturityAge: 30,
+    breedingRest: 60,
   },
 } as const;
 

@@ -122,7 +122,7 @@ describe('prism snapshot revision', () => {
       expect(restored).not.toBeNull();
       expect(restored).toMatchObject({
         version: 3,
-        schemaRevision: 17,
+        schemaRevision: 18,
         skimmers: [],
         skimmerAdmissionAt: 123,
         elapsed: 123,
@@ -326,7 +326,7 @@ describe('prism snapshot revision', () => {
         w.nextId += 7;
       },
       (w) => {
-        w.schemaRevision = 18;
+        w.schemaRevision = 19;
       },
     ];
     for (const change of changes) {

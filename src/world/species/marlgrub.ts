@@ -1,11 +1,13 @@
 import { confinePosition } from '../geometry';
-import type { Marlgrub, Remain, World } from '../types';
-import { baselineTraits, traitMobility } from '../traits';
+import type { Marlgrub, Remain, Traits, World } from '../types';
+import { baselineTraits, mutateTraits, traitMobility } from '../traits';
 import { activeNewTypePopulation, NEW_TYPE_POPULATION_CAP, SPECIES_CATALOG } from './catalog';
+import { tryEventFounding } from './founding';
 import { blendHue, safeId } from './resources';
 import { discardEmptyRemains, settleDeath, takeRemainPigment } from './remains';
 
 const RULE = SPECIES_CATALOG.marlgrub;
+const TAU = 2 * Math.PI;
 const indexes = new WeakMap<World, Map<number, Remain>>();
 
 function remainIndex(world: World): Map<number, Remain> {
@@ -17,6 +19,30 @@ function remainIndex(world: World): Map<number, Remain> {
   index.clear();
   for (const remain of world.remains) index.set(remain.id, remain);
   return index;
+}
+
+export function marlgrubReserveCapacity(traits: Pick<Traits, 'bulk'>): number {
+  return RULE.reserveCapacity * traits.bulk;
+}
+
+export function marlgrubSeekReach(traits: Pick<Traits, 'bulk'>): number {
+  return RULE.seekReach * (1.15 - 0.15 * traits.bulk);
+}
+
+export function marlgrubSurvivalFloor(traits: Pick<Traits, 'bulk'>): number {
+  return Math.min(RULE.survivalFloor, Math.max(0, marlgrubReserveCapacity(traits) - RULE.childCost));
+}
+
+function remainHeldForStocking(world: World, remain: Remain): boolean {
+  for (const grub of world.marlgrubs) {
+    if (grub.reserve >= marlgrubBirthStake(grub.traits)) continue;
+    if (Math.hypot(grub.x - remain.x, grub.y - remain.y) <= marlgrubSeekReach(grub.traits)) return true;
+  }
+  return false;
+}
+
+export function marlgrubBirthStake(traits: Pick<Traits, 'bulk'>): number {
+  return RULE.childCost + marlgrubSurvivalFloor(traits);
 }
 
 export function admitMarlgrub(world: World): boolean {
@@ -33,6 +59,7 @@ export function admitMarlgrub(world: World): boolean {
   for (const remain of world.remains) {
     if (remain.pigment < RULE.admissionPigment) continue;
     if (world.marlgrubs.some((grub) => Math.hypot(grub.x - remain.x, grub.y - remain.y) < RULE.spacing)) continue;
+    if (remainHeldForStocking(world, remain)) continue;
     if (!first || remain.id < first.id) first = remain;
     if (remain.id > world.marlgrubCandidateAfterId && (!after || remain.id < after.id)) after = remain;
   }
@@ -52,6 +79,8 @@ export function admitMarlgrub(world: World): boolean {
     hue: source.hue,
     starvedFor: 0,
     targetRemainId: source.pigment > RULE.admissionPigment ? source.id : null,
+    parentId: null,
+    nextBirthAt: world.elapsed + RULE.maturityAge,
     traits: baselineTraits(),
   };
   confinePosition(grub, RULE.margin);
@@ -65,17 +94,57 @@ export function admitMarlgrub(world: World): boolean {
 
 function chooseTarget(world: World, grub: Marlgrub): void {
   let nearest: Remain | undefined;
-  let best: number = RULE.seekReach;
+  const reach = marlgrubSeekReach(grub.traits);
+  let best = reach;
   for (const remain of world.remains) {
     if (remain.pigment <= 0) continue;
     const distance = Math.hypot(grub.x - remain.x, grub.y - remain.y);
-    if (distance > RULE.seekReach) continue;
+    if (distance > reach) continue;
     if (distance < best || (distance === best && (!nearest || remain.id < nearest.id))) {
       best = distance;
       nearest = remain;
     }
   }
   grub.targetRemainId = nearest?.id ?? null;
+}
+
+function birth(world: World, parent: Marlgrub): void {
+  if (
+    parent.age < RULE.maturityAge ||
+    world.elapsed < parent.nextBirthAt ||
+    parent.reserve < marlgrubBirthStake(parent.traits) ||
+    world.marlgrubs.length >= RULE.cap ||
+    world.elapsed > Number.MAX_SAFE_INTEGER - RULE.breedingRest
+  )
+    return;
+  tryEventFounding(world, (current) => {
+    if (parent.reserve < marlgrubBirthStake(parent.traits) || !safeId(current) || current.marlgrubs.length >= RULE.cap)
+      return false;
+    const angle = ((parent.id % 4096) * 2.39996322973) % TAU;
+    const child: Marlgrub = {
+      id: current.nextId,
+      species: 'marlgrub',
+      x: parent.x + Math.cos(angle) * 8,
+      y: parent.y + Math.sin(angle) * 8,
+      vx: parent.vx,
+      vy: parent.vy,
+      body: RULE.childBody,
+      reserve: RULE.childReserve,
+      age: 0,
+      hue: parent.hue,
+      starvedFor: 0,
+      targetRemainId: parent.targetRemainId,
+      parentId: parent.id,
+      nextBirthAt: current.elapsed + RULE.maturityAge,
+      traits: mutateTraits(current, parent.traits),
+    };
+    confinePosition(child, RULE.margin);
+    parent.reserve -= RULE.childCost;
+    parent.nextBirthAt = current.elapsed + RULE.breedingRest;
+    current.nextId++;
+    current.marlgrubs.push(child);
+    return true;
+  });
 }
 
 function updateOne(world: World, grub: Marlgrub, dt: number, index: Map<number, Remain>): void {
@@ -96,7 +165,10 @@ function updateOne(world: World, grub: Marlgrub, dt: number, index: Map<number, 
       const intake = takeRemainPigment(
         world,
         edible,
-        Math.min(dt * RULE.intakeRate * grub.traits.drive, Math.max(0, RULE.reserveCapacity - grub.reserve)),
+        Math.min(
+          dt * RULE.intakeRate * grub.traits.drive,
+          Math.max(0, marlgrubReserveCapacity(grub.traits) - grub.reserve),
+        ),
       );
       if (intake > 0) {
         grub.hue = blendHue(grub.hue, edible.hue, grub.reserve, intake);
@@ -115,6 +187,7 @@ function updateOne(world: World, grub: Marlgrub, dt: number, index: Map<number, 
     grub.vx = 0;
     grub.vy = 0;
   }
+  if (grub.reserve > 0) birth(world, grub);
   const maintenance = Math.min(grub.reserve, dt * RULE.maintenanceRate * grub.traits.drive);
   grub.reserve -= maintenance;
   world.ecologyLedger.marlgrubMaintenancePigment += maintenance;
@@ -124,7 +197,8 @@ function updateOne(world: World, grub: Marlgrub, dt: number, index: Map<number, 
 export function updateMarlgrubs(world: World, dt: number): void {
   if (world.marlgrubs.length === 0) return;
   const index = remainIndex(world);
-  for (const grub of world.marlgrubs) updateOne(world, grub, dt, index);
+  const initialCount = world.marlgrubs.length;
+  for (let i = 0; i < initialCount; i++) updateOne(world, world.marlgrubs[i], dt, index);
   discardEmptyRemains(world);
   let write = 0;
   for (const grub of world.marlgrubs) {

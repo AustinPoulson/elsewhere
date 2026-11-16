@@ -32,10 +32,13 @@ interface TraitMeans {
   count: number;
   drive: number;
   bulk: number;
+  minDrive: number;
+  maxDrive: number;
+  minBulk: number;
+  maxBulk: number;
 }
 
-interface TraitSample {
-  worldTime: number;
+interface TraitSnapshot {
   lucents: TraitMeans | null;
   grazers: TraitMeans | null;
   skimmers: TraitMeans | null;
@@ -45,6 +48,10 @@ interface TraitSample {
   glassLimpets: TraitMeans | null;
   cargoMites: TraitMeans | null;
   marlgrubs: TraitMeans | null;
+}
+
+interface TraitSample extends TraitSnapshot {
+  worldTime: number;
 }
 
 interface SpeciesEvents {
@@ -63,6 +70,7 @@ export interface HarnessReport {
   visitorLight: boolean;
   populations: PopulationSample[];
   traitDrift: TraitSample[];
+  lifetimeTraits: TraitSnapshot;
   events: Record<string, SpeciesEvents>;
   resources: {
     lightEnergy: number;
@@ -114,15 +122,47 @@ export interface HarnessConfig {
   visitorLight: boolean;
 }
 
+function mergeTraits(prev: TraitMeans | null, list: { traits: Traits }[]): TraitMeans | null {
+  const next = traitMeans(list);
+  if (!next) return prev;
+  if (!prev) return next;
+  const count = prev.count + next.count;
+  return {
+    count,
+    drive: (prev.drive * prev.count + next.drive * next.count) / count,
+    bulk: (prev.bulk * prev.count + next.bulk * next.count) / count,
+    minDrive: Math.min(prev.minDrive, next.minDrive),
+    maxDrive: Math.max(prev.maxDrive, next.maxDrive),
+    minBulk: Math.min(prev.minBulk, next.minBulk),
+    maxBulk: Math.max(prev.maxBulk, next.maxBulk),
+  };
+}
+
 function traitMeans(list: { traits: Traits }[]): TraitMeans | null {
   if (list.length === 0) return null;
   let drive = 0;
   let bulk = 0;
+  let minDrive = Infinity;
+  let maxDrive = -Infinity;
+  let minBulk = Infinity;
+  let maxBulk = -Infinity;
   for (const entry of list) {
     drive += entry.traits.drive;
     bulk += entry.traits.bulk;
+    minDrive = Math.min(minDrive, entry.traits.drive);
+    maxDrive = Math.max(maxDrive, entry.traits.drive);
+    minBulk = Math.min(minBulk, entry.traits.bulk);
+    maxBulk = Math.max(maxBulk, entry.traits.bulk);
   }
-  return { count: list.length, drive: drive / list.length, bulk: bulk / list.length };
+  return {
+    count: list.length,
+    drive: drive / list.length,
+    bulk: bulk / list.length,
+    minDrive,
+    maxDrive,
+    minBulk,
+    maxBulk,
+  };
 }
 
 export function parseHarnessArgs(argv: string[]): HarnessConfig {
@@ -203,6 +243,17 @@ export function runHarness(config: HarnessConfig): HarnessReport {
 
   const populations: PopulationSample[] = [];
   const traitDrift: TraitSample[] = [];
+  const lifetimeTraits: TraitSnapshot = {
+    lucents: null,
+    grazers: null,
+    skimmers: null,
+    reedwells: null,
+    rainbells: null,
+    siltstitchers: null,
+    glassLimpets: null,
+    cargoMites: null,
+    marlgrubs: null,
+  };
   const events: Record<string, SpeciesEvents> = {
     lucents: { births: 0, deaths: 0, extinctAt: null },
     grazers: { births: 0, deaths: 0, extinctAt: null },
@@ -299,6 +350,15 @@ export function runHarness(config: HarnessConfig): HarnessReport {
 
   for (let step = 0; step < targetSteps; step++) {
     stepWorld(world);
+    lifetimeTraits.lucents = mergeTraits(lifetimeTraits.lucents, world.organisms);
+    lifetimeTraits.grazers = mergeTraits(lifetimeTraits.grazers, world.grazers);
+    lifetimeTraits.skimmers = mergeTraits(lifetimeTraits.skimmers, world.skimmers);
+    lifetimeTraits.reedwells = mergeTraits(lifetimeTraits.reedwells, world.reedwells);
+    lifetimeTraits.rainbells = mergeTraits(lifetimeTraits.rainbells, world.rainbells);
+    lifetimeTraits.siltstitchers = mergeTraits(lifetimeTraits.siltstitchers, world.siltstitchers);
+    lifetimeTraits.glassLimpets = mergeTraits(lifetimeTraits.glassLimpets, world.glassLimpets);
+    lifetimeTraits.cargoMites = mergeTraits(lifetimeTraits.cargoMites, world.cargoMites);
+    lifetimeTraits.marlgrubs = mergeTraits(lifetimeTraits.marlgrubs, world.marlgrubs);
     updateEvents();
     if (config.visitorLight) {
       const day = Math.floor(world.elapsed / DAY_SECONDS);
@@ -333,6 +393,7 @@ export function runHarness(config: HarnessConfig): HarnessReport {
     visitorLight: config.visitorLight,
     populations,
     traitDrift,
+    lifetimeTraits,
     events,
     resources: {
       lightEnergy: stats.light,
@@ -417,7 +478,7 @@ function formatTime(seconds: number): string {
 
 function formatMeans(sample: TraitMeans | null): string {
   if (!sample) return '—';
-  return `n=${sample.count} drive ${sample.drive.toFixed(3)} bulk ${sample.bulk.toFixed(3)}`;
+  return `n=${sample.count} drive ${sample.drive.toFixed(3)} [${sample.minDrive.toFixed(3)}–${sample.maxDrive.toFixed(3)}] bulk ${sample.bulk.toFixed(3)} [${sample.minBulk.toFixed(3)}–${sample.maxBulk.toFixed(3)}]`;
 }
 
 export function printReport(report: HarnessReport): void {
@@ -490,8 +551,6 @@ export function printReport(report: HarnessReport): void {
   }
 
   console.log(`\n🧬 Trait Drift`);
-  const firstTraits = report.traitDrift[0];
-  const lastTraits = report.traitDrift[report.traitDrift.length - 1];
   const traitSpecies = [
     'lucents',
     'grazers',
@@ -504,10 +563,9 @@ export function printReport(report: HarnessReport): void {
     'marlgrubs',
   ] as const;
   for (const species of traitSpecies) {
-    const start = firstTraits[species];
-    const end = lastTraits[species];
-    if (!start && !end) continue;
-    console.log(`   ${species.padEnd(14)}: ${formatMeans(start)} → ${formatMeans(end)}`);
+    const living = report.lifetimeTraits[species];
+    if (!living) continue;
+    console.log(`   ${species.padEnd(14)}: living ${formatMeans(living)}`);
   }
 
   console.log(`\n🔄 Births & Deaths`);
