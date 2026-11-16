@@ -287,6 +287,8 @@ describe('marlgrub inheritance', () => {
 
   it('does not let a founder pay a child from the event-offer starting reserve', () => {
     const { world, grub: parent } = born();
+    world.remains = [];
+    parent.targetRemainId = null;
     expect(parent.reserve).toBe(SPECIES_CATALOG.marlgrub.initialReserve);
     expect(parent.reserve).toBeLessThan(marlgrubBirthStake(parent.traits));
     parent.age = SPECIES_CATALOG.marlgrub.maturityAge - 0.1;
@@ -297,7 +299,68 @@ describe('marlgrub inheritance', () => {
     updateMarlgrubs(world, 0.1);
     expect(world.marlgrubs).toHaveLength(1);
     expect(world.randomState).toBe(random);
-    expect(parent.reserve).toBeLessThan(SPECIES_CATALOG.marlgrub.childCost);
+    expect(parent.reserve).toBeLessThan(marlgrubBirthStake(parent.traits));
+  });
+
+  it('stocks a birth from remain surplus into parent reserve, then keeps a survival floor', () => {
+    const { world, grub: parent } = born();
+    parent.age = SPECIES_CATALOG.marlgrub.maturityAge;
+    parent.nextBirthAt = 30;
+    world.elapsed = 30;
+    world.tick = ((6 - (parent.id % 6)) % 6) + 1;
+    const remainBefore = heldRemainPigment(world);
+    const random = world.randomState;
+    updateMarlgrubs(world, 1);
+    expect(world.marlgrubs).toHaveLength(1);
+    expect(world.randomState).toBe(random);
+    expect(heldRemainPigment(world)).toBeLessThan(remainBefore);
+    expect(parent.reserve).toBeGreaterThan(SPECIES_CATALOG.marlgrub.initialReserve);
+    expect(parent.reserve).toBeLessThan(marlgrubBirthStake(parent.traits));
+    parent.reserve = marlgrubBirthStake(parent.traits);
+    parent.targetRemainId = null;
+    world.elapsed += 6;
+    world.tick = ((6 - (parent.id % 6)) % 6) + 1;
+    const beforeReserve = parent.reserve;
+    const beforePigment = pigment(world);
+    updateMarlgrubs(world, 0.1);
+    expect(world.marlgrubs).toHaveLength(2);
+    expect(world.marlgrubs[1].parentId).toBe(parent.id);
+    expect(world.marlgrubs[1].body).toBe(SPECIES_CATALOG.marlgrub.childBody);
+    expect(parent.reserve).toBeCloseTo(
+      beforeReserve -
+        SPECIES_CATALOG.marlgrub.childCost -
+        SPECIES_CATALOG.marlgrub.maintenanceRate * 0.1 * parent.traits.drive,
+      8,
+    );
+    expect(pigment(world)).toBeCloseTo(
+      beforePigment - SPECIES_CATALOG.marlgrub.maintenanceRate * 0.1 * parent.traits.drive,
+      8,
+    );
+    expect(parent.reserve).toBeGreaterThanOrEqual(
+      marlgrubSurvivalFloor(parent.traits) -
+        SPECIES_CATALOG.marlgrub.maintenanceRate * 0.1 * parent.traits.drive -
+        1e-9,
+    );
+    balanced(world);
+  });
+
+  it('does not found from a remain a stocking parent can still bank', () => {
+    const { world, grub: parent } = born();
+    parent.reserve = SPECIES_CATALOG.marlgrub.initialReserve;
+    world.elapsed = 60;
+    world.marlgrubAdmissionAt = 60;
+    world.nextFoundingTick = 0;
+    world.tick = 1;
+    depositRemain(world, { x: parent.x + 80, y: parent.y }, 80, 0.25, 'unknown');
+    const random = world.randomState;
+    expect(tryEventFounding(world, admitMarlgrub)).toBe(false);
+    expect(world.marlgrubs).toHaveLength(1);
+    expect(world.randomState).toBe(random);
+    depositRemain(world, { x: parent.x + 400, y: parent.y }, 70, 0.25, 'unknown');
+    expect(tryEventFounding(world, admitMarlgrub)).toBe(true);
+    expect(world.marlgrubs).toHaveLength(2);
+    expect(world.marlgrubs[1].parentId).toBeNull();
+    expect(world.marlgrubs[1].traits).toEqual(baselineTraits());
   });
 
   it('clamps inherited traits and does not draw the PRNG on a refused birth', () => {
@@ -321,7 +384,7 @@ describe('marlgrub inheritance', () => {
     expect(world.marlgrubs).toHaveLength(2);
     expect(world.nextId).toBe(nextId);
     expect(world.randomState).toBe(random);
-    parent.reserve = 0.15;
+    parent.reserve = 0.12;
     parent.nextBirthAt = world.elapsed;
     world.tick += 6;
     world.elapsed += 6;

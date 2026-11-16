@@ -30,7 +30,15 @@ export function marlgrubSeekReach(traits: Pick<Traits, 'bulk'>): number {
 }
 
 export function marlgrubSurvivalFloor(traits: Pick<Traits, 'bulk'>): number {
-  return Math.min(RULE.initialReserve, Math.max(0, marlgrubReserveCapacity(traits) - RULE.childCost));
+  return Math.min(RULE.survivalFloor, Math.max(0, marlgrubReserveCapacity(traits) - RULE.childCost));
+}
+
+function remainHeldForStocking(world: World, remain: Remain): boolean {
+  for (const grub of world.marlgrubs) {
+    if (grub.reserve >= marlgrubBirthStake(grub.traits)) continue;
+    if (Math.hypot(grub.x - remain.x, grub.y - remain.y) <= marlgrubSeekReach(grub.traits)) return true;
+  }
+  return false;
 }
 
 export function marlgrubBirthStake(traits: Pick<Traits, 'bulk'>): number {
@@ -51,6 +59,7 @@ export function admitMarlgrub(world: World): boolean {
   for (const remain of world.remains) {
     if (remain.pigment < RULE.admissionPigment) continue;
     if (world.marlgrubs.some((grub) => Math.hypot(grub.x - remain.x, grub.y - remain.y) < RULE.spacing)) continue;
+    if (remainHeldForStocking(world, remain)) continue;
     if (!first || remain.id < first.id) first = remain;
     if (remain.id > world.marlgrubCandidateAfterId && (!after || remain.id < after.id)) after = remain;
   }
@@ -115,8 +124,8 @@ function birth(world: World, parent: Marlgrub): void {
     const child: Marlgrub = {
       id: current.nextId,
       species: 'marlgrub',
-      x: parent.x + Math.cos(angle) * 16,
-      y: parent.y + Math.sin(angle) * 16,
+      x: parent.x + Math.cos(angle) * 8,
+      y: parent.y + Math.sin(angle) * 8,
       vx: parent.vx,
       vy: parent.vy,
       body: RULE.childBody,
@@ -124,7 +133,7 @@ function birth(world: World, parent: Marlgrub): void {
       age: 0,
       hue: parent.hue,
       starvedFor: 0,
-      targetRemainId: null,
+      targetRemainId: parent.targetRemainId,
       parentId: parent.id,
       nextBirthAt: current.elapsed + RULE.maturityAge,
       traits: mutateTraits(current, parent.traits),
