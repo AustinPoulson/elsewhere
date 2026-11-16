@@ -2,7 +2,7 @@ export const OPENING_WIDTH = 1440;
 export const OPENING_HEIGHT = 1000;
 export const WORLD_WIDTH = 1440;
 export const WORLD_HEIGHT = 1560;
-export const SCHEMA_REVISION = 17;
+export const SCHEMA_REVISION = 18;
 export const FIXED_STEP = 1 / 30;
 export const MAX_POOLS = 2;
 export const MAX_LINKS = 1;
@@ -193,6 +193,8 @@ export interface Marlgrub extends Point {
   hue: number;
   starvedFor: number;
   targetRemainId: number | null;
+  parentId: number | null;
+  nextBirthAt: number;
   traits: Traits;
 }
 export interface EcologyLedger {
@@ -273,7 +275,7 @@ export interface ShoreMemory {
 }
 export interface World {
   version: 3;
-  schemaRevision: 17;
+  schemaRevision: 18;
   lastSeenAt: number | null;
   seamAccrued: number;
   pools: HabitatPool[];

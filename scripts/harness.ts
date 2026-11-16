@@ -32,6 +32,10 @@ interface TraitMeans {
   count: number;
   drive: number;
   bulk: number;
+  minDrive: number;
+  maxDrive: number;
+  minBulk: number;
+  maxBulk: number;
 }
 
 interface TraitSample {
@@ -118,11 +122,27 @@ function traitMeans(list: { traits: Traits }[]): TraitMeans | null {
   if (list.length === 0) return null;
   let drive = 0;
   let bulk = 0;
+  let minDrive = Infinity;
+  let maxDrive = -Infinity;
+  let minBulk = Infinity;
+  let maxBulk = -Infinity;
   for (const entry of list) {
     drive += entry.traits.drive;
     bulk += entry.traits.bulk;
+    minDrive = Math.min(minDrive, entry.traits.drive);
+    maxDrive = Math.max(maxDrive, entry.traits.drive);
+    minBulk = Math.min(minBulk, entry.traits.bulk);
+    maxBulk = Math.max(maxBulk, entry.traits.bulk);
   }
-  return { count: list.length, drive: drive / list.length, bulk: bulk / list.length };
+  return {
+    count: list.length,
+    drive: drive / list.length,
+    bulk: bulk / list.length,
+    minDrive,
+    maxDrive,
+    minBulk,
+    maxBulk,
+  };
 }
 
 export function parseHarnessArgs(argv: string[]): HarnessConfig {
@@ -417,7 +437,7 @@ function formatTime(seconds: number): string {
 
 function formatMeans(sample: TraitMeans | null): string {
   if (!sample) return '—';
-  return `n=${sample.count} drive ${sample.drive.toFixed(3)} bulk ${sample.bulk.toFixed(3)}`;
+  return `n=${sample.count} drive ${sample.drive.toFixed(3)} [${sample.minDrive.toFixed(3)}–${sample.maxDrive.toFixed(3)}] bulk ${sample.bulk.toFixed(3)} [${sample.minBulk.toFixed(3)}–${sample.maxBulk.toFixed(3)}]`;
 }
 
 export function printReport(report: HarnessReport): void {

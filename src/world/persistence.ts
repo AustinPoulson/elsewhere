@@ -31,6 +31,7 @@ import { MINERAL_SEAM } from './environment/mineral-seam';
 import { containingPool, isAuthoredHabitat, linkedHabitat, shoreRho } from './habitat';
 import { initializeGrazers } from './simulation';
 import { cargoMiteReserveCapacity } from './species/cargo-mite';
+import { marlgrubReserveCapacity } from './species/marlgrub';
 import { siltstitcherReserveCapacity } from './species/siltstitcher';
 import { skimmerReserveCapacity } from './species/skimmer';
 import { isFossilSource, isRemainSource } from './species/fossils';
@@ -501,12 +502,26 @@ function shoreMemory(value: unknown, elapsed: number): value is ShoreMemory {
   return new Set(value.kinds).size === value.kinds.length;
 }
 
-function marlgrub(value: unknown, nextId: number, withTraits = false): boolean {
+function marlgrub(value: unknown, elapsed: number, nextId: number, withTraits = false, withLineage = false): boolean {
   const policy = SPECIES_CATALOG.marlgrub;
-  const seekSpeed =
-    withTraits && record(value) && traits(value.traits)
-      ? policy.speed * traitMobility(value.traits as Traits)
-      : policy.speed;
+  if (withTraits && !traits(record(value) ? value.traits : undefined)) return false;
+  const reserveCap = withTraits
+    ? marlgrubReserveCapacity((value as { traits: Traits }).traits)
+    : policy.reserveCapacity;
+  const seekSpeed = withTraits ? policy.speed * traitMobility((value as { traits: Traits }).traits) : policy.speed;
+  const birthAt = elapsed - (record(value) && typeof value.age === 'number' ? value.age : 0);
+  if (withLineage) {
+    if (
+      !record(value) ||
+      (value.parentId !== null && !integer(value.parentId, 1, (value.id as number) - 1)) ||
+      !range(value.nextBirthAt, 0, Math.min(MAX_NUMBER, elapsed + policy.breedingRest)) ||
+      (value.nextBirthAt as number) < birthAt + policy.maturityAge - 1e-6 ||
+      (typeof value.age === 'number' &&
+        value.age < policy.maturityAge - 1e-6 &&
+        Math.abs((value.nextBirthAt as number) - (birthAt + policy.maturityAge)) > 1e-6)
+    )
+      return false;
+  } else if (record(value) && ('parentId' in value || 'nextBirthAt' in value)) return false;
   return (
     point(value, policy.margin) &&
     integer(value.id, 1) &&
@@ -518,7 +533,7 @@ function marlgrub(value: unknown, nextId: number, withTraits = false): boolean {
     Math.hypot(value.vx as number, value.vy as number) <= seekSpeed + 1e-9 &&
     range(value.hue, 0, 360) &&
     (value.hue as number) < 360 &&
-    range(value.reserve, 0, policy.reserveCapacity) &&
+    range(value.reserve, 0, reserveCap) &&
     range(value.starvedFor, 0, policy.starvationLimit) &&
     (value.targetRemainId === null || integer(value.targetRemainId, 1, nextId - 1)) &&
     (withTraits ? traits(value.traits) : true)
@@ -536,8 +551,13 @@ type Revision6Ledger = Omit<Revision7Ledger, (typeof GLASS_LIMPET_LEDGER_KEYS)[n
 type RainbellLedger = Omit<Revision6Ledger, (typeof SILTSTITCHER_LEDGER_KEYS)[number]>;
 type ReedwellLedger = Omit<RainbellLedger, (typeof RAINBELL_LEDGER_KEYS)[number]>;
 type PrismLedger = Omit<ReedwellLedger, (typeof REEDWELL_LEDGER_KEYS)[number]>;
+type Revision17Marlgrub = Omit<Marlgrub, 'parentId' | 'nextBirthAt'>;
+type Revision17World = Omit<World, 'schemaRevision' | 'marlgrubs'> & {
+  schemaRevision: 17;
+  marlgrubs: Revision17Marlgrub[];
+};
 type Revision16Siltstitcher = Omit<Siltstitcher, 'parentId' | 'nextBirthAt'>;
-type Revision16World = Omit<World, 'schemaRevision' | 'siltstitchers'> & {
+type Revision16World = Omit<Revision17World, 'schemaRevision' | 'siltstitchers'> & {
   schemaRevision: 16;
   siltstitchers: Revision16Siltstitcher[];
 };
@@ -814,11 +834,27 @@ function withSiltstitcherLineage(body: Revision16Siltstitcher, elapsed: number):
   };
 }
 
-function migrateRevision16To17(previous: Revision16World): World {
+function migrateRevision16To17(previous: Revision16World): Revision17World {
   return {
     ...previous,
     schemaRevision: 17,
     siltstitchers: previous.siltstitchers.map((body) => withSiltstitcherLineage(body, previous.elapsed)),
+  };
+}
+
+function withMarlgrubLineage(grub: Revision17Marlgrub, elapsed: number): Marlgrub {
+  return {
+    ...grub,
+    parentId: null,
+    nextBirthAt: elapsed - grub.age + SPECIES_CATALOG.marlgrub.maturityAge,
+  };
+}
+
+function migrateRevision17To18(previous: Revision17World): World {
+  return {
+    ...previous,
+    schemaRevision: 18,
+    marlgrubs: previous.marlgrubs.map((grub) => withMarlgrubLineage(grub, previous.elapsed)),
   };
 }
 
@@ -849,12 +885,12 @@ export function restoreWorld(input: string): World | null {
 
   if (
     (parsed.version === 3 &&
-      (!integer(parsed.schemaRevision, 1, 17) || !weatherCall(parsed.weatherCall, parsed.elapsed))) ||
+      (!integer(parsed.schemaRevision, 1, 18) || !weatherCall(parsed.weatherCall, parsed.elapsed))) ||
     (parsed.version !== 3 && ('schemaRevision' in parsed || 'weatherCall' in parsed || 'currents' in parsed))
   )
     return null;
   let currents: Current[] = [];
-  if (parsed.version === 3 && integer(parsed.schemaRevision, 2, 17)) {
+  if (parsed.version === 3 && integer(parsed.schemaRevision, 2, 18)) {
     if (
       !Array.isArray(parsed.currents) ||
       parsed.currents.length > MAX_CURRENTS ||
@@ -864,7 +900,8 @@ export function restoreWorld(input: string): World | null {
     currents = parsed.currents as Current[];
   } else if ('currents' in parsed) return null;
 
-  const stitcherLineageRevision = parsed.version === 3 && parsed.schemaRevision === 17;
+  const grubLineageRevision = parsed.version === 3 && parsed.schemaRevision === 18;
+  const stitcherLineageRevision = parsed.version === 3 && (parsed.schemaRevision === 17 || grubLineageRevision);
   const lineageRevision = parsed.version === 3 && (parsed.schemaRevision === 16 || stitcherLineageRevision);
   const tracesRevision = parsed.version === 3 && (parsed.schemaRevision === 15 || lineageRevision);
   const seamRevision = parsed.version === 3 && (parsed.schemaRevision === 14 || tracesRevision);
@@ -1078,7 +1115,9 @@ export function restoreWorld(input: string): World | null {
         cargoMites.length +
         parsed.marlgrubs.length >
         NEW_TYPE_POPULATION_CAP ||
-      !parsed.marlgrubs.every((entry: unknown) => marlgrub(entry, parsed.nextId as number, true)) ||
+      !parsed.marlgrubs.every((entry: unknown) =>
+        marlgrub(entry, parsed.elapsed as number, parsed.nextId as number, true, grubLineageRevision),
+      ) ||
       !integer(parsed.marlgrubCandidateAfterId, 0, (parsed.nextId as number) - 1) ||
       !range(
         parsed.marlgrubAdmissionAt,
@@ -1275,6 +1314,12 @@ export function restoreWorld(input: string): World | null {
     )
   )
     return null;
+  const marlgrubIds = new Set(marlgrubs.map((entry) => entry.id));
+  if (
+    grubLineageRevision &&
+    marlgrubs.some((entry) => entry.parentId !== null && ids.has(entry.parentId) && !marlgrubIds.has(entry.parentId))
+  )
+    return null;
   if (siltstitchers.some((entry) => ids.has(entry.homeNestId) && !nestIds.has(entry.homeNestId))) return null;
   if (!stitcherLineageRevision && new Set(siltstitchers.map((entry) => entry.homeNestId)).size !== siltstitchers.length)
     return null;
@@ -1453,30 +1498,40 @@ export function restoreWorld(input: string): World | null {
             skimmers,
           }
         : migrateRevision15To16(revision15);
-    return stitcherLineageRevision
+    const revision17: Revision17World =
+      parsed.schemaRevision === 17 || grubLineageRevision
+        ? {
+            ...revision16,
+            schemaRevision: 17,
+            siltstitchers,
+          }
+        : migrateRevision16To17(revision16);
+    return grubLineageRevision
       ? {
-          ...revision16,
-          schemaRevision: 17,
-          siltstitchers,
+          ...revision17,
+          schemaRevision: 18,
+          marlgrubs,
         }
-      : migrateRevision16To17(revision16);
+      : migrateRevision17To18(revision17);
   }
   let legacy: LegacyWorld = { ...ecology, version: parsed.version };
   if (legacy.version === 1) legacy = migrateV1ToV2(legacy);
-  return migrateRevision16To17(
-    migrateRevision15To16(
-      migrateRevision14To15(
-        migrateRevision13To14(
-          migrateRevision12To13(
-            migrateRevision11To12(
-              migrateRevision10To11(
-                migrateRevision9To10(
-                  migrateRevision8To9(
-                    migrateRevision7To8(
-                      migrateRevision6To7(
-                        migrateRevision5To6(
-                          migrateRevision4To5(
-                            migrateRevision3To4(migrateRevision2To3(migrateRevision1To2(migrateV2ToV3(legacy)))),
+  return migrateRevision17To18(
+    migrateRevision16To17(
+      migrateRevision15To16(
+        migrateRevision14To15(
+          migrateRevision13To14(
+            migrateRevision12To13(
+              migrateRevision11To12(
+                migrateRevision10To11(
+                  migrateRevision9To10(
+                    migrateRevision8To9(
+                      migrateRevision7To8(
+                        migrateRevision6To7(
+                          migrateRevision5To6(
+                            migrateRevision4To5(
+                              migrateRevision3To4(migrateRevision2To3(migrateRevision1To2(migrateV2ToV3(legacy)))),
+                            ),
                           ),
                         ),
                       ),

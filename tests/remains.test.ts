@@ -1,8 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { createWorld, stepWorld } from '../src/world/simulation';
 import { updateSkimmers } from '../src/world/species/skimmer';
-import { admitMarlgrub, updateMarlgrubs } from '../src/world/species/marlgrub';
+import {
+  admitMarlgrub,
+  marlgrubBirthStake,
+  marlgrubReserveCapacity,
+  marlgrubSeekReach,
+  marlgrubSurvivalFloor,
+  updateMarlgrubs,
+} from '../src/world/species/marlgrub';
+import { SPECIES_CATALOG } from '../src/world/species/catalog';
 import { NORMAL_FOUNDER_COUNT, tryEventFounding } from '../src/world/species/founding';
+import { baselineTraits, traitMobility, TRAIT_MAX, TRAIT_MIN } from '../src/world/traits';
 import {
   DEATH_SEDIMENT_FRACTION,
   REMAIN_DECAY_RATE,
@@ -12,7 +21,7 @@ import {
   takeRemainPigment,
   updateRemains,
 } from '../src/world/species/remains';
-import { LIMITS, REMAIN_CAPACITY, type World } from '../src/world/types';
+import { LIMITS, REMAIN_CAPACITY, type Marlgrub, type World } from '../src/world/types';
 
 function empty(): World {
   const world = createWorld(11);
@@ -150,7 +159,14 @@ describe('marlgrub consumer', () => {
     const funded = empty();
     depositRemain(funded, { x: 720, y: 500 }, 90, 0.5, 'unknown');
     expect(admitMarlgrub(funded)).toBe(true);
-    expect(funded.marlgrubs[0]).toMatchObject({ body: 0.1, reserve: 0.1, x: 720, y: 500 });
+    expect(funded.marlgrubs[0]).toMatchObject({
+      body: 0.1,
+      reserve: 0.1,
+      x: 720,
+      y: 500,
+      parentId: null,
+      traits: baselineTraits(),
+    });
     expect(heldRemainPigment(funded)).toBeCloseTo(0.3, 12);
     expect(funded.ecologyLedger.remainsConsumed).toBeCloseTo(0.2, 12);
     expect(funded.randomState).toBe(empty().randomState);
@@ -205,6 +221,196 @@ describe('marlgrub consumer', () => {
     live.nextFoundingTick = 0;
     stepWorld(live);
     expect(live.marlgrubs).toHaveLength(1);
+  });
+});
+
+function pigment(world: World) {
+  return (
+    world.sediment.reduce((sum, grain) => sum + grain.strength, 0) +
+    world.remains.reduce((sum, remain) => sum + remain.pigment, 0) +
+    world.fossils.reduce((sum, fossil) => sum + fossil.pigment, 0) +
+    world.marlgrubs.reduce((sum, grub) => sum + grub.body + grub.reserve, 0)
+  );
+}
+
+function born(): { world: World; grub: Marlgrub } {
+  const world = empty();
+  depositRemain(world, { x: 720, y: 500 }, 90, 0.8, 'unknown');
+  expect(admitMarlgrub(world)).toBe(true);
+  return { world, grub: world.marlgrubs[0] };
+}
+
+describe('marlgrub inheritance', () => {
+  it('gives founders baseline traits and spends parent reserve for a mutated child', () => {
+    const { world, grub: parent } = born();
+    const random = world.randomState;
+    expect(parent.traits).toEqual(baselineTraits());
+    expect(parent.parentId).toBeNull();
+    expect(parent.reserve).toBeLessThan(marlgrubBirthStake(parent.traits));
+    parent.age = 29.9;
+    parent.reserve = 0.4;
+    parent.targetRemainId = null;
+    world.elapsed = 30;
+    world.tick = ((6 - (parent.id % 6)) % 6) + 1;
+    const beforeReserve = parent.reserve;
+    const beforePigment = pigment(world);
+    updateMarlgrubs(world, 0.1);
+    expect(world.marlgrubs).toHaveLength(2);
+    const child = world.marlgrubs[1];
+    expect(child.parentId).toBe(parent.id);
+    expect(child.reserve).toBe(SPECIES_CATALOG.marlgrub.childReserve);
+    expect(child.body).toBe(SPECIES_CATALOG.marlgrub.childBody);
+    expect(parent.reserve).toBeCloseTo(
+      beforeReserve -
+        SPECIES_CATALOG.marlgrub.childCost -
+        SPECIES_CATALOG.marlgrub.maintenanceRate * 0.1 * parent.traits.drive,
+      8,
+    );
+    expect(pigment(world)).toBeCloseTo(
+      beforePigment - SPECIES_CATALOG.marlgrub.maintenanceRate * 0.1 * parent.traits.drive,
+      8,
+    );
+    expect(child.traits).not.toEqual(parent.traits);
+    expect(child.traits.drive).toBeGreaterThanOrEqual(TRAIT_MIN);
+    expect(child.traits.drive).toBeLessThanOrEqual(TRAIT_MAX);
+    expect(child.traits.bulk).toBeGreaterThanOrEqual(TRAIT_MIN);
+    expect(child.traits.bulk).toBeLessThanOrEqual(TRAIT_MAX);
+    expect(world.randomState).not.toBe(random);
+    expect(parent.nextBirthAt).toBe(world.elapsed + SPECIES_CATALOG.marlgrub.breedingRest);
+    expect(parent.reserve).toBeGreaterThanOrEqual(
+      marlgrubSurvivalFloor(parent.traits) -
+        SPECIES_CATALOG.marlgrub.maintenanceRate * 0.1 * parent.traits.drive -
+        1e-9,
+    );
+    balanced(world);
+  });
+
+  it('does not let a founder pay a child from the event-offer starting reserve', () => {
+    const { world, grub: parent } = born();
+    expect(parent.reserve).toBe(SPECIES_CATALOG.marlgrub.initialReserve);
+    expect(parent.reserve).toBeLessThan(marlgrubBirthStake(parent.traits));
+    parent.age = SPECIES_CATALOG.marlgrub.maturityAge - 0.1;
+    parent.nextBirthAt = 30;
+    world.elapsed = 30;
+    world.tick = 1;
+    const random = world.randomState;
+    updateMarlgrubs(world, 0.1);
+    expect(world.marlgrubs).toHaveLength(1);
+    expect(world.randomState).toBe(random);
+    expect(parent.reserve).toBeLessThan(SPECIES_CATALOG.marlgrub.childCost);
+  });
+
+  it('clamps inherited traits and does not draw the PRNG on a refused birth', () => {
+    const { world, grub: parent } = born();
+    parent.traits = { drive: TRAIT_MAX, bulk: TRAIT_MIN };
+    parent.age = 29.9;
+    parent.reserve = 0.4;
+    world.elapsed = 30;
+    world.tick = 1;
+    updateMarlgrubs(world, 0.1);
+    const child = world.marlgrubs[1];
+    expect(child.traits.drive).toBeGreaterThanOrEqual(TRAIT_MIN);
+    expect(child.traits.drive).toBeLessThanOrEqual(TRAIT_MAX);
+    expect(child.traits.bulk).toBeGreaterThanOrEqual(TRAIT_MIN);
+    expect(child.traits.bulk).toBeLessThanOrEqual(TRAIT_MAX);
+    const random = world.randomState;
+    const nextId = world.nextId;
+    parent.reserve = 0.4;
+    parent.nextBirthAt = world.elapsed;
+    updateMarlgrubs(world, 0.1);
+    expect(world.marlgrubs).toHaveLength(2);
+    expect(world.nextId).toBe(nextId);
+    expect(world.randomState).toBe(random);
+    parent.reserve = 0.15;
+    parent.nextBirthAt = world.elapsed;
+    world.tick += 6;
+    world.elapsed += 6;
+    const still = world.randomState;
+    updateMarlgrubs(world, 0.1);
+    expect(world.marlgrubs).toHaveLength(2);
+    expect(world.randomState).toBe(still);
+  });
+
+  it('keeps the same child traits for the same seed', () => {
+    function childOf(): { traits: { drive: number; bulk: number }; randomState: number } {
+      const { world, grub: parent } = born();
+      parent.age = 29.9;
+      parent.reserve = 0.4;
+      world.elapsed = 30;
+      world.tick = 1;
+      updateMarlgrubs(world, 0.1);
+      return { traits: world.marlgrubs[1].traits, randomState: world.randomState };
+    }
+    expect(childOf()).toEqual(childOf());
+  });
+
+  it('makes higher drive both hungrier and costlier, so neither pole is free', () => {
+    const keen = born();
+    const spare = born();
+    const hungry = keen.grub;
+    const thrifty = spare.grub;
+    hungry.traits = { drive: TRAIT_MAX, bulk: 1 };
+    thrifty.traits = { drive: TRAIT_MIN, bulk: 1 };
+    hungry.age = 10;
+    thrifty.age = 10;
+    keen.world.tick = (6 - (hungry.id % 6)) % 6;
+    spare.world.tick = (6 - (thrifty.id % 6)) % 6;
+    const keenHeld = heldRemainPigment(keen.world);
+    const spareHeld = heldRemainPigment(spare.world);
+    updateMarlgrubs(keen.world, 1);
+    updateMarlgrubs(spare.world, 1);
+    expect(keen.world.ecologyLedger.marlgrubMaintenancePigment).toBeGreaterThan(
+      spare.world.ecologyLedger.marlgrubMaintenancePigment,
+    );
+    expect(heldRemainPigment(keen.world)).toBeLessThan(keenHeld);
+    expect(heldRemainPigment(spare.world)).toBeLessThan(spareHeld);
+    expect(heldRemainPigment(keen.world)).toBeLessThan(heldRemainPigment(spare.world));
+    expect(hungry.reserve).toBeGreaterThan(thrifty.reserve);
+  });
+
+  it('lets a stouter grub hold more remains while reaching and traveling less far', () => {
+    const stout = born();
+    const slight = born();
+    const heavy = stout.grub;
+    const light = slight.grub;
+    heavy.traits = { drive: 1, bulk: TRAIT_MAX };
+    light.traits = { drive: 1, bulk: TRAIT_MIN };
+    expect(marlgrubSeekReach(heavy.traits)).toBeLessThan(marlgrubSeekReach(light.traits));
+    expect(traitMobility(heavy.traits)).toBeLessThan(traitMobility(light.traits));
+    expect(marlgrubReserveCapacity(heavy.traits)).toBeGreaterThan(marlgrubReserveCapacity(light.traits));
+    heavy.reserve = 0.05;
+    light.reserve = 0.05;
+    heavy.age = 10;
+    light.age = 10;
+    stout.world.tick = (6 - (heavy.id % 6)) % 6;
+    slight.world.tick = (6 - (light.id % 6)) % 6;
+    for (let step = 0; step < 40; step++) {
+      updateMarlgrubs(stout.world, 1);
+      updateMarlgrubs(slight.world, 1);
+    }
+    expect(heavy.reserve).toBeGreaterThan(light.reserve);
+    expect(heavy.reserve).toBeGreaterThan(SPECIES_CATALOG.marlgrub.childCost);
+    expect(light.reserve).toBeCloseTo(
+      marlgrubReserveCapacity(light.traits) - SPECIES_CATALOG.marlgrub.maintenanceRate,
+      5,
+    );
+    stout.world.remains = [];
+    slight.world.remains = [];
+    depositRemain(stout.world, { x: 800, y: 500 }, 90, 0.8, 'unknown');
+    depositRemain(slight.world, { x: 800, y: 500 }, 90, 0.8, 'unknown');
+    heavy.x = 720;
+    light.x = 720;
+    heavy.y = 500;
+    light.y = 500;
+    heavy.targetRemainId = null;
+    light.targetRemainId = null;
+    stout.world.tick = (6 - (heavy.id % 6)) % 6;
+    slight.world.tick = (6 - (light.id % 6)) % 6;
+    const heavyStart = heavy.x;
+    const lightStart = light.x;
+    updateMarlgrubs(stout.world, 1);
+    updateMarlgrubs(slight.world, 1);
+    expect(heavy.x - heavyStart).toBeLessThan(light.x - lightStart);
   });
 });
 
