@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import historicalStudy from '../src/app/shower-study.json';
 import { restoreWorld, serializeWorld } from '../src/world/persistence';
 import { createWorld, stepWorld } from '../src/world/simulation';
+import { glassLimpetReserveCapacity } from '../src/world/species/glass-limpet';
+import { SPECIES_CATALOG } from '../src/world/species/catalog';
 import { baselineTraits } from '../src/world/traits';
-import type { World } from '../src/world/types';
+import { SCHEMA_REVISION, type World } from '../src/world/types';
 
 const limpetLedgerKeys = ['glassLimpetIntake', 'glassLimpetMaintenancePigment'] as const;
 
@@ -68,6 +70,8 @@ function inhabited(): World {
     hue: 189,
     starvedFor: 0,
     targetSedimentId: grain.id,
+    parentId: null,
+    nextBirthAt: world.elapsed - 19 + SPECIES_CATALOG.glassLimpet.maturityAge,
     traits: baselineTraits(),
   });
   world.glassLimpetAdmissionAt = 170;
@@ -90,7 +94,7 @@ describe('glass limpet snapshot revision', () => {
     const migrated = restoreWorld(serialized)!;
     expect(migrated).not.toBeNull();
     expect(migrated).toMatchObject({
-      schemaRevision: 18,
+      schemaRevision: 19,
       lastSeenAt: null,
       glassLimpets: [],
       cargoMites: [],
@@ -182,7 +186,7 @@ describe('glass limpet snapshot revision', () => {
         w.glassLimpets[0].x = 1350;
       },
       (w) => {
-        w.glassLimpets[0].reserve = 0.21;
+        w.glassLimpets[0].reserve = 0.41;
       },
       (w) => {
         w.glassLimpets[0].cargo = 0.81;
@@ -224,6 +228,21 @@ describe('glass limpet snapshot revision', () => {
         w.glassLimpets.push({ ...w.glassLimpets[0], id: w.nextId++, x: w.glassLimpets[0].x + 20 });
       },
       (w) => {
+        delete w.glassLimpets[0].parentId;
+      },
+      (w) => {
+        w.glassLimpets[0].parentId = w.organisms[0].id;
+      },
+      (w) => {
+        w.glassLimpets[0].parentId = w.glassLimpets[0].id;
+      },
+      (w) => {
+        w.glassLimpets[0].nextBirthAt = w.elapsed;
+      },
+      (w) => {
+        w.glassLimpets[0].nextBirthAt = w.elapsed + 61;
+      },
+      (w) => {
         w.schemaRevision = 6;
       },
     ];
@@ -238,5 +257,86 @@ describe('glass limpet snapshot revision', () => {
     delete old.nextFoundingTick;
     old.ecologyLedger.glassLimpetIntake = 0;
     expect(restoreWorld(JSON.stringify(old))).toBeNull();
+  });
+
+  it('migrates revision 18 glass limpets with lineage fields and no gifted resources', () => {
+    const world = inhabited();
+    const held =
+      world.sediment.reduce((sum, grain) => sum + grain.strength, 0) +
+      world.glassLimpets.reduce((sum, body) => sum + body.body + body.reserve + body.cargo, 0);
+    const previous = structuredClone(world) as Record<string, any>;
+    previous.schemaRevision = 18;
+    previous.glassLimpets = previous.glassLimpets.map(
+      ({ parentId: _parentId, nextBirthAt: _nextBirthAt, ...rest }: Record<string, unknown>) => rest,
+    );
+    const source = JSON.stringify(previous);
+    const restored = restoreWorld(source)!;
+    expect(restored).not.toBeNull();
+    expect(restored.schemaRevision).toBe(SCHEMA_REVISION);
+    expect(restored.glassLimpets).toHaveLength(1);
+    expect(restored.glassLimpets[0].parentId).toBeNull();
+    expect(restored.glassLimpets[0].nextBirthAt).toBe(
+      world.elapsed - world.glassLimpets[0].age + SPECIES_CATALOG.glassLimpet.maturityAge,
+    );
+    expect(restored.glassLimpets[0].traits).toEqual(baselineTraits());
+    expect(restored.glassLimpets[0].reserve).toBe(world.glassLimpets[0].reserve);
+    expect(restored.glassLimpets[0].cargo).toBe(world.glassLimpets[0].cargo);
+    expect(restored.randomState).toBe(world.randomState);
+    expect(restored.nextId).toBe(world.nextId);
+    expect(restored.sediment).toEqual(world.sediment);
+    expect(restored.organisms).toEqual(world.organisms);
+    expect(restored.remains).toEqual(world.remains);
+    expect(
+      restored.sediment.reduce((sum, grain) => sum + grain.strength, 0) +
+        restored.glassLimpets.reduce((sum, body) => sum + body.body + body.reserve + body.cargo, 0),
+    ).toBeCloseTo(held, 12);
+    expect(JSON.stringify(previous)).toBe(source);
+    expect(restoreWorld(serializeWorld(restored))).toEqual(restored);
+  });
+
+  it('keeps living glass limpet traits through a round trip and continues the lineage', () => {
+    const world = inhabited();
+    world.glassLimpets[0].traits = { drive: 1.12, bulk: 0.88 };
+    const resumed = restoreWorld(serializeWorld(world))!;
+    expect(resumed).toEqual(world);
+    expect(resumed.glassLimpets[0].traits).toEqual({ drive: 1.12, bulk: 0.88 });
+    for (let tick = 0; tick < 60; tick++) {
+      stepWorld(world);
+      stepWorld(resumed);
+    }
+    expect(resumed).toEqual(world);
+  });
+
+  it('keeps a stout glass limpet larger paid reserve and rejects overflow on a slighter frame', () => {
+    const world = inhabited();
+    world.glassLimpets[0].traits = { drive: 1, bulk: 1.3 };
+    world.glassLimpets[0].reserve = 0.5;
+    expect(glassLimpetReserveCapacity(world.glassLimpets[0].traits)).toBeCloseTo(0.52, 12);
+    expect(restoreWorld(serializeWorld(world))).toEqual(world);
+    const overfull = structuredClone(world) as Record<string, any>;
+    overfull.glassLimpets[0].traits = { drive: 1, bulk: 0.7 };
+    expect(restoreWorld(JSON.stringify(overfull))).toBeNull();
+  });
+
+  it('rejects lineage fields left on a revision-18 glass limpet rather than filling them', () => {
+    const previous = structuredClone(inhabited()) as Record<string, any>;
+    previous.schemaRevision = 18;
+    expect(restoreWorld(JSON.stringify(previous))).toBeNull();
+  });
+
+  it('allows a parent-paid child to serialize beside its parent', () => {
+    const world = inhabited();
+    const parent = world.glassLimpets[0];
+    world.glassLimpets.push({
+      ...structuredClone(parent),
+      id: world.nextId++,
+      parentId: parent.id,
+      nextBirthAt: world.elapsed + SPECIES_CATALOG.glassLimpet.maturityAge,
+      age: 0,
+      cargo: 0,
+      x: parent.x + 8,
+      y: parent.y,
+    });
+    expect(restoreWorld(serializeWorld(world))).toEqual(world);
   });
 });

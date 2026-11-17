@@ -72,6 +72,13 @@ export interface HarnessReport {
   traitDrift: TraitSample[];
   lifetimeTraits: TraitSnapshot;
   events: Record<string, SpeciesEvents>;
+  parentBirths: {
+    skimmers: number;
+    siltstitchers: number;
+    glassLimpets: number;
+    cargoMites: number;
+    marlgrubs: number;
+  };
   resources: {
     lightEnergy: number;
     loosePigment: number;
@@ -277,7 +284,38 @@ export function runHarness(config: HarnessConfig): HarnessReport {
     cargoMites: world.cargoMites.length,
     marlgrubs: world.marlgrubs.length,
   };
+  const parentBirths = {
+    skimmers: 0,
+    siltstitchers: 0,
+    glassLimpets: 0,
+    cargoMites: 0,
+    marlgrubs: 0,
+  };
+  const knownLineageIds = {
+    skimmers: new Set(world.skimmers.map((body) => body.id)),
+    siltstitchers: new Set(world.siltstitchers.map((body) => body.id)),
+    glassLimpets: new Set(world.glassLimpets.map((body) => body.id)),
+    cargoMites: new Set(world.cargoMites.map((body) => body.id)),
+    marlgrubs: new Set(world.marlgrubs.map((body) => body.id)),
+  };
   let lastVisitorDay = Math.floor(world.elapsed / DAY_SECONDS);
+
+  function countParentBirths(): void {
+    const living = {
+      skimmers: world.skimmers,
+      siltstitchers: world.siltstitchers,
+      glassLimpets: world.glassLimpets,
+      cargoMites: world.cargoMites,
+      marlgrubs: world.marlgrubs,
+    };
+    for (const kind of Object.keys(living) as (keyof typeof living)[]) {
+      for (const body of living[kind]) {
+        if (knownLineageIds[kind].has(body.id)) continue;
+        knownLineageIds[kind].add(body.id);
+        if (body.parentId !== null) parentBirths[kind]++;
+      }
+    }
+  }
 
   function samplePopulation(): PopulationSample {
     return {
@@ -359,6 +397,7 @@ export function runHarness(config: HarnessConfig): HarnessReport {
     lifetimeTraits.glassLimpets = mergeTraits(lifetimeTraits.glassLimpets, world.glassLimpets);
     lifetimeTraits.cargoMites = mergeTraits(lifetimeTraits.cargoMites, world.cargoMites);
     lifetimeTraits.marlgrubs = mergeTraits(lifetimeTraits.marlgrubs, world.marlgrubs);
+    countParentBirths();
     updateEvents();
     if (config.visitorLight) {
       const day = Math.floor(world.elapsed / DAY_SECONDS);
@@ -395,6 +434,7 @@ export function runHarness(config: HarnessConfig): HarnessReport {
     traitDrift,
     lifetimeTraits,
     events,
+    parentBirths,
     resources: {
       lightEnergy: stats.light,
       loosePigment: stats.pigment,
@@ -571,6 +611,9 @@ export function printReport(report: HarnessReport): void {
   console.log(`\n🔄 Births & Deaths`);
   console.log(
     '   Per-step net census change, not complete genealogical counts; opposite events in one 1/30s step cancel.',
+  );
+  console.log(
+    `   Genealogical parent births: ski ${report.parentBirths.skimmers} sil ${report.parentBirths.siltstitchers} gla ${report.parentBirths.glassLimpets} car ${report.parentBirths.cargoMites} mar ${report.parentBirths.marlgrubs}`,
   );
   for (const [species, ev] of Object.entries(report.events)) {
     if (ev.births > 0 || ev.deaths > 0) {

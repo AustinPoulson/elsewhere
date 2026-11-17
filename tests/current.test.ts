@@ -154,6 +154,7 @@ describe('current save revisions', () => {
     // This test advances the clock without stepping after a stroke. Keep a
     // newly introduced host parasite out of that artificial age jump.
     world.cargoMiteAdmissionAt = 60;
+    world.glassLimpetAdmissionAt = 60;
     current(world);
     run(world, 45);
     const restored = restoreWorld(serializeWorld(world))!;
@@ -221,7 +222,7 @@ describe('current save revisions', () => {
     expect(migrated).toEqual({
       ...world,
       elapsed: 12,
-      schemaRevision: 18,
+      schemaRevision: 19,
       skimmerAdmissionAt: 12,
       reedwellAdmissionAt: 12,
       rainbellAdmissionAt: 12,
@@ -245,7 +246,7 @@ describe('current save revisions', () => {
         w.currents = null;
       },
       (w) => {
-        w.schemaRevision = 19;
+        w.schemaRevision = 20;
       },
       (w) => {
         w.currents[0].x = 0;

@@ -31,6 +31,7 @@ import { MINERAL_SEAM } from './environment/mineral-seam';
 import { containingPool, isAuthoredHabitat, linkedHabitat, shoreRho } from './habitat';
 import { initializeGrazers } from './simulation';
 import { cargoMiteReserveCapacity } from './species/cargo-mite';
+import { glassLimpetReserveCapacity } from './species/glass-limpet';
 import { marlgrubReserveCapacity } from './species/marlgrub';
 import { siltstitcherReserveCapacity } from './species/siltstitcher';
 import { skimmerReserveCapacity } from './species/skimmer';
@@ -386,8 +387,31 @@ function siltstitcher(
   );
 }
 
-function glassLimpet(value: unknown, nextId: number, withTraits = false): boolean {
+function glassLimpet(
+  value: unknown,
+  elapsed: number,
+  nextId: number,
+  withTraits = false,
+  withLineage = false,
+): boolean {
   const policy = SPECIES_CATALOG.glassLimpet;
+  if (withTraits && !traits(record(value) ? value.traits : undefined)) return false;
+  const reserveCap = withTraits
+    ? glassLimpetReserveCapacity((value as { traits: Traits }).traits)
+    : policy.reserveCapacity;
+  const birthAt = elapsed - (record(value) && typeof value.age === 'number' ? value.age : 0);
+  if (withLineage) {
+    if (
+      !record(value) ||
+      (value.parentId !== null && !integer(value.parentId, 1, (value.id as number) - 1)) ||
+      !range(value.nextBirthAt, 0, Math.min(MAX_NUMBER, elapsed + policy.breedingRest)) ||
+      (value.nextBirthAt as number) < birthAt + policy.maturityAge - 1e-6 ||
+      (typeof value.age === 'number' &&
+        value.age < policy.maturityAge - 1e-6 &&
+        Math.abs((value.nextBirthAt as number) - (birthAt + policy.maturityAge)) > 1e-6)
+    )
+      return false;
+  } else if (record(value) && ('parentId' in value || 'nextBirthAt' in value)) return false;
   if (
     !point(value, policy.margin) ||
     !integer(value.id, 1) ||
@@ -396,7 +420,7 @@ function glassLimpet(value: unknown, nextId: number, withTraits = false): boolea
     !range(value.age, 0, policy.lifespan) ||
     !range(value.hue, 0, 360) ||
     value.hue >= 360 ||
-    !range(value.reserve, 0, policy.reserveCapacity) ||
+    !range(value.reserve, 0, reserveCap) ||
     !range(value.cargo, 0, policy.cargoCapacity) ||
     !range(value.starvedFor, 0, policy.starvationLimit) ||
     (value.targetSedimentId !== null && !integer(value.targetSedimentId, 1, nextId - 1)) ||
@@ -551,8 +575,13 @@ type Revision6Ledger = Omit<Revision7Ledger, (typeof GLASS_LIMPET_LEDGER_KEYS)[n
 type RainbellLedger = Omit<Revision6Ledger, (typeof SILTSTITCHER_LEDGER_KEYS)[number]>;
 type ReedwellLedger = Omit<RainbellLedger, (typeof RAINBELL_LEDGER_KEYS)[number]>;
 type PrismLedger = Omit<ReedwellLedger, (typeof REEDWELL_LEDGER_KEYS)[number]>;
+type Revision18GlassLimpet = Omit<GlassLimpet, 'parentId' | 'nextBirthAt'>;
+type Revision18World = Omit<World, 'schemaRevision' | 'glassLimpets'> & {
+  schemaRevision: 18;
+  glassLimpets: Revision18GlassLimpet[];
+};
 type Revision17Marlgrub = Omit<Marlgrub, 'parentId' | 'nextBirthAt'>;
-type Revision17World = Omit<World, 'schemaRevision' | 'marlgrubs'> & {
+type Revision17World = Omit<Revision18World, 'schemaRevision' | 'marlgrubs'> & {
   schemaRevision: 17;
   marlgrubs: Revision17Marlgrub[];
 };
@@ -850,11 +879,27 @@ function withMarlgrubLineage(grub: Revision17Marlgrub, elapsed: number): Marlgru
   };
 }
 
-function migrateRevision17To18(previous: Revision17World): World {
+function migrateRevision17To18(previous: Revision17World): Revision18World {
   return {
     ...previous,
     schemaRevision: 18,
     marlgrubs: previous.marlgrubs.map((grub) => withMarlgrubLineage(grub, previous.elapsed)),
+  };
+}
+
+function withGlassLimpetLineage(limpet: Revision18GlassLimpet, elapsed: number): GlassLimpet {
+  return {
+    ...limpet,
+    parentId: null,
+    nextBirthAt: elapsed - limpet.age + SPECIES_CATALOG.glassLimpet.maturityAge,
+  };
+}
+
+function migrateRevision18To19(previous: Revision18World): World {
+  return {
+    ...previous,
+    schemaRevision: 19,
+    glassLimpets: previous.glassLimpets.map((limpet) => withGlassLimpetLineage(limpet, previous.elapsed)),
   };
 }
 
@@ -885,12 +930,12 @@ export function restoreWorld(input: string): World | null {
 
   if (
     (parsed.version === 3 &&
-      (!integer(parsed.schemaRevision, 1, 18) || !weatherCall(parsed.weatherCall, parsed.elapsed))) ||
+      (!integer(parsed.schemaRevision, 1, 19) || !weatherCall(parsed.weatherCall, parsed.elapsed))) ||
     (parsed.version !== 3 && ('schemaRevision' in parsed || 'weatherCall' in parsed || 'currents' in parsed))
   )
     return null;
   let currents: Current[] = [];
-  if (parsed.version === 3 && integer(parsed.schemaRevision, 2, 18)) {
+  if (parsed.version === 3 && integer(parsed.schemaRevision, 2, 19)) {
     if (
       !Array.isArray(parsed.currents) ||
       parsed.currents.length > MAX_CURRENTS ||
@@ -900,7 +945,8 @@ export function restoreWorld(input: string): World | null {
     currents = parsed.currents as Current[];
   } else if ('currents' in parsed) return null;
 
-  const grubLineageRevision = parsed.version === 3 && parsed.schemaRevision === 18;
+  const limpetLineageRevision = parsed.version === 3 && parsed.schemaRevision === 19;
+  const grubLineageRevision = parsed.version === 3 && (parsed.schemaRevision === 18 || limpetLineageRevision);
   const stitcherLineageRevision = parsed.version === 3 && (parsed.schemaRevision === 17 || grubLineageRevision);
   const lineageRevision = parsed.version === 3 && (parsed.schemaRevision === 16 || stitcherLineageRevision);
   const tracesRevision = parsed.version === 3 && (parsed.schemaRevision === 15 || lineageRevision);
@@ -1042,7 +1088,9 @@ export function restoreWorld(input: string): World | null {
       parsed.glassLimpets.length > GLASS_LIMPET_CAP ||
       skimmers.length + reedwells.length + rainbells.length + siltstitchers.length + parsed.glassLimpets.length >
         NEW_TYPE_POPULATION_CAP ||
-      !parsed.glassLimpets.every((entry) => glassLimpet(entry, parsed.nextId as number, traitRevision)) ||
+      !parsed.glassLimpets.every((entry) =>
+        glassLimpet(entry, parsed.elapsed as number, parsed.nextId as number, traitRevision, limpetLineageRevision),
+      ) ||
       !integer(parsed.glassLimpetCandidateAfterId, 0, parsed.nextId - 1) ||
       !range(
         parsed.glassLimpetAdmissionAt,
@@ -1055,10 +1103,16 @@ export function restoreWorld(input: string): World | null {
       return null;
     glassLimpets = parsed.glassLimpets as GlassLimpet[];
     if (
-      glassLimpets.some((entry, index) =>
-        glassLimpets
-          .slice(index + 1)
-          .some((other) => Math.hypot(entry.x - other.x, entry.y - other.y) < SPECIES_CATALOG.glassLimpet.spacing),
+      glassLimpets.some(
+        (entry, index) =>
+          entry.parentId == null &&
+          glassLimpets
+            .slice(index + 1)
+            .some(
+              (other) =>
+                other.parentId == null &&
+                Math.hypot(entry.x - other.x, entry.y - other.y) < SPECIES_CATALOG.glassLimpet.spacing,
+            ),
       )
     )
       return null;
@@ -1320,6 +1374,14 @@ export function restoreWorld(input: string): World | null {
     marlgrubs.some((entry) => entry.parentId !== null && ids.has(entry.parentId) && !marlgrubIds.has(entry.parentId))
   )
     return null;
+  const glassLimpetIds = new Set(glassLimpets.map((entry) => entry.id));
+  if (
+    limpetLineageRevision &&
+    glassLimpets.some(
+      (entry) => entry.parentId !== null && ids.has(entry.parentId) && !glassLimpetIds.has(entry.parentId),
+    )
+  )
+    return null;
   if (siltstitchers.some((entry) => ids.has(entry.homeNestId) && !nestIds.has(entry.homeNestId))) return null;
   if (!stitcherLineageRevision && new Set(siltstitchers.map((entry) => entry.homeNestId)).size !== siltstitchers.length)
     return null;
@@ -1506,31 +1568,41 @@ export function restoreWorld(input: string): World | null {
             siltstitchers,
           }
         : migrateRevision16To17(revision16);
-    return grubLineageRevision
+    const revision18: Revision18World =
+      parsed.schemaRevision === 18 || limpetLineageRevision
+        ? {
+            ...revision17,
+            schemaRevision: 18,
+            marlgrubs,
+          }
+        : migrateRevision17To18(revision17);
+    return limpetLineageRevision
       ? {
-          ...revision17,
-          schemaRevision: 18,
-          marlgrubs,
+          ...revision18,
+          schemaRevision: 19,
+          glassLimpets,
         }
-      : migrateRevision17To18(revision17);
+      : migrateRevision18To19(revision18);
   }
   let legacy: LegacyWorld = { ...ecology, version: parsed.version };
   if (legacy.version === 1) legacy = migrateV1ToV2(legacy);
-  return migrateRevision17To18(
-    migrateRevision16To17(
-      migrateRevision15To16(
-        migrateRevision14To15(
-          migrateRevision13To14(
-            migrateRevision12To13(
-              migrateRevision11To12(
-                migrateRevision10To11(
-                  migrateRevision9To10(
-                    migrateRevision8To9(
-                      migrateRevision7To8(
-                        migrateRevision6To7(
-                          migrateRevision5To6(
-                            migrateRevision4To5(
-                              migrateRevision3To4(migrateRevision2To3(migrateRevision1To2(migrateV2ToV3(legacy)))),
+  return migrateRevision18To19(
+    migrateRevision17To18(
+      migrateRevision16To17(
+        migrateRevision15To16(
+          migrateRevision14To15(
+            migrateRevision13To14(
+              migrateRevision12To13(
+                migrateRevision11To12(
+                  migrateRevision10To11(
+                    migrateRevision9To10(
+                      migrateRevision8To9(
+                        migrateRevision7To8(
+                          migrateRevision6To7(
+                            migrateRevision5To6(
+                              migrateRevision4To5(
+                                migrateRevision3To4(migrateRevision2To3(migrateRevision1To2(migrateV2ToV3(legacy)))),
+                              ),
                             ),
                           ),
                         ),

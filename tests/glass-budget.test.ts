@@ -151,6 +151,8 @@ function mixedMaximum(): World {
       hue: 180,
       starvedFor: 0,
       targetSedimentId: null,
+      parentId: null,
+      nextBirthAt: world.elapsed + 30,
       traits: baselineTraits(),
     });
   }
@@ -255,6 +257,7 @@ function stepStress(world: World, index: number): void {
   for (const body of world.glassLimpets) {
     body.age %= 479;
     body.starvedFor = 0;
+    body.nextBirthAt = world.elapsed - body.age + 30;
   }
   for (const body of world.cargoMites) {
     body.age %= 239;

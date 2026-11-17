@@ -36,9 +36,9 @@ function captureFile(seed = 7, worldDays = 2) {
 
 describe('named eras', () => {
   it('keeps the live snapshot at the current revision and stores eras beside it', () => {
-    expect(SCHEMA_REVISION).toBe(18);
+    expect(SCHEMA_REVISION).toBe(19);
     const opening = createWorld(1);
-    expect(opening.schemaRevision).toBe(18);
+    expect(opening.schemaRevision).toBe(19);
     expect(opening.fossils).toEqual([]);
     expect('camera' in opening).toBe(false);
     expect('journal' in opening).toBe(false);

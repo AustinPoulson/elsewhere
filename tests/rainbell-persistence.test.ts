@@ -224,7 +224,7 @@ describe('rainbell snapshot revision', () => {
       skimmerCandidateAfterId: _skimmerCandidate,
       ...oldFields
     } = restored;
-    expect(restored.schemaRevision).toBe(18);
+    expect(restored.schemaRevision).toBe(19);
     expect(rainbells).toEqual([]);
     expect(rainbellAdmissionAt).toBe(source.elapsed);
     expect(rainbellCandidateAfterId).toBe(0);
@@ -272,7 +272,7 @@ describe('rainbell snapshot revision', () => {
       const before = JSON.stringify(source);
       const restored = restoreWorld(before)!;
       expect(restored).toMatchObject({
-        schemaRevision: 18,
+        schemaRevision: 19,
         rainbells: [],
         rainbellAdmissionAt: source.elapsed,
         rainbellCandidateAfterId: 0,
@@ -446,7 +446,7 @@ describe('rainbell snapshot revision', () => {
         w.nextId += 5;
       },
       (w) => {
-        w.schemaRevision = 19;
+        w.schemaRevision = 20;
       },
     ];
     for (const target of ['feedTargetSedimentId', 'pumpTargetSedimentId']) {
