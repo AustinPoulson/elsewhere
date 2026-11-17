@@ -254,7 +254,7 @@ describe('siltstitcher snapshot revision', () => {
       skimmerCandidateAfterId: _skimmerCandidate,
       ...old
     } = restored;
-    expect(restored.schemaRevision).toBe(18);
+    expect(restored.schemaRevision).toBe(19);
     expect(siltstitchers).toEqual([]);
     expect(siltstitcherAdmissionAt).toBe(source.elapsed);
     expect(siltstitcherCandidateAfterId).toBe(0);
@@ -299,7 +299,7 @@ describe('siltstitcher snapshot revision', () => {
       const before = JSON.stringify(source);
       const restored = restoreWorld(before)!;
       expect(restored).toMatchObject({
-        schemaRevision: 18,
+        schemaRevision: 19,
         siltstitchers: [],
         siltstitcherAdmissionAt: source.elapsed,
         siltstitcherCandidateAfterId: 0,
@@ -563,7 +563,7 @@ describe('siltstitcher snapshot revision', () => {
         w.siltstitchers = Array.from({ length: 7 }, () => ({ ...w.siltstitchers[0], id: w.nextId++ }));
       },
       (w) => {
-        w.schemaRevision = 19;
+        w.schemaRevision = 20;
       },
       (w) => {
         delete w.siltstitchers[0].parentId;

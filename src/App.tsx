@@ -626,7 +626,7 @@ export function App() {
                   : chosen.species === 'siltstitcher'
                     ? 'A siltstitcher, bearing color away from its nest.'
                     : chosen.species === 'glassLimpet'
-                      ? 'A glass limpet, catching food carried by currents.'
+                      ? 'A glass limpet, catching food carried by water.'
                       : chosen.species === 'cargoMite'
                         ? 'A cargo mite, feeding on color in a grazer’s bundle.'
                         : chosen.species === 'marlgrub'
@@ -1715,12 +1715,14 @@ export function App() {
                   <div>
                     <h3>The glass limpet</h3>
                     <p>
-                      In a suitable shoreline pocket, loose pigment can pay for a clear, anchored shell. A rainbell's
-                      current may carry coarse grains past it. Only moving food that actually reaches the shell can fill
-                      its small reserve and catch basin; grazers have less to gather downstream while it holds that
-                      color. In calm water it waits and still spends a little reserve. It does not multiply, and it may
-                      be absent from a pool. After eight world minutes or a minute without reserve, the shell and all
-                      stored color return as loose pigment for grazers to find.
+                      In a suitable shoreline pocket, loose pigment can pay for a clear, anchored shell. A current or
+                      rain may carry grains past it, and a parent stocking for a child can bank leftover grains already
+                      at its seat. Moving food that actually reaches the shell can fill its catch basin; grazers have
+                      less to gather downstream while it holds that color. A grown shell can pay from its own reserve
+                      for a young one, whose appetite and frame may drift a little from its parent. Dry still water does
+                      not fill the catch, but upkeep still costs a little reserve. It may be absent from a pool. After
+                      eight world minutes or a minute without reserve, the shell and all stored color return as loose
+                      pigment for grazers to find.
                     </p>
                   </div>
                 </div>

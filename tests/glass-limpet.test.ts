@@ -2,9 +2,16 @@ import { describe, expect, it } from 'vitest';
 import { applyCurrent } from '../src/world/actions/current';
 import { sedimentCurrentVelocity } from '../src/world/currents';
 import { createWorld } from '../src/world/simulation';
-import { admitGlassLimpet, updateGlassLimpets } from '../src/world/species/glass-limpet';
+import {
+  admitGlassLimpet,
+  glassLimpetBirthStake,
+  glassLimpetFeedReach,
+  glassLimpetReserveCapacity,
+  glassLimpetSurvivalFloor,
+  updateGlassLimpets,
+} from '../src/world/species/glass-limpet';
 import { activeNewTypePopulation, SPECIES_CATALOG } from '../src/world/species/catalog';
-import { baselineTraits } from '../src/world/traits';
+import { baselineTraits, TRAIT_MAX, TRAIT_MIN } from '../src/world/traits';
 import { LIMITS, type GlassLimpet, type World } from '../src/world/types';
 import { DEATH_SEDIMENT_FRACTION } from '../src/world/species/remains';
 
@@ -83,6 +90,9 @@ describe('glass limpet current capture', () => {
       age: 0,
       starvedFor: 0,
       targetSedimentId: null,
+      parentId: null,
+      nextBirthAt: 70,
+      traits: baselineTraits(),
     });
     expect(anchor.strength).toBe(0);
     expect(near.strength).toBe(0);
@@ -186,8 +196,10 @@ describe('glass limpet current capture', () => {
     expect(food.strength).toBe(0.3);
   });
 
-  it('uses exact sediment drift speed: flowing food is captured, calm food is untouched', () => {
+  it('uses exact sediment drift speed: flowing food is captured, dry still food is untouched once the parent is stocked', () => {
     const { world, limpet } = born();
+    world.elapsed = 10;
+    limpet.reserve = glassLimpetBirthStake(limpet.traits);
     const food = grain(world, 1190, 500, 0.6, 120);
     searchPhase(world, limpet);
     const calm = structuredClone(world);
@@ -204,12 +216,40 @@ describe('glass limpet current capture', () => {
     updateGlassLimpets(world, 0.25);
     expect(limpet.targetSedimentId).toBe(food.id);
     expect(food.strength).toBeCloseTo(0.59, 12);
-    expect(limpet.reserve).toBeCloseTo(0.10225, 12);
+    expect(limpet.reserve).toBeCloseTo(glassLimpetBirthStake(limpet.traits) + 0.00225, 12);
     expect(limpet.cargo).toBeCloseTo(0.0075, 12);
     expect(world.ecologyLedger.glassLimpetIntake).toBeCloseTo(0.01, 12);
     expect(world.ecologyLedger.glassLimpetMaintenancePigment).toBeCloseTo(0.00025, 12);
     expect(pigment(world)).toBeCloseTo(before - 0.00025, 12);
-    expect(calm.glassLimpets[0].reserve).toBeCloseTo(0.09975, 12);
+    expect(calm.glassLimpets[0].reserve).toBeCloseTo(glassLimpetBirthStake(limpet.traits) - 0.00025, 12);
+  });
+
+  it('banks still leftover grains into reserve while stocking for a child', () => {
+    const { world, limpet } = born();
+    world.elapsed = 10;
+    const food = grain(world, 1190, 500, 0.6, 120);
+    searchPhase(world, limpet);
+    updateGlassLimpets(world, 0.25);
+    expect(limpet.targetSedimentId).toBe(food.id);
+    expect(food.strength).toBeCloseTo(0.59, 12);
+    expect(limpet.reserve).toBeCloseTo(0.10975, 12);
+    expect(limpet.cargo).toBe(0);
+    expect(world.ecologyLedger.glassLimpetIntake).toBeCloseTo(0.01, 12);
+  });
+
+  it('filters still grains when rain washes them past a stocked shell', () => {
+    const { world, limpet } = born();
+    limpet.reserve = glassLimpetBirthStake(limpet.traits);
+    const food = grain(world, 1190, 500, 0.6, 120);
+    searchPhase(world, limpet);
+    const before = pigment(world);
+    updateGlassLimpets(world, 0.25);
+    expect(limpet.targetSedimentId).toBe(food.id);
+    expect(food.strength).toBeCloseTo(0.59, 12);
+    expect(limpet.reserve).toBeCloseTo(glassLimpetBirthStake(limpet.traits) + 0.00225, 12);
+    expect(limpet.cargo).toBeCloseTo(0.0075, 12);
+    expect(world.ecologyLedger.glassLimpetIntake).toBeCloseTo(0.01, 12);
+    expect(pigment(world)).toBeCloseTo(before - 0.00025, 12);
   });
 
   it('uses the shared combined-force clamp for sediment drift and feeding', () => {
@@ -232,29 +272,30 @@ describe('glass limpet current capture', () => {
 
   it('revalidates expired flow and stale target, and clips both stores before debit', () => {
     const { world, limpet } = born();
+    world.elapsed = 10;
     const food = grain(world, 1190, 500, 0.6);
     expect(applyCurrent(world, { x: 1160, y: 500 }, { x: 1220, y: 500 }).status).toBe('applied');
     searchPhase(world, limpet);
-    limpet.reserve = 0.199;
+    limpet.reserve = glassLimpetBirthStake(limpet.traits);
     limpet.cargo = 0.8;
     updateGlassLimpets(world, 0.25);
     expect(food.strength).toBe(0.6);
     expect(world.ecologyLedger.glassLimpetIntake).toBe(0);
     limpet.cargo = 0;
-    limpet.reserve = 0.2;
+    limpet.reserve = glassLimpetReserveCapacity(limpet.traits);
     updateGlassLimpets(world, 0.25);
     expect(food.strength).toBe(0.6);
     limpet.targetSedimentId = food.id;
-    food.x = 1222.001;
+    food.x = limpet.x + glassLimpetFeedReach(limpet.traits) + 0.001;
     updateGlassLimpets(world, 0.25);
     expect(limpet.targetSedimentId).toBeNull();
     expect(food.strength).toBe(0.6);
     food.x = 1190;
-    food.strength = 0.119;
+    food.strength = 0.025;
     limpet.targetSedimentId = food.id;
     updateGlassLimpets(world, 0.25);
     expect(limpet.targetSedimentId).toBeNull();
-    expect(food.strength).toBe(0.119);
+    expect(food.strength).toBe(0.025);
     food.strength = 0.6;
     limpet.targetSedimentId = food.id;
     world.currents[0].startedAt = world.elapsed - 8;
@@ -287,5 +328,232 @@ describe('glass limpet current capture', () => {
     expect(world.nextId).toBe(beforeId + 1);
     updateGlassLimpets(world, 0.02);
     expect(world.ecologyLedger.mineralizedPigment).toBeCloseTo(Math.max(0, 1.1 * DEATH_SEDIMENT_FRACTION - 0.8), 12);
+  });
+});
+
+describe('glass limpet inheritance', () => {
+  it('gives founders baseline traits and spends parent reserve for a mutated child', () => {
+    const { world, limpet: parent } = born();
+    const random = world.randomState;
+    expect(parent.traits).toEqual(baselineTraits());
+    expect(parent.parentId).toBeNull();
+    expect(parent.reserve).toBeLessThan(glassLimpetBirthStake(parent.traits));
+    parent.age = 29.9;
+    parent.reserve = 0.4;
+    parent.targetSedimentId = null;
+    parent.nextBirthAt = 30;
+    world.elapsed = 30;
+    world.tick = 1;
+    const beforeReserve = parent.reserve;
+    const beforePigment = pigment(world);
+    updateGlassLimpets(world, 0.1);
+    expect(world.glassLimpets).toHaveLength(2);
+    const child = world.glassLimpets[1];
+    expect(child.parentId).toBe(parent.id);
+    expect(child.reserve).toBe(SPECIES_CATALOG.glassLimpet.childReserve);
+    expect(child.body).toBe(SPECIES_CATALOG.glassLimpet.childBody);
+    expect(child.cargo).toBe(0);
+    expect(parent.reserve).toBeCloseTo(
+      beforeReserve -
+        SPECIES_CATALOG.glassLimpet.childCost -
+        SPECIES_CATALOG.glassLimpet.maintenanceRate * 0.1 * parent.traits.drive,
+      8,
+    );
+    expect(pigment(world)).toBeCloseTo(
+      beforePigment - SPECIES_CATALOG.glassLimpet.maintenanceRate * 0.1 * parent.traits.drive,
+      8,
+    );
+    expect(child.traits).not.toEqual(parent.traits);
+    expect(child.traits.drive).toBeGreaterThanOrEqual(TRAIT_MIN);
+    expect(child.traits.drive).toBeLessThanOrEqual(TRAIT_MAX);
+    expect(child.traits.bulk).toBeGreaterThanOrEqual(TRAIT_MIN);
+    expect(child.traits.bulk).toBeLessThanOrEqual(TRAIT_MAX);
+    expect(world.randomState).not.toBe(random);
+    expect(parent.nextBirthAt).toBe(world.elapsed + SPECIES_CATALOG.glassLimpet.breedingRest);
+    expect(parent.reserve).toBeGreaterThanOrEqual(
+      glassLimpetSurvivalFloor(parent.traits) -
+        SPECIES_CATALOG.glassLimpet.maintenanceRate * 0.1 * parent.traits.drive -
+        1e-9,
+    );
+  });
+
+  it('does not let a founder pay a child from the shoreline starting reserve', () => {
+    const { world, limpet: parent } = born();
+    expect(parent.reserve).toBe(SPECIES_CATALOG.glassLimpet.initialReserve);
+    expect(parent.reserve).toBeLessThan(glassLimpetBirthStake(parent.traits));
+    parent.age = SPECIES_CATALOG.glassLimpet.maturityAge - 0.1;
+    parent.nextBirthAt = 30;
+    world.elapsed = 30;
+    world.tick = 1;
+    const random = world.randomState;
+    updateGlassLimpets(world, 0.1);
+    expect(world.glassLimpets).toHaveLength(1);
+    expect(world.randomState).toBe(random);
+    expect(parent.reserve).toBeLessThan(glassLimpetBirthStake(parent.traits));
+  });
+
+  it('stocks a birth from current-fed grains into parent reserve, then keeps a survival floor', () => {
+    const { world, limpet: parent } = born();
+    parent.age = SPECIES_CATALOG.glassLimpet.maturityAge;
+    parent.nextBirthAt = 30;
+    world.elapsed = 30;
+    searchPhase(world, parent);
+    const food = grain(world, 1190, 500, 0.8);
+    expect(applyCurrent(world, { x: 1160, y: 500 }, { x: 1220, y: 500 }).status).toBe('applied');
+    const foodBefore = food.strength;
+    const random = world.randomState;
+    updateGlassLimpets(world, 1);
+    expect(world.glassLimpets).toHaveLength(1);
+    expect(world.randomState).toBe(random);
+    expect(food.strength).toBeLessThan(foodBefore);
+    expect(parent.reserve).toBeGreaterThan(SPECIES_CATALOG.glassLimpet.initialReserve);
+    expect(parent.cargo).toBe(0);
+    expect(parent.reserve).toBeLessThan(glassLimpetBirthStake(parent.traits));
+    parent.reserve = glassLimpetBirthStake(parent.traits);
+    parent.targetSedimentId = null;
+    world.elapsed += 6;
+    world.tick = 1;
+    const beforeReserve = parent.reserve;
+    const beforePigment = pigment(world);
+    updateGlassLimpets(world, 0.1);
+    expect(world.glassLimpets).toHaveLength(2);
+    expect(world.glassLimpets[1].parentId).toBe(parent.id);
+    expect(world.glassLimpets[1].body).toBe(SPECIES_CATALOG.glassLimpet.childBody);
+    expect(parent.reserve).toBeCloseTo(
+      beforeReserve -
+        SPECIES_CATALOG.glassLimpet.childCost -
+        SPECIES_CATALOG.glassLimpet.maintenanceRate * 0.1 * parent.traits.drive,
+      8,
+    );
+    expect(pigment(world)).toBeCloseTo(
+      beforePigment - SPECIES_CATALOG.glassLimpet.maintenanceRate * 0.1 * parent.traits.drive,
+      8,
+    );
+    expect(parent.reserve).toBeGreaterThanOrEqual(
+      glassLimpetSurvivalFloor(parent.traits) -
+        SPECIES_CATALOG.glassLimpet.maintenanceRate * 0.1 * parent.traits.drive -
+        1e-9,
+    );
+  });
+
+  it('does not found from a grain a stocking parent can still bank', () => {
+    const { world, limpet: parent } = born();
+    parent.reserve = SPECIES_CATALOG.glassLimpet.initialReserve;
+    world.elapsed = 60;
+    world.glassLimpetAdmissionAt = 60;
+    world.nextFoundingTick = 0;
+    world.tick = 0;
+    const nearby = grain(world, parent.x + 10, parent.y, 0.3);
+    const random = world.randomState;
+    expect(admitGlassLimpet(world)).toBe(false);
+    expect(world.glassLimpets).toHaveLength(1);
+    expect(world.randomState).toBe(random);
+    expect(nearby.strength).toBe(0.3);
+    const far = grain(world, 1000, 750, 0.3);
+    expect(admitGlassLimpet(world)).toBe(true);
+    expect(world.glassLimpets).toHaveLength(2);
+    expect(world.glassLimpets[1].parentId).toBeNull();
+    expect(world.glassLimpets[1].traits).toEqual(baselineTraits());
+    expect(far.strength).toBe(0);
+  });
+
+  it('clamps inherited traits and does not draw the PRNG on a refused birth', () => {
+    const { world, limpet: parent } = born();
+    parent.traits = { drive: TRAIT_MAX, bulk: TRAIT_MIN };
+    parent.age = 29.9;
+    parent.reserve = 0.4;
+    parent.nextBirthAt = 30;
+    world.elapsed = 30;
+    world.tick = 1;
+    updateGlassLimpets(world, 0.1);
+    const child = world.glassLimpets[1];
+    expect(child.traits.drive).toBeGreaterThanOrEqual(TRAIT_MIN);
+    expect(child.traits.drive).toBeLessThanOrEqual(TRAIT_MAX);
+    expect(child.traits.bulk).toBeGreaterThanOrEqual(TRAIT_MIN);
+    expect(child.traits.bulk).toBeLessThanOrEqual(TRAIT_MAX);
+    const random = world.randomState;
+    const nextId = world.nextId;
+    parent.reserve = 0.4;
+    parent.nextBirthAt = world.elapsed;
+    updateGlassLimpets(world, 0.1);
+    expect(world.glassLimpets).toHaveLength(2);
+    expect(world.nextId).toBe(nextId);
+    expect(world.randomState).toBe(random);
+    parent.reserve = 0.1;
+    parent.nextBirthAt = world.elapsed;
+    world.tick += 6;
+    world.elapsed += 6;
+    const still = world.randomState;
+    updateGlassLimpets(world, 0.1);
+    expect(world.glassLimpets).toHaveLength(2);
+    expect(world.randomState).toBe(still);
+  });
+
+  it('keeps the same child traits for the same seed', () => {
+    function childOf(): { traits: { drive: number; bulk: number }; randomState: number } {
+      const { world, limpet: parent } = born();
+      parent.age = 29.9;
+      parent.reserve = 0.4;
+      parent.nextBirthAt = 30;
+      world.elapsed = 30;
+      world.tick = 1;
+      updateGlassLimpets(world, 0.1);
+      return { traits: world.glassLimpets[1].traits, randomState: world.randomState };
+    }
+    expect(childOf()).toEqual(childOf());
+  });
+
+  it('makes higher drive both hungrier and costlier, so neither pole is free', () => {
+    const keen = born();
+    const spare = born();
+    const hungry = keen.limpet;
+    const thrifty = spare.limpet;
+    hungry.traits = { drive: TRAIT_MAX, bulk: 1 };
+    thrifty.traits = { drive: TRAIT_MIN, bulk: 1 };
+    hungry.age = 10;
+    thrifty.age = 10;
+    const keenFood = grain(keen.world, 1190, 500, 0.8);
+    const spareFood = grain(spare.world, 1190, 500, 0.8);
+    expect(applyCurrent(keen.world, { x: 1160, y: 500 }, { x: 1220, y: 500 }).status).toBe('applied');
+    expect(applyCurrent(spare.world, { x: 1160, y: 500 }, { x: 1220, y: 500 }).status).toBe('applied');
+    keen.world.tick = (6 - (hungry.id % 6)) % 6;
+    spare.world.tick = (6 - (thrifty.id % 6)) % 6;
+    updateGlassLimpets(keen.world, 1);
+    updateGlassLimpets(spare.world, 1);
+    expect(keen.world.ecologyLedger.glassLimpetMaintenancePigment).toBeGreaterThan(
+      spare.world.ecologyLedger.glassLimpetMaintenancePigment,
+    );
+    expect(keenFood.strength).toBeLessThan(spareFood.strength);
+    expect(hungry.reserve).toBeGreaterThan(thrifty.reserve);
+  });
+
+  it('lets a stouter shell hold more reserve while reaching less far', () => {
+    const stout = born();
+    const slight = born();
+    const heavy = stout.limpet;
+    const light = slight.limpet;
+    heavy.traits = { drive: 1, bulk: TRAIT_MAX };
+    light.traits = { drive: 1, bulk: TRAIT_MIN };
+    expect(glassLimpetFeedReach(heavy.traits)).toBeLessThan(glassLimpetFeedReach(light.traits));
+    expect(glassLimpetReserveCapacity(heavy.traits)).toBeGreaterThan(glassLimpetReserveCapacity(light.traits));
+    heavy.reserve = 0.05;
+    light.reserve = 0.05;
+    heavy.age = 29.9;
+    light.age = 29.9;
+    heavy.nextBirthAt = 1000;
+    light.nextBirthAt = 1000;
+    grain(stout.world, 1190, 500, 1);
+    grain(slight.world, 1190, 500, 1);
+    expect(applyCurrent(stout.world, { x: 1160, y: 500 }, { x: 1220, y: 500 }).status).toBe('applied');
+    expect(applyCurrent(slight.world, { x: 1160, y: 500 }, { x: 1220, y: 500 }).status).toBe('applied');
+    searchPhase(stout.world, heavy);
+    searchPhase(slight.world, light);
+    for (let step = 0; step < 20; step++) {
+      updateGlassLimpets(stout.world, 1);
+      updateGlassLimpets(slight.world, 1);
+    }
+    expect(heavy.reserve).toBeGreaterThan(light.reserve);
+    expect(heavy.reserve).toBeGreaterThan(SPECIES_CATALOG.glassLimpet.childCost);
+    expect(heavy.reserve).toBeGreaterThan(glassLimpetReserveCapacity(light.traits));
   });
 });

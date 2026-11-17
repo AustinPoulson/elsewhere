@@ -28,7 +28,7 @@ describe('catch-up snapshot revision', () => {
     const migrated = restoreWorld(source)!;
     expect(migrated).not.toBeNull();
     expect(migrated).toMatchObject({
-      schemaRevision: 18,
+      schemaRevision: 19,
       lastSeenAt: null,
       remains: old.remains,
       marlgrubs: old.marlgrubs,
@@ -81,7 +81,7 @@ describe('catch-up snapshot revision', () => {
         w.schemaRevision = 10;
       },
       (w) => {
-        w.schemaRevision = 19;
+        w.schemaRevision = 20;
       },
     ];
     for (const edit of edits) {

@@ -39,7 +39,7 @@ describe('fossil snapshot revision', () => {
     const migrated = restoreWorld(source)!;
     expect(migrated).not.toBeNull();
     expect(migrated).toMatchObject({
-      schemaRevision: 18,
+      schemaRevision: 19,
       lastSeenAt: null,
       fossils: [],
       nextId: old.nextId,
@@ -80,7 +80,7 @@ describe('fossil snapshot revision', () => {
         w.schemaRevision = 11;
       },
       (w) => {
-        w.schemaRevision = 19;
+        w.schemaRevision = 20;
       },
       (w) => {
         w.fossils[0].pigment = 1.3;

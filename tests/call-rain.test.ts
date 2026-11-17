@@ -164,7 +164,7 @@ describe('versioned weather calls', () => {
     expect(ecology(migrated)).toEqual(original);
     expect(migrated).toMatchObject({
       version: 3,
-      schemaRevision: 18,
+      schemaRevision: 19,
       weatherCall: { startedAt: null, nextAllowedAt: 0 },
     });
     expect(JSON.stringify(fixture)).toBe(old);
@@ -180,7 +180,7 @@ describe('versioned weather calls', () => {
         delete world.schemaRevision;
       },
       (world) => {
-        world.schemaRevision = 19;
+        world.schemaRevision = 20;
       },
       (world) => {
         world.weatherCall = null;
