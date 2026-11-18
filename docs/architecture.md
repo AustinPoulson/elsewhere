@@ -65,7 +65,7 @@ The current explicit budgets are:
 | New-type renderer objects                                 |       96 (four per body, at most 24 active) |
 | New-type short cues                                       |     16 (siltstitchers and limpets add none) |
 | Normal founding source searches                           |               1 registered type per 6 ticks |
-| Shore wash compact                                        |     1 nearest pair per 6 ticks while raining |
+| Shore wash compact                                        |    1 nearest pair per 6 ticks while raining |
 | Successful new-body allocations                           | 1 per 6 ticks across types and event offers |
 | Rain ringlet slots (renderer only)                        |                                          48 |
 | Light floor patches (renderer only)                       |                                          32 |
