@@ -1326,7 +1326,11 @@ export function App() {
         <div className={`weather-readout ${weather.raining ? 'is-raining' : ''}`} aria-label="Pool weather">
           <span aria-hidden="true">◌</span>
           <span>
-            {weather.called ? 'Called shower' : weather.raining ? 'Rain · wider light' : 'Rain in'}{' '}
+            {weather.called
+              ? 'Called shower · sorting the shore'
+              : weather.raining
+                ? 'Rain · wider light · sorting the shore'
+                : 'Rain in'}{' '}
             <time>{timeLabel(Math.ceil(weather.secondsUntilChange))}</time>
           </span>
         </div>
@@ -1588,8 +1592,9 @@ export function App() {
                       Watch for ringlets on the water. During rain, golden patches of light widen over six seconds.
                       Lucents can feed across that larger patch and leave color across a wider floor. Leave a fresh
                       light during the shower to see it; rain cannot bring back a spent light. Grazers follow the traces
-                      home. A shower still returns every three minutes; winter holds the rain longer, summer lets it
-                      pass sooner. Pause holds the weather, too.
+                      home. Rain also sorts settled color back toward the shore, packing nearby grains and remains so a
+                      later founder can pay from them. A shower still returns every three minutes; winter holds the rain
+                      longer, summer lets it pass sooner. Pause holds the weather, too.
                     </p>
                   </div>
                 </div>

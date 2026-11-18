@@ -24,7 +24,7 @@ Lucents sense light, move toward it, consume its energy, and leave sediment. Lig
 
 Pigment grazers extend this relationship. Four slow shelled creatures seek sediment, collect its strength into bounded cargo, and return to their own fixed nests to deposit color. Shell cargo and woven nest rings show the transfer. Nest pigment fades gently and caps at 12 per nest. Observe and the field guide's Follow a grazer control expose cargo, nest pigment, and returning/gathering state.
 
-Passing rain diffuses existing light. `src/world/weather.ts` derives a three-minute cycle from saved ecological time. At year start the window matches the original climate: calm until second 30, rain until second 68, and six-second eased transitions. `src/world/environment/seasons.ts` then lengthens that window in winter and shortens it in summer from the rain span at each cycle start, so a shower does not morph mid-fall. The feeding reach expands from 64 to 112 world units; orbit radius expands in the same proportion. Light keeps its existing energy and consumption rules. Rendering uses that shared reach for widened halos, broad golden floor patches, and a single reusable graphics object with 48 ringlet slots. Floor patches share one owned 512×512 radial texture and at most 32 sprites, reused and pruned by light ID. Their outer radius equals the feeding reach, with a smoothly feathered edge; brightness follows rain intensity and remaining energy. The weather readout and field guide explain the relationship. Reduced motion keeps ringlet positions and radii static; pause freezes the entire cycle. Natural weather uses elapsed time. A visitor can also invite a thirty-second shower with a sixty-world-second cooldown; effectiveWeather and effectiveLightReach combine natural and called intensity by maximum. A paused call displays first ringlets without advancing feeding reach. The saved weatherCall belongs to world version3/schemaRevision3.
+Passing rain diffuses existing light. `src/world/weather.ts` derives a three-minute cycle from saved ecological time. At year start the window matches the original climate: calm until second 30, rain until second 68, and six-second eased transitions. `src/world/environment/seasons.ts` then lengthens that window in winter and shortens it in summer from the rain span at each cycle start, so a shower does not morph mid-fall. The feeding reach expands from 64 to 112 world units; orbit radius expands in the same proportion. Light keeps its existing energy and consumption rules. Rendering uses that shared reach for widened halos, broad golden floor patches, and a single reusable graphics object with 48 ringlet slots. Floor patches share one owned 512×512 radial texture and at most 32 sprites, reused and pruned by light ID. Their outer radius equals the feeding reach, with a smoothly feathered edge; brightness follows rain intensity and remaining energy. Rain also re-sorts the floor: sediment and remains wash toward a shoreline band (target rho 0.78) at 3.6 world units/second at full intensity, and once per six ticks a nearby pair in a 28-unit reach pours existing color onto the more shoreward grain. A grain already inside a paid current is left to that current. Placement uses authored pool geometry and tick phase, never the world PRNG. No pigment is granted; the deep basin stills the wash by the ordinary rain scale. The weather readout and field guide explain the relationship. Reduced motion keeps ringlet positions and radii static; pause freezes the entire cycle. Natural weather uses elapsed time. A visitor can also invite a thirty-second shower with a sixty-world-second cooldown; effectiveWeather and effectiveLightReach combine natural and called intensity by maximum. A paused call displays first ringlets without advancing feeding reach. The saved weatherCall belongs to world version3/schemaRevision3. Schema revision stays 19.
 
 A slow year of six world days (2160 seconds) is derived from elapsed time, not stored. Opening worlds begin in spring, which matches the pre-season climate. Daylight strength and photoperiod peak at the start of summer and bottom at the start of winter: spring lengthens toward that peak, autumn shortens toward that floor, and summer and winter ease after those extrema. The authored channel current uses the same yearly sine (calmer near summer's start, a little harder near winter's start). Catch-up, named eras, and the headless harness all see that year identically. Seasons are not a snapshot field. A reused water wash and a readout line name the season; reduced motion still freezes decorative motion and starts paused. Harness and catch-up birth/death totals are per-step net census change, not complete genealogical event counts; opposite events in the same 1/30-second step cancel, and population curves are separately downsampled.
 
@@ -46,42 +46,43 @@ One type definition describes the world and its entities. A seeded random state 
 
 The current explicit budgets are:
 
-| Collection                                                |                                     Maximum |
-| --------------------------------------------------------- | ------------------------------------------: |
-| Organisms                                                 |                                          42 |
-| Active light sources                                      |                                          32 |
-| Sediment marks                                            |                                         600 |
-| Trail points per organism                                 |                                          14 |
-| Pigment grazers                                           |                                           8 |
-| Woven nests                                               |                                          16 |
-| Active siltstitchers                                      |    6 (within the shared 24 new-type bodies) |
-| Active glass limpets                                      |    4 (within the shared 24 new-type bodies) |
-| Active marlgrubs                                          |    4 (within the shared 24 new-type bodies) |
-| Remain cells                                              |                                          48 |
-| Remain cores (renderer only)                              |             1 graphics object, ≤48 ellipses |
-| Fossils                                                   |                                          16 |
-| Fossil cores (renderer only)                              |          1 graphics object, ≤16 impressions |
-| All active new-type bodies                                |                           24 (type caps 34) |
-| New-type renderer objects                                 |       96 (four per body, at most 24 active) |
-| New-type short cues                                       |     16 (siltstitchers and limpets add none) |
-| Normal founding source searches                           |               1 registered type per 6 ticks |
-| Successful new-body allocations                           | 1 per 6 ticks across types and event offers |
-| Rain ringlet slots (renderer only)                        |                                          48 |
-| Light floor patches (renderer only)                       |                                          32 |
-| Pools                                                     |                                           2 |
-| Habitat links                                             |                                           1 |
-| Active visitor currents                                   |                                           3 |
-| Current arrows, including gesture preview (renderer only) |                                          12 |
-| Channel current arrows (renderer only)                    |                                           4 |
-| Inlet caustic ribbons (renderer only)                     |                                           4 |
-| Season wash (renderer only)                               |                       1 graphics fill/frame |
-| Mineral seam (renderer only)                              |                       1 graphics fill/frame |
-| Deep basin (renderer only)                                |                       1 graphics fill/frame |
-| Away traces                                               |              5 marks, 1 graphics fill/frame |
-| Shore memory                                              |                        4 remembered returns |
-| Named eras                                                |                                           8 |
-| Era inner snapshot                                        |                        1,000,000 characters |
-| Era catalog                                               |                                   4,000,000 |
+| Collection                                                |                                                     Maximum |
+| --------------------------------------------------------- | ----------------------------------------------------------: |
+| Organisms                                                 |                                                          42 |
+| Active light sources                                      |                                                          32 |
+| Sediment marks                                            |                                                         600 |
+| Trail points per organism                                 |                                                          14 |
+| Pigment grazers                                           |                                                           8 |
+| Woven nests                                               |                                                          16 |
+| Active siltstitchers                                      |                    6 (within the shared 24 new-type bodies) |
+| Active glass limpets                                      |                    4 (within the shared 24 new-type bodies) |
+| Active marlgrubs                                          |                    4 (within the shared 24 new-type bodies) |
+| Remain cells                                              |                                                          48 |
+| Remain cores (renderer only)                              |                             1 graphics object, ≤48 ellipses |
+| Fossils                                                   |                                                          16 |
+| Fossil cores (renderer only)                              |                          1 graphics object, ≤16 impressions |
+| All active new-type bodies                                |                                           24 (type caps 34) |
+| New-type renderer objects                                 |                       96 (four per body, at most 24 active) |
+| New-type short cues                                       |                     16 (siltstitchers and limpets add none) |
+| Normal founding source searches                           |                               1 registered type per 6 ticks |
+| Shore wash compact                                        | 1 sediment pair and 1 remain pair per 6 ticks while raining |
+| Successful new-body allocations                           |                 1 per 6 ticks across types and event offers |
+| Rain ringlet slots (renderer only)                        |                                                          48 |
+| Light floor patches (renderer only)                       |                                                          32 |
+| Pools                                                     |                                                           2 |
+| Habitat links                                             |                                                           1 |
+| Active visitor currents                                   |                                                           3 |
+| Current arrows, including gesture preview (renderer only) |                                                          12 |
+| Channel current arrows (renderer only)                    |                                                           4 |
+| Inlet caustic ribbons (renderer only)                     |                                                           4 |
+| Season wash (renderer only)                               |                                       1 graphics fill/frame |
+| Mineral seam (renderer only)                              |                                       1 graphics fill/frame |
+| Deep basin (renderer only)                                |                                       1 graphics fill/frame |
+| Away traces                                               |                              5 marks, 1 graphics fill/frame |
+| Shore memory                                              |                                        4 remembered returns |
+| Named eras                                                |                                                           8 |
+| Era inner snapshot                                        |                                        1,000,000 characters |
+| Era catalog                                               |                                                   4,000,000 |
 
 New behavior must respect a budget. Accumulated visual history must age, compact, or remain capped. A beautiful trail should not become an unbounded list of draw calls after a long visit. Existing simple rules and loops are easier to inspect than a general plugin or entity framework at this stage.
 
