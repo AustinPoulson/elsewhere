@@ -1,7 +1,9 @@
 import { CURRENT_SPEED, MAX_CURRENT_SPEED, SEDIMENT_DRIFT, currentStrength } from './actions/current';
 import { depthAt, settleVelocity, stillScale } from './environment/depth';
+import { washShorePoint } from './environment/shore-wash';
 import { confinePosition } from './geometry';
 import { channelVelocity } from './habitat';
+import { effectiveWeather } from './weather';
 import type { Point, World } from './types';
 
 const driftVelocity: Point = { x: 0, y: 0 };
@@ -48,6 +50,14 @@ function drift(world: World, body: Point, dt: number, scale: number, margin: num
   confinePosition(body, margin);
 }
 
+function inPaidCurrent(world: World, point: Point): boolean {
+  for (const current of world.currents) {
+    if (currentStrength(current, world.elapsed) <= 0) continue;
+    if (Math.hypot(point.x - current.x, point.y - current.y) < current.radius) return true;
+  }
+  return false;
+}
+
 export function applyCurrentDrift(world: World, dt: number): void {
   let write = 0;
   for (const current of world.currents)
@@ -62,4 +72,10 @@ export function applyCurrentDrift(world: World, dt: number): void {
   for (const body of world.sediment) drift(world, body, dt, SEDIMENT_DRIFT, 0, true);
   if (world.remains.length > 0) for (const body of world.remains) drift(world, body, dt, SEDIMENT_DRIFT, 0, true);
   if (world.fossils.length > 0) for (const body of world.fossils) drift(world, body, dt, SEDIMENT_DRIFT, 0, true);
+  const rain = effectiveWeather(world).intensity;
+  if (rain > 0) {
+    for (const body of world.sediment) if (!inPaidCurrent(world, body)) washShorePoint(body, dt, rain);
+    if (world.remains.length > 0)
+      for (const body of world.remains) if (!inPaidCurrent(world, body)) washShorePoint(body, dt, rain);
+  }
 }

@@ -3,6 +3,14 @@ import { addLight, createWorld, getStats, SPRINGS, stepWorld } from '../src/worl
 import { restoreWorld } from '../src/world/persistence';
 import { FOSSIL_LABEL, FOSSIL_SOURCES, fossilsBySource, heldFossilPigment } from '../src/world/species/fossils';
 import { heldRemainPigment } from '../src/world/species/remains';
+import {
+  emptyFoundingCensus,
+  FOUNDING_KINDS,
+  probeFoundingStock,
+  watchFounding,
+  type FoundingCensus,
+  type FoundingStock,
+} from '../src/world/species/founding-report';
 import { MINERAL_SEAM, pigmentNearSeam, seamRemaining } from '../src/world/environment/mineral-seam';
 import { fossilsInDeep, inDeep, pigmentInDeep, remainsInDeep } from '../src/world/environment/depth';
 import { inInletPool, inOpeningPool } from '../src/world/habitat';
@@ -101,6 +109,8 @@ export interface HarnessReport {
     deepBodies: number;
   };
   fossilsBySource: Record<FossilSource, { count: number; pigment: number }>;
+  founding: FoundingCensus;
+  foundingStock: FoundingStock[];
   ledger: World['ecologyLedger'];
   conservationCheck: {
     inputLight: number;
@@ -243,6 +253,7 @@ function createOrLoadWorld(seed: number, loadPath?: string): World {
 
 export function runHarness(config: HarnessConfig): HarnessReport {
   const world = createOrLoadWorld(config.seed, config.load);
+  watchFounding(world);
   const actualSeed = world.seed;
   const targetSeconds = config.days * DAY_SECONDS;
   const targetSteps = Math.ceil(targetSeconds / FIXED_STEP);
@@ -250,6 +261,7 @@ export function runHarness(config: HarnessConfig): HarnessReport {
 
   const populations: PopulationSample[] = [];
   const traitDrift: TraitSample[] = [];
+  const foundingStock: FoundingStock[] = [];
   const lifetimeTraits: TraitSnapshot = {
     lucents: null,
     grazers: null,
@@ -383,6 +395,7 @@ export function runHarness(config: HarnessConfig): HarnessReport {
 
   populations.push(samplePopulation());
   traitDrift.push(sampleTraits());
+  foundingStock.push(probeFoundingStock(world));
 
   const startTime = performance.now();
 
@@ -411,11 +424,13 @@ export function runHarness(config: HarnessConfig): HarnessReport {
     if (step % sampleInterval === 0) {
       populations.push(samplePopulation());
       traitDrift.push(sampleTraits());
+      foundingStock.push(probeFoundingStock(world));
     }
   }
 
   populations.push(samplePopulation());
   traitDrift.push(sampleTraits());
+  foundingStock.push(probeFoundingStock(world));
 
   const endTime = performance.now();
   const wallTimeMs = endTime - startTime;
@@ -477,6 +492,8 @@ export function runHarness(config: HarnessConfig): HarnessReport {
       ].filter((body) => inDeep(body.x, body.y)).length,
     },
     fossilsBySource: fossilsBySource(world),
+    founding: watchFounding(world),
+    foundingStock,
     ledger: { ...world.ecologyLedger },
     conservationCheck: {
       inputLight: world.consumed + stats.light + world.ecologyLedger.ambientHarvested,
@@ -631,6 +648,34 @@ export function printReport(report: HarnessReport): void {
   }
   if (!anyExtinct) {
     console.log('   No extinctions observed');
+  }
+
+  console.log(`\n🐣 Founding attempts`);
+  console.log('   Polled once per six ticks. Failures are cap, rest, budget, no-offer, or no-resource.');
+  const census = report.founding ?? emptyFoundingCensus();
+  for (const kind of FOUNDING_KINDS) {
+    const tally = census[kind];
+    if (tally.polls === 0) continue;
+    const last = tally.lastAcceptedAt === null ? 'never' : formatTime(tally.lastAcceptedAt);
+    console.log(
+      `   ${kind.padEnd(14)}: ${tally.accepted}/${tally.polls} accepted, cap ${tally.cap} rest ${tally.rest} budget ${tally.budget} no-offer ${tally.noOffer} no-resource ${tally.noResource}, last ${last}`,
+    );
+  }
+  console.log('   Founding stock (coarse shore grains, payable remains >= 0.2, nests >= 1.5)');
+  const stockSamples = [
+    0,
+    Math.floor(report.foundingStock.length / 4),
+    Math.floor(report.foundingStock.length / 2),
+    Math.floor((3 * report.foundingStock.length) / 4),
+    report.foundingStock.length - 1,
+  ];
+  console.log('   Time       | shore coarse n/pigment | shore pig | coarse | remains n/pig | rich nests | fossils');
+  for (const i of stockSamples) {
+    const stock = report.foundingStock[i];
+    if (!stock) continue;
+    console.log(
+      `   ${formatTime(stock.worldTime).padEnd(10)} | ${String(stock.coarseShore).padStart(2)} / ${stock.coarseShorePigment.toFixed(2).padStart(5)}          | ${stock.shorePigment.toFixed(2).padStart(6)}    | ${String(stock.coarseAnywhere).padStart(4)}   | ${String(stock.payableRemains).padStart(2)} / ${stock.remainPigment.toFixed(2).padStart(5)}    | ${String(stock.richNests).padStart(2)} / ${stock.nestPigment.toFixed(2).padStart(5)} | ${stock.fossils} / ${stock.fossilPigment.toFixed(2)}`,
+    );
   }
 
   console.log(`\n🦴 Fossils`);

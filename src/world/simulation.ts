@@ -27,12 +27,13 @@ import { updateGlassLimpets } from './species/glass-limpet';
 import { syncAttachedCargoMites, updateCargoMites } from './species/cargo-mite';
 import { admitMarlgrub, updateMarlgrubs } from './species/marlgrub';
 import { updateRemains } from './species/remains';
-import { runNormalFounding, tryEventFounding } from './species/founding';
+import { runNormalFounding, tryMarlgrubFounding } from './species/founding';
 import { nextRandom } from './rng';
 import { baselineTraits, traitMobility } from './traits';
 import { ambientOffer } from './environment/daylight';
 import { depthAt, lightScale, pigmentInDeep } from './environment/depth';
 import { dissolveMineralSeam, seamRemaining } from './environment/mineral-seam';
+import { compactShoreResources } from './environment/shore-wash';
 
 const TAU = Math.PI * 2;
 const ENERGY_FLOOR = 0.12;
@@ -497,9 +498,10 @@ export function stepWorld(world: World, dt = FIXED_STEP): void {
   updateCargoMites(world, dt);
   updateMarlgrubs(world, dt);
   runNormalFounding(world);
-  if (world.remains.length > 0) tryEventFounding(world, admitMarlgrub);
+  tryMarlgrubFounding(world, admitMarlgrub);
   updateRemains(world, dt, world.tick % 6 === 0 ? 6 : 0);
   applyCurrentDrift(world, dt);
+  compactShoreResources(world);
   syncAttachedCargoMites(world);
   for (const light of world.lights) {
     light.age += dt;
