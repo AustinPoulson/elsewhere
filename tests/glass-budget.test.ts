@@ -301,8 +301,13 @@ function stepStress(world: World, index: number): void {
   }
 }
 
+function pump(): Promise<void> {
+  // Tight 20-minute loops otherwise starve the vitest worker RPC (60s onTaskUpdate timeout).
+  return new Promise((resolve) => setImmediate(resolve));
+}
+
 describe('mixed catalog capacity', () => {
-  it('holds aggregate limits for 20 simulated minutes and replays the second half exactly from a save', () => {
+  it('holds aggregate limits for 20 simulated minutes and replays the second half exactly from a save', async () => {
     const world = mixedMaximum();
     expect(world.organisms).toHaveLength(42);
     expect(world.grazers).toHaveLength(8);
@@ -314,7 +319,10 @@ describe('mixed catalog capacity', () => {
     expect(restoreWorld(serializeWorld(world))).not.toBeNull();
     for (let index = 0; index < 18_000; index++) {
       stepStress(world, index);
-      if (index % 900 === 0) checkCaps(world);
+      if (index % 900 === 0) {
+        checkCaps(world);
+        await pump();
+      }
     }
     expect(activeNewTypePopulation(world)).toBe(24);
     expect(world.sediment).toHaveLength(600);
@@ -328,6 +336,7 @@ describe('mixed catalog capacity', () => {
       if (index % 900 === 0) {
         checkCaps(world);
         checkCaps(continued!);
+        await pump();
       }
     }
     expect(world.elapsed).toBeCloseTo(1200, 7);

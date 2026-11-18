@@ -52,10 +52,14 @@ function drift(world: World, body: Point, dt: number, scale: number, margin: num
 
 function inPaidCurrent(world: World, point: Point): boolean {
   for (const current of world.currents) {
-    if (currentStrength(current, world.elapsed) <= 0) continue;
     if (Math.hypot(point.x - current.x, point.y - current.y) < current.radius) return true;
   }
   return false;
+}
+
+function driftAndWash(world: World, body: Point, dt: number, rain: number, settle: boolean): void {
+  drift(world, body, dt, SEDIMENT_DRIFT, 0, settle);
+  if (rain > 0 && !inPaidCurrent(world, body)) washShorePoint(body, dt, rain);
 }
 
 export function applyCurrentDrift(world: World, dt: number): void {
@@ -69,13 +73,8 @@ export function applyCurrentDrift(world: World, dt: number): void {
   for (const body of world.siltstitchers) drift(world, body, dt, 1, 11);
   for (const body of world.cargoMites) if (body.mode === 'seeking') drift(world, body, dt, 1, 11);
   for (const body of world.marlgrubs) drift(world, body, dt, 1, 11);
-  for (const body of world.sediment) drift(world, body, dt, SEDIMENT_DRIFT, 0, true);
-  if (world.remains.length > 0) for (const body of world.remains) drift(world, body, dt, SEDIMENT_DRIFT, 0, true);
-  if (world.fossils.length > 0) for (const body of world.fossils) drift(world, body, dt, SEDIMENT_DRIFT, 0, true);
   const rain = effectiveWeather(world).intensity;
-  if (rain > 0) {
-    for (const body of world.sediment) if (!inPaidCurrent(world, body)) washShorePoint(body, dt, rain);
-    if (world.remains.length > 0)
-      for (const body of world.remains) if (!inPaidCurrent(world, body)) washShorePoint(body, dt, rain);
-  }
+  for (const body of world.sediment) driftAndWash(world, body, dt, rain, true);
+  if (world.remains.length > 0) for (const body of world.remains) driftAndWash(world, body, dt, rain, true);
+  if (world.fossils.length > 0) for (const body of world.fossils) drift(world, body, dt, SEDIMENT_DRIFT, 0, true);
 }
