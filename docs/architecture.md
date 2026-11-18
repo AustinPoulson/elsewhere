@@ -46,43 +46,43 @@ One type definition describes the world and its entities. A seeded random state 
 
 The current explicit budgets are:
 
-| Collection                                                |                                     Maximum |
-| --------------------------------------------------------- | ------------------------------------------: |
-| Organisms                                                 |                                          42 |
-| Active light sources                                      |                                          32 |
-| Sediment marks                                            |                                         600 |
-| Trail points per organism                                 |                                          14 |
-| Pigment grazers                                           |                                           8 |
-| Woven nests                                               |                                          16 |
-| Active siltstitchers                                      |    6 (within the shared 24 new-type bodies) |
-| Active glass limpets                                      |    4 (within the shared 24 new-type bodies) |
-| Active marlgrubs                                          |    4 (within the shared 24 new-type bodies) |
-| Remain cells                                              |                                          48 |
-| Remain cores (renderer only)                              |             1 graphics object, ≤48 ellipses |
-| Fossils                                                   |                                          16 |
-| Fossil cores (renderer only)                              |          1 graphics object, ≤16 impressions |
-| All active new-type bodies                                |                           24 (type caps 34) |
-| New-type renderer objects                                 |       96 (four per body, at most 24 active) |
-| New-type short cues                                       |     16 (siltstitchers and limpets add none) |
-| Normal founding source searches                           |               1 registered type per 6 ticks |
-| Shore wash compact                                        |    1 nearest pair per 6 ticks while raining |
-| Successful new-body allocations                           | 1 per 6 ticks across types and event offers |
-| Rain ringlet slots (renderer only)                        |                                          48 |
-| Light floor patches (renderer only)                       |                                          32 |
-| Pools                                                     |                                           2 |
-| Habitat links                                             |                                           1 |
-| Active visitor currents                                   |                                           3 |
-| Current arrows, including gesture preview (renderer only) |                                          12 |
-| Channel current arrows (renderer only)                    |                                           4 |
-| Inlet caustic ribbons (renderer only)                     |                                           4 |
-| Season wash (renderer only)                               |                       1 graphics fill/frame |
-| Mineral seam (renderer only)                              |                       1 graphics fill/frame |
-| Deep basin (renderer only)                                |                       1 graphics fill/frame |
-| Away traces                                               |              5 marks, 1 graphics fill/frame |
-| Shore memory                                              |                        4 remembered returns |
-| Named eras                                                |                                           8 |
-| Era inner snapshot                                        |                        1,000,000 characters |
-| Era catalog                                               |                                   4,000,000 |
+| Collection                                                |                                                     Maximum |
+| --------------------------------------------------------- | ----------------------------------------------------------: |
+| Organisms                                                 |                                                          42 |
+| Active light sources                                      |                                                          32 |
+| Sediment marks                                            |                                                         600 |
+| Trail points per organism                                 |                                                          14 |
+| Pigment grazers                                           |                                                           8 |
+| Woven nests                                               |                                                          16 |
+| Active siltstitchers                                      |                    6 (within the shared 24 new-type bodies) |
+| Active glass limpets                                      |                    4 (within the shared 24 new-type bodies) |
+| Active marlgrubs                                          |                    4 (within the shared 24 new-type bodies) |
+| Remain cells                                              |                                                          48 |
+| Remain cores (renderer only)                              |                             1 graphics object, ≤48 ellipses |
+| Fossils                                                   |                                                          16 |
+| Fossil cores (renderer only)                              |                          1 graphics object, ≤16 impressions |
+| All active new-type bodies                                |                                           24 (type caps 34) |
+| New-type renderer objects                                 |                       96 (four per body, at most 24 active) |
+| New-type short cues                                       |                     16 (siltstitchers and limpets add none) |
+| Normal founding source searches                           |                               1 registered type per 6 ticks |
+| Shore wash compact                                        | 1 sediment pair and 1 remain pair per 6 ticks while raining |
+| Successful new-body allocations                           |                 1 per 6 ticks across types and event offers |
+| Rain ringlet slots (renderer only)                        |                                                          48 |
+| Light floor patches (renderer only)                       |                                                          32 |
+| Pools                                                     |                                                           2 |
+| Habitat links                                             |                                                           1 |
+| Active visitor currents                                   |                                                           3 |
+| Current arrows, including gesture preview (renderer only) |                                                          12 |
+| Channel current arrows (renderer only)                    |                                                           4 |
+| Inlet caustic ribbons (renderer only)                     |                                                           4 |
+| Season wash (renderer only)                               |                                       1 graphics fill/frame |
+| Mineral seam (renderer only)                              |                                       1 graphics fill/frame |
+| Deep basin (renderer only)                                |                                       1 graphics fill/frame |
+| Away traces                                               |                              5 marks, 1 graphics fill/frame |
+| Shore memory                                              |                                        4 remembered returns |
+| Named eras                                                |                                                           8 |
+| Era inner snapshot                                        |                                        1,000,000 characters |
+| Era catalog                                               |                                                   4,000,000 |
 
 New behavior must respect a budget. Accumulated visual history must age, compact, or remain capped. A beautiful trail should not become an unbounded list of draw calls after a long visit. Existing simple rules and loops are easier to inspect than a general plugin or entity framework at this stage.
 
