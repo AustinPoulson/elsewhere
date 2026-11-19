@@ -34,6 +34,7 @@ import { callRain, effectiveWeather } from './world/weather';
 import { getDaylight } from './world/environment/daylight';
 import { inDeepWater } from './world/environment/depth';
 import { MINERAL_SEAM } from './world/environment/mineral-seam';
+import { unusedNestsSlumping } from './world/environment/nest-slump';
 import { getSeason } from './world/environment/seasons';
 import { describeBulk, describeDrive } from './world/traits';
 import { MAX_CURRENTS } from './world/actions/current';
@@ -1314,6 +1315,11 @@ export function App() {
             ? `A deeper basin lies in the northeastern water. ${stats.deepPigment.toFixed(1)} pigment has settled there.`
             : 'A deeper basin lies in the northeastern water. Light thins there; color settles.'}
         </div>
+        {unusedNestsSlumping(worldRef.current) ? (
+          <div className="slump-readout" aria-live="polite">
+            Unused nests are slumping their color toward fuller homes.
+          </div>
+        ) : null}
         {visibleAwayTraces(awayTraces, stats.elapsed).length > 0 ? (
           <div className="trace-readout" aria-live="polite">
             Faint marks remain from time away.
@@ -1580,7 +1586,8 @@ export function App() {
                     <h3>The pigment grazer</h3>
                     <p>
                       Look for the small amber shells. They gather colored sediment, then carry it home. Their empty
-                      woven nests slowly fill with borrowed colors. Leave light near a nest to keep the story going.
+                      woven nests slowly fill with borrowed colors. When no carrier is working a nest, that stored color
+                      slumps toward a fuller unused home. Leave light near a nest to keep the story going.
                     </p>
                   </div>
                 </div>
@@ -1604,8 +1611,9 @@ export function App() {
                     <h3>Borrowed color</h3>
                     <p>
                       A nest can give its color back. Observe a grazer, then choose Return color to the water. Up to
-                      three stored color becomes six grains near its home, ready to be gathered again. No color is
-                      created; a nearly empty nest or a crowded floor needs time.
+                      three stored color becomes six grains near its home, ready to be gathered again. Unused homes also
+                      slump stored color toward a fuller unused nest in the same pool. No color is created; a nearly
+                      empty nest or a crowded floor needs time.
                     </p>
                   </div>
                 </div>
@@ -1705,13 +1713,14 @@ export function App() {
                   <div>
                     <h3>The siltstitcher</h3>
                     <p>
-                      When a nest has surplus color, a small carrier can form from that stored pigment. It refills its
-                      own reserve and loads a separate bundle only from color the nest can spare, then walks toward a
-                      poorer edge of the feeding grounds. A grown carrier can pay from its own reserve for a young one,
-                      whose appetite and frame may drift a little from its parent. It places the bundle as ordinary
-                      loose pigment for grazers to gather again. If that patch is full, it brings the bundle home and
-                      tries later. A missing home, exhausted reserve or eight world minutes can end the journey; its
-                      remaining color returns. Some nests never support one.
+                      When a nest has surplus color, a small carrier can form from that stored pigment. Unused homes can
+                      slump their remaining color together until one holds enough. The carrier refills its own reserve
+                      and loads a separate bundle only from color the nest can spare, then walks toward a poorer edge of
+                      the feeding grounds. A grown carrier can pay from its own reserve for a young one, whose appetite
+                      and frame may drift a little from its parent. It places the bundle as ordinary loose pigment for
+                      grazers to gather again. If that patch is full, it brings the bundle home and tries later. A
+                      missing home, exhausted reserve or eight world minutes can end the journey; its remaining color
+                      returns. Some nests never support one.
                     </p>
                   </div>
                 </div>
