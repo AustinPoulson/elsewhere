@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig({
@@ -27,6 +27,15 @@ export default defineConfig({
         manualChunks(id) {
           if (/\/node_modules\/(react|react-dom|scheduler)\//.test(id)) return 'interface';
         },
+      },
+    },
+  },
+  test: {
+    pool: 'forks',
+    ...(process.env.CI ? { maxWorkers: 2 } : {}),
+    poolOptions: {
+      forks: {
+        execArgv: ['--import', new URL('./scripts/vitest-keep-rpc-alive.mjs', import.meta.url).href],
       },
     },
   },
