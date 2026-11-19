@@ -36,6 +36,7 @@ Eventually: several pools linked by slow currents, and the world keeps living wh
 
 - [ ] **A world that keeps going** — The terrarium stays alive without a visitor, a little different every time. Extinction is allowed, but a shared empty band around 170 simulated minutes on every seed is one exhausted condition, not life sorting itself out. Founding reports name the cause: after opening coarse grains, remain fragments, and nest surplus are spent, nothing in the physics re-opens those payments from real color still in the pool.
   - [x] **Rain re-sorts the shore** — first slice. During rain, sediment and remains wash toward the shoreline band and nearby pairs compact onto the more shoreward grain. Founders already pay from those coarse grains and remain cells; the wash grants no pigment, energy, or organisms. Tick phase and pool geometry, never the world PRNG. Schema revision stays 19. _Success: a 30-day harness on seed 1 or 42 shows a species that died near 170m on main either living later or re-founding later from real resources; extinction still happens on some runs; remains and fossil ledgers balance._
+  - [x] **Unused nests slump** — second slice. Nests with no living siltstitcher slowly pour stored color toward the fullest unused nest in the same pool. Founders already pay from a home holding 1.5; the slump grants no pigment, energy, or organisms. Tick phase and pool geometry, never the world PRNG. Schema revision stays 19. _Success: a 30-day harness on seed 1 or 42 shows siltstitchers re-founding later from real nest color or living past their main-branch extinction time; extinction still happens on some runs; remains and fossil ledgers balance._
 
 ## Standing Invariants
 
@@ -372,3 +373,28 @@ _This section records surprising population dynamics, extinctions, or runaway re
 | Loose pigment (inlet)                       | 1.14 (0.69)                     | 1.01 (0.62)                     | 1.27 (0.45)                     | 0.64 (0.24)                     |
 
 **What this slice does not do:** Reedwells and rainbells still need a wet funded pocket. Nest-funded siltstitchers on seed 1 still empty when no home holds 1.5. Fossils stay memory; they do not leach. Extinction is still allowed.
+
+### A world that keeps going, second slice (seeds 1 and 42)
+
+**Diagnosis:** Siltstitchers still died on every first-slice run (seed 1: 157m 53s, last founder 155m 10s; seed 42: 159m 38s, last founder 156m 54s). Founding polls failed as **no-resource** (8256 / 8396), not cap or rest. Nested pigment often sat above the 1.5 stake (seed 1: 1.14–2.70; seed 42 ended at 2.00) but **rich nests stayed 0**: color was spread across four homes, and one nest on seed 1 emptied while the others held 0.3–1.3. Fossils were 16 tiny locked impressions; weathering them would not have filled a home.
+
+**Unused nests slump existing color, not a gift:** A nest with no living siltstitcher pours 0.005 already-paid pigment, once per six ticks, toward the fullest unused nest in the same pool. Occupied homes are left alone. Tick phase and pool geometry, never the world PRNG. Schema revision stays 19. Opening worlds, catch-up, eras, and the harness see the same slump.
+
+**Siltstitchers re-found from real nest color, and extinction is still allowed:** Seed 1 emptied in Year 5 (sil 0 at 147m 36s and 165m 36s) and re-founded after main's 157m 53s death (last founder 178m 35s, 1 living at day 30, 47/46 versus 15/15). Seed 42's last founder moved from 156m 54s to 179m 47s (1 living, 51/50 versus 13/13). Individuals still die. Reedwells still boom-bust. Seed 1 glass limpets, which had survived the wash, died at 177m 32s. Marlgrubs ended earlier on seed 1 (123m versus 175m) and died on seed 42 after surviving the wash. Seed 1 cargo mites closed at 1 rather than cap 4. Remains and fossils balanced.
+
+|                                             | Seed 1 main                     | Seed 1 nest slump               | Seed 42 main                    | Seed 42 nest slump              |
+| ------------------------------------------- | ------------------------------- | ------------------------------- | ------------------------------- | ------------------------------- |
+| Siltstitchers at day 30 (births / deaths)   | 0 (15 / 15)                     | 1 (47 / 46)                     | 0 (13 / 13)                     | 1 (51 / 50)                     |
+| Extinct at                                  | 157m 53s                        | survived                        | 159m 38s                        | survived                        |
+| Last siltstitcher founder                   | 155m 10s                        | 178m 35s                        | 156m 54s                        | 179m 47s                        |
+| Glass limpets at day 30 (births / deaths)   | 1 (13 / 12)                     | 0 (17 / 17)                     | 0 (17 / 17)                     | 1 (15 / 14)                     |
+| Extinct at                                  | survived                        | 177m 32s                        | 175m 15s                        | survived                        |
+| Marlgrubs at day 30 (births / deaths)       | 0 (14 / 14)                     | 0 (4 / 4)                       | 1 (19 / 18)                     | 0 (13 / 13)                     |
+| Extinct at                                  | 175m 33s                        | 123m 37s                        | survived                        | 179m 19s                        |
+| Ambient harvest                             | 7440.13                         | 7440.13                         | 7443.90                         | 7443.90                         |
+| Remains created = held + consumed + decayed | 28.939 = 0.176 + 2.948 + 25.815 | 29.125 = 0.030 + 0.889 + 28.206 | 29.606 = 0.000 + 3.932 + 25.674 | 31.477 = 0.000 + 2.828 + 28.649 |
+| Fossils formed = held                       | 1.456                           | 2.025                           | 1.669                           | 1.946                           |
+| Nested pigment                              | 1.23                            | 1.26                            | 2.00                            | 1.91                            |
+| Loose pigment (inlet)                       | 1.01 (0.62)                     | 1.17 (1.17)                     | 0.64 (0.24)                     | 0.69 (0.37)                     |
+
+**What this slice does not do:** Reedwells and rainbells still need a wet funded pocket. Fossils stay memory; they do not leach. Siltstitchers still empty when nested color falls below a payable home. Extinction is still allowed.
