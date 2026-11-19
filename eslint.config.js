@@ -25,6 +25,6 @@ export default tseslint.config(
     },
   },
   {
-    ignores: ['dist/', 'node_modules/', '*.js'],
+    ignores: ['dist/', 'node_modules/', '*.js', 'scripts/vitest-keep-rpc-alive.mjs'],
   },
 );
