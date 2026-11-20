@@ -854,6 +854,14 @@ h1 em {
   max-width: 280px;
   color: #b7ad88;
 }
+.remain-slump-readout {
+  margin-top: 6px;
+  font-size: 10px;
+  letter-spacing: 0;
+  line-height: 1.45;
+  max-width: 280px;
+  color: #a89884;
+}
 .trace-readout {
   margin-top: 6px;
   font-size: 10px;
@@ -988,6 +996,7 @@ h1 em {
   .seam-readout,
   .deep-readout,
   .slump-readout,
+  .remain-slump-readout,
   .trace-readout {
     font-size: 9px;
     max-width: min(280px, calc(100vw - 48px));
