@@ -35,6 +35,7 @@ import { getDaylight } from './world/environment/daylight';
 import { inDeepWater } from './world/environment/depth';
 import { MINERAL_SEAM } from './world/environment/mineral-seam';
 import { unusedNestsSlumping } from './world/environment/nest-slump';
+import { unusedRemainsSlumping } from './world/environment/remain-slump';
 import { getSeason } from './world/environment/seasons';
 import { describeBulk, describeDrive } from './world/traits';
 import { MAX_CURRENTS } from './world/actions/current';
@@ -1320,6 +1321,11 @@ export function App() {
             Unused nests are slumping their color toward fuller homes.
           </div>
         ) : null}
+        {unusedRemainsSlumping(worldRef.current) ? (
+          <div className="remain-slump-readout" aria-live="polite">
+            Unused remain stains are slumping toward a fuller stain.
+          </div>
+        ) : null}
         {visibleAwayTraces(awayTraces, stats.elapsed).length > 0 ? (
           <div className="trace-readout" aria-live="polite">
             Faint marks remain from time away.
@@ -1747,8 +1753,9 @@ export function App() {
                     <p>
                       When a short life ends, most of its paid color returns at once as ordinary pigment. The rest
                       settles as a dark stain on the floor. That remnant is a real resource: it slowly leaches back into
-                      ordinary pigment, or a marlgrub can feed on it. Nothing accumulates without bound. Observe a stain
-                      to see how much color it still holds.
+                      ordinary pigment, or a marlgrub can feed on it. Unused stains slump toward a fuller unused stain
+                      in the same pool, so scattered fragments can gather into a payment. Nothing accumulates without
+                      bound. Observe a stain to see how much color it still holds.
                     </p>
                   </div>
                 </div>
@@ -1757,9 +1764,11 @@ export function App() {
                   <div>
                     <h3>The marlgrub</h3>
                     <p>
-                      A remnant large enough to pay for a small body can give rise to a marlgrub. It crawls to settled
-                      remains and feeds only from those stains. It may never appear, and an old save receives none.
-                      After six world minutes or a minute without reserve, its body becomes remains again.
+                      A remnant large enough to pay for a small body can give rise to a marlgrub. Unused stains can
+                      slump their remaining color together until one holds enough. It crawls to settled remains and
+                      feeds only from those stains. A remnant a hungry grub can already reach is left alone. It may
+                      never appear, and an old save receives none. After six world minutes or a minute without reserve,
+                      its body becomes remains again.
                     </p>
                   </div>
                 </div>

@@ -33,7 +33,7 @@ export function marlgrubSurvivalFloor(traits: Pick<Traits, 'bulk'>): number {
   return Math.min(RULE.survivalFloor, Math.max(0, marlgrubReserveCapacity(traits) - RULE.childCost));
 }
 
-function remainHeldForStocking(world: World, remain: Remain): boolean {
+export function remainHeldForStocking(world: World, remain: Remain): boolean {
   for (const grub of world.marlgrubs) {
     if (grub.reserve >= marlgrubBirthStake(grub.traits)) continue;
     if (Math.hypot(grub.x - remain.x, grub.y - remain.y) <= marlgrubSeekReach(grub.traits)) return true;
