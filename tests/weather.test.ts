@@ -112,6 +112,7 @@ describe('rain diffuses existing light', () => {
     world.sediment = [];
     world.grazers = [];
     world.nests = [];
+    world.nextFoundingTick = Number.MAX_SAFE_INTEGER - 12;
     const initialEnergy = world.organisms.map((entry) => entry.energy);
     const randomState = world.randomState;
     run(world, 30 * 400);

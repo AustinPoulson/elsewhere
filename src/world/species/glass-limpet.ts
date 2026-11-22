@@ -36,7 +36,7 @@ function legalShore(x: number, y: number): boolean {
   return rho >= RULE.shoreMin && rho <= RULE.shoreMax;
 }
 
-function grainHeldForStocking(world: World, grain: Sediment): boolean {
+export function grainHeldForStocking(world: World, grain: Sediment): boolean {
   for (const limpet of world.glassLimpets) {
     if (limpet.reserve >= glassLimpetBirthStake(limpet.traits)) continue;
     if (Math.hypot(limpet.x - grain.x, limpet.y - grain.y) <= glassLimpetFeedReach(limpet.traits)) return true;

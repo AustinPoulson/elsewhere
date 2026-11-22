@@ -36,6 +36,7 @@ import { dissolveMineralSeam, seamRemaining } from './environment/mineral-seam';
 import { compactShoreResources } from './environment/shore-wash';
 import { slumpUnusedNests } from './environment/nest-slump';
 import { slumpUnusedRemains } from './environment/remain-slump';
+import { slumpUnusedShoreGrains } from './environment/shore-slump';
 
 const TAU = Math.PI * 2;
 const ENERGY_FLOOR = 0.12;
@@ -506,6 +507,7 @@ export function stepWorld(world: World, dt = FIXED_STEP): void {
   compactShoreResources(world);
   slumpUnusedNests(world);
   slumpUnusedRemains(world);
+  slumpUnusedShoreGrains(world);
   syncAttachedCargoMites(world);
   for (const light of world.lights) {
     light.age += dt;

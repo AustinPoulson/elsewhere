@@ -36,6 +36,7 @@ import { inDeepWater } from './world/environment/depth';
 import { MINERAL_SEAM } from './world/environment/mineral-seam';
 import { unusedNestsSlumping } from './world/environment/nest-slump';
 import { unusedRemainsSlumping } from './world/environment/remain-slump';
+import { unusedShoreGrainsSlumping } from './world/environment/shore-slump';
 import { getSeason } from './world/environment/seasons';
 import { describeBulk, describeDrive } from './world/traits';
 import { MAX_CURRENTS } from './world/actions/current';
@@ -1326,6 +1327,11 @@ export function App() {
             Unused remain stains are slumping toward a fuller stain.
           </div>
         ) : null}
+        {unusedShoreGrainsSlumping(worldRef.current) ? (
+          <div className="shore-slump-readout" aria-live="polite">
+            Unused shoreline grains are slumping toward a fuller grain.
+          </div>
+        ) : null}
         {visibleAwayTraces(awayTraces, stats.elapsed).length > 0 ? (
           <div className="trace-readout" aria-live="polite">
             Faint marks remain from time away.
@@ -1735,14 +1741,15 @@ export function App() {
                   <div>
                     <h3>The glass limpet</h3>
                     <p>
-                      In a suitable shoreline pocket, loose pigment can pay for a clear, anchored shell. A current or
+                      In a suitable shoreline pocket, loose pigment can pay for a clear, anchored shell. Unused
+                      shoreline grains can slump their remaining color together until one holds enough. A current or
                       rain may carry grains past it, and a parent stocking for a child can bank leftover grains already
-                      at its seat. Moving food that actually reaches the shell can fill its catch basin; grazers have
-                      less to gather downstream while it holds that color. A grown shell can pay from its own reserve
-                      for a young one, whose appetite and frame may drift a little from its parent. Dry still water does
-                      not fill the catch, but upkeep still costs a little reserve. It may be absent from a pool. After
-                      eight world minutes or a minute without reserve, the shell and all stored color return as loose
-                      pigment for grazers to find.
+                      at its seat. A grain a stocking shell can already reach is left alone. Moving food that actually
+                      reaches the shell can fill its catch basin; grazers have less to gather downstream while it holds
+                      that color. A grown shell can pay from its own reserve for a young one, whose appetite and frame
+                      may drift a little from its parent. Dry still water does not fill the catch, but upkeep still
+                      costs a little reserve. It may be absent from a pool. After eight world minutes or a minute
+                      without reserve, the shell and all stored color return as loose pigment for grazers to find.
                     </p>
                   </div>
                 </div>
@@ -2265,7 +2272,7 @@ export function App() {
                               : selected.species === 'siltstitcher'
                                 ? 'It turns actual nest surplus into a movable bundle and sets that color down where ordinary grazers can find it. Its body, reserve and any undelivered bundle return when this finite life ends.'
                                 : selected.species === 'glassLimpet'
-                                  ? 'Only real current-borne coarse food that reaches this shell fills its reserve and basin. Its body and catch return to the pool at the end of its finite life.'
+                                  ? 'Only real current-borne food that reaches this shell fills its reserve and basin. Unused shoreline grains slump toward a fuller unused grain. Its body and catch return to the pool at the end of its finite life.'
                                   : selected.species === 'cargoMite'
                                     ? 'A grazer’s carried color feeds this mite instead of reaching the nest. A grown parent pays color from its own reserve for a young mite, whose appetite and frame may drift a little from its parent. A stouter frame holds more of that color but does not travel as far. Both return remaining color when their short lives end.'
                                     : selected.species === 'marlgrub'
