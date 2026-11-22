@@ -34,6 +34,7 @@ import { ambientOffer } from './environment/daylight';
 import { depthAt, lightScale, pigmentInDeep } from './environment/depth';
 import { dissolveMineralSeam, seamRemaining } from './environment/mineral-seam';
 import { compactShoreResources } from './environment/shore-wash';
+import { returnLockedColor } from './environment/locked-return';
 import { slumpUnusedNests } from './environment/nest-slump';
 import { slumpUnusedRemains } from './environment/remain-slump';
 
@@ -506,6 +507,7 @@ export function stepWorld(world: World, dt = FIXED_STEP): void {
   compactShoreResources(world);
   slumpUnusedNests(world);
   slumpUnusedRemains(world);
+  returnLockedColor(world);
   syncAttachedCargoMites(world);
   for (const light of world.lights) {
     light.age += dt;

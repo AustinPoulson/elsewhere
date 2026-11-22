@@ -34,6 +34,7 @@ import { callRain, effectiveWeather } from './world/weather';
 import { getDaylight } from './world/environment/daylight';
 import { inDeepWater } from './world/environment/depth';
 import { MINERAL_SEAM } from './world/environment/mineral-seam';
+import { lockedColorReturning } from './world/environment/locked-return';
 import { unusedNestsSlumping } from './world/environment/nest-slump';
 import { unusedRemainsSlumping } from './world/environment/remain-slump';
 import { getSeason } from './world/environment/seasons';
@@ -1326,6 +1327,11 @@ export function App() {
             Unused remain stains are slumping toward a fuller stain.
           </div>
         ) : null}
+        {lockedColorReturning(worldRef.current) ? (
+          <div className="locked-return-readout" aria-live="polite">
+            Shell catch is returning to the shore.
+          </div>
+        ) : null}
         {visibleAwayTraces(awayTraces, stats.elapsed).length > 0 ? (
           <div className="trace-readout" aria-live="polite">
             Faint marks remain from time away.
@@ -1618,8 +1624,9 @@ export function App() {
                     <p>
                       A nest can give its color back. Observe a grazer, then choose Return color to the water. Up to
                       three stored color becomes six grains near its home, ready to be gathered again. Unused homes also
-                      slump stored color toward a fuller unused nest in the same pool. No color is created; a nearly
-                      empty nest or a crowded floor needs time.
+                      slump stored color toward a fuller unused nest in the same pool. Catch locked in a living shell
+                      slowly returns to the shore. No color is created; a nearly empty nest or a crowded floor needs
+                      time.
                     </p>
                   </div>
                 </div>
@@ -1737,12 +1744,13 @@ export function App() {
                     <p>
                       In a suitable shoreline pocket, loose pigment can pay for a clear, anchored shell. A current or
                       rain may carry grains past it, and a parent stocking for a child can bank leftover grains already
-                      at its seat. Moving food that actually reaches the shell can fill its catch basin; grazers have
-                      less to gather downstream while it holds that color. A grown shell can pay from its own reserve
-                      for a young one, whose appetite and frame may drift a little from its parent. Dry still water does
-                      not fill the catch, but upkeep still costs a little reserve. It may be absent from a pool. After
-                      eight world minutes or a minute without reserve, the shell and all stored color return as loose
-                      pigment for grazers to find.
+                      at its seat. Moving food that actually reaches the shell can fill its catch basin; that catch
+                      slowly weathers back onto the floor so later shells can pay from it. Grazers have less to gather
+                      downstream while it holds that color. A grown shell can pay from its own reserve for a young one,
+                      whose appetite and frame may drift a little from its parent. Dry still water does not fill the
+                      catch, but upkeep still costs a little reserve. It may be absent from a pool. After eight world
+                      minutes or a minute without reserve, the shell and all stored color return as loose pigment for
+                      grazers to find.
                     </p>
                   </div>
                 </div>
