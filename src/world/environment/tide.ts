@@ -321,11 +321,12 @@ function washOnce(world: World): void {
 export function applyTide(world: World, before: Map<number, TideRegion>): void {
   syncTide(world.elapsed);
   washOnce(world);
-  accountCrossings(world, before);
+  if (before.size > 0) accountCrossings(world, before);
 }
 
 export function beginTideStep(world: World): Map<number, TideRegion> {
   syncTide(world.elapsed);
+  if (!tideConnectedAt(world.elapsed)) return new Map();
   return snapshotRegions(world);
 }
 
