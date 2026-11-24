@@ -52,7 +52,7 @@ describe('tidepool ecology', () => {
     world.lights = [];
     const originalEnergy = world.organisms[0].energy;
     run(world, 30 * 180);
-    expect(world.organisms).toHaveLength(24);
+    expect(world.organisms).toHaveLength(28);
     expect(world.organisms[0].energy).toBeLessThan(originalEnergy);
     for (const creature of world.organisms) {
       expect(creature.energy).toBeGreaterThanOrEqual(0.12);

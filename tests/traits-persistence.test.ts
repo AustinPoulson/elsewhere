@@ -27,6 +27,10 @@ function previousRevision(world: World): Record<string, unknown> {
     'marlgrubMaintenancePigment',
     'fossilsFormed',
     'seamDissolved',
+    'tidePigmentIn',
+    'tidePigmentOut',
+    'tideArrivals',
+    'tideDepartures',
   ])
     delete previous.ecologyLedger[key];
   for (const collection of [
@@ -158,7 +162,7 @@ describe('heritable trait snapshot revision', () => {
         delete w.ecologyLedger.ambientHarvested;
       },
       (w) => {
-        w.schemaRevision = 20;
+        w.schemaRevision = 21;
       },
       (w) => {
         w.schemaRevision = 8;

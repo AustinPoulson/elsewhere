@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { restoreWorld, serializeWorld } from '../src/world/persistence';
 import { createWorld, stepWorld } from '../src/world/simulation';
 import { baselineTraits } from '../src/world/traits';
-import { isInPool, type World } from '../src/world/types';
+import { SCHEMA_REVISION, isInPool, type World } from '../src/world/types';
 
 function previousRevision(world: World): Record<string, any> {
   const previous = structuredClone(world) as Record<string, any>;
@@ -32,6 +32,10 @@ function previousRevision(world: World): Record<string, any> {
     'marlgrubMaintenancePigment',
     'fossilsFormed',
     'seamDissolved',
+    'tidePigmentIn',
+    'tidePigmentOut',
+    'tideArrivals',
+    'tideDepartures',
   ])
     delete previous.ecologyLedger[key];
   return previous;
@@ -79,7 +83,7 @@ describe('cargo mite snapshot revision', () => {
     const migrated = restoreWorld(source)!;
     expect(migrated).not.toBeNull();
     expect(migrated).toMatchObject({
-      schemaRevision: 19,
+      schemaRevision: SCHEMA_REVISION,
       lastSeenAt: null,
       cargoMites: [],
       cargoMiteAdmissionAt: old.elapsed,

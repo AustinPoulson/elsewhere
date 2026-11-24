@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { restoreWorld, serializeWorld } from '../src/world/persistence';
 import { createWorld, stepWorld } from '../src/world/simulation';
-import type { World } from '../src/world/types';
+import { SCHEMA_REVISION, type World } from '../src/world/types';
 
 function previousRevision(world: World): Record<string, unknown> {
   const previous = structuredClone(world) as unknown as Record<string, unknown>;
@@ -15,6 +15,10 @@ function previousRevision(world: World): Record<string, unknown> {
   delete previous.channel;
   delete (previous.ecologyLedger as { fossilsFormed?: number; seamDissolved?: number }).fossilsFormed;
   delete (previous.ecologyLedger as { seamDissolved?: number }).seamDissolved;
+  delete (previous.ecologyLedger as { tidePigmentIn?: number }).tidePigmentIn;
+  delete (previous.ecologyLedger as { tidePigmentOut?: number }).tidePigmentOut;
+  delete (previous.ecologyLedger as { tideArrivals?: number }).tideArrivals;
+  delete (previous.ecologyLedger as { tideDepartures?: number }).tideDepartures;
   return previous;
 }
 
@@ -28,7 +32,7 @@ describe('catch-up snapshot revision', () => {
     const migrated = restoreWorld(source)!;
     expect(migrated).not.toBeNull();
     expect(migrated).toMatchObject({
-      schemaRevision: 19,
+      schemaRevision: SCHEMA_REVISION,
       lastSeenAt: null,
       remains: old.remains,
       marlgrubs: old.marlgrubs,
@@ -81,7 +85,7 @@ describe('catch-up snapshot revision', () => {
         w.schemaRevision = 10;
       },
       (w) => {
-        w.schemaRevision = 20;
+        w.schemaRevision = 21;
       },
     ];
     for (const edit of edits) {

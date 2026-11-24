@@ -173,6 +173,10 @@ function previous(world: World): Record<string, any> {
     'marlgrubMaintenancePigment',
     'fossilsFormed',
     'seamDissolved',
+    'tidePigmentIn',
+    'tidePigmentOut',
+    'tideArrivals',
+    'tideDepartures',
   ])
     delete result.ecologyLedger[key];
   return result;
@@ -254,7 +258,7 @@ describe('siltstitcher snapshot revision', () => {
       skimmerCandidateAfterId: _skimmerCandidate,
       ...old
     } = restored;
-    expect(restored.schemaRevision).toBe(19);
+    expect(restored.schemaRevision).toBe(SCHEMA_REVISION);
     expect(siltstitchers).toEqual([]);
     expect(siltstitcherAdmissionAt).toBe(source.elapsed);
     expect(siltstitcherCandidateAfterId).toBe(0);
@@ -271,6 +275,10 @@ describe('siltstitcher snapshot revision', () => {
       'marlgrubMaintenancePigment',
       'fossilsFormed',
       'seamDissolved',
+      'tidePigmentIn',
+      'tidePigmentOut',
+      'tideArrivals',
+      'tideDepartures',
     ]) {
       expect(oldLedger[key]).toBe(0);
       delete oldLedger[key];
@@ -299,7 +307,7 @@ describe('siltstitcher snapshot revision', () => {
       const before = JSON.stringify(source);
       const restored = restoreWorld(before)!;
       expect(restored).toMatchObject({
-        schemaRevision: 19,
+        schemaRevision: SCHEMA_REVISION,
         siltstitchers: [],
         siltstitcherAdmissionAt: source.elapsed,
         siltstitcherCandidateAfterId: 0,
@@ -563,7 +571,7 @@ describe('siltstitcher snapshot revision', () => {
         w.siltstitchers = Array.from({ length: 7 }, () => ({ ...w.siltstitchers[0], id: w.nextId++ }));
       },
       (w) => {
-        w.schemaRevision = 20;
+        w.schemaRevision = 21;
       },
       (w) => {
         delete w.siltstitchers[0].parentId;
@@ -675,6 +683,10 @@ describe('siltstitcher snapshot revision', () => {
       world.siltstitchers.reduce((sum, body) => sum + body.body + body.reserve + body.cargo, 0);
     const previous = structuredClone(world) as Record<string, any>;
     previous.schemaRevision = 16;
+    delete previous.ecologyLedger.tidePigmentIn;
+    delete previous.ecologyLedger.tidePigmentOut;
+    delete previous.ecologyLedger.tideArrivals;
+    delete previous.ecologyLedger.tideDepartures;
     previous.siltstitchers = previous.siltstitchers.map(
       ({ parentId: _parentId, nextBirthAt: _nextBirthAt, ...rest }: Record<string, unknown>) => rest,
     );

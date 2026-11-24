@@ -4,15 +4,20 @@ import {
   CHANNEL_INFLUENCE,
   INLET_POOL,
   OPENING_POOL,
+  SEA_POOL,
   channelFlowAt,
   channelSegment,
   channelVelocity,
   containingPool,
   inInletPool,
   inOpeningPool,
+  inSea,
   isInPool,
   linkedHabitat,
+  mouthSegment,
   poolCoastPoint,
+  syncTide,
+  tideConnectedAt,
   waterSdf,
 } from '../src/world/habitat';
 import { confinePosition } from '../src/world/geometry';
@@ -35,17 +40,21 @@ describe('linked habitat', () => {
     expect(isInPool(400, 1000)).toBe(false);
   });
 
-  it('opens with life and pigment only in the first pool', () => {
+  it('opens with shore life in the first pool and a paid sea of its own', () => {
     const world = createWorld(7);
     expect(world.schemaRevision).toBe(SCHEMA_REVISION);
     expect(world.awayTraces).toEqual([]);
     expect(world.shoreMemory).toEqual([]);
     expect(world.pools).toEqual(linkedHabitat().pools);
-    expect(world.organisms.every((entry) => inOpeningPool(entry.x, entry.y, entry.size + 3))).toBe(true);
+    expect(world.organisms.filter((entry) => inOpeningPool(entry.x, entry.y, entry.size + 3))).toHaveLength(24);
+    expect(world.organisms.filter((entry) => inSea(entry.x, entry.y, entry.size + 3))).toHaveLength(4);
     expect(world.grazers.every((entry) => inOpeningPool(entry.x, entry.y, entry.size + 3))).toBe(true);
-    expect(world.sediment.every((entry) => inOpeningPool(entry.x, entry.y))).toBe(true);
+    expect(world.sediment.filter((entry) => inOpeningPool(entry.x, entry.y))).toHaveLength(48);
+    expect(world.sediment.filter((entry) => inSea(entry.x, entry.y))).toHaveLength(8);
     expect(world.organisms.some((entry) => inInletPool(entry.x, entry.y))).toBe(false);
     expect(world.sediment.some((entry) => inInletPool(entry.x, entry.y))).toBe(false);
+    expect(world.ecologyLedger.tideArrivals).toBe(0);
+    expect(world.ecologyLedger.tideDepartures).toBe(0);
   });
 
   it('carries pigment through the channel instead of teleporting it', () => {
@@ -89,6 +98,7 @@ describe('linked habitat', () => {
   });
 
   it('matches waterSdf containment across both pools, coasts, and the channel seam', () => {
+    syncTide(0);
     let maxRadius = 0;
     for (let i = 0; i <= 360_000; i++) maxRadius = Math.max(maxRadius, poolRadius((i / 360_000) * Math.PI * 2));
     expect(maxRadius).toBeGreaterThan(1.08);
@@ -103,9 +113,11 @@ describe('linked habitat', () => {
           const pool = containingPool(x, y, margin);
           const opening = inOpeningPool(x, y, margin);
           const inlet = inInletPool(x, y, margin);
+          const sea = inSea(x, y, margin);
           if (opening && pool !== OPENING_POOL) mismatches++;
           if (!opening && inlet && pool !== INLET_POOL) mismatches++;
-          if (!opening && !inlet && pool !== null) mismatches++;
+          if (!opening && !inlet && sea && pool !== SEA_POOL) mismatches++;
+          if (!opening && !inlet && !sea && pool !== null) mismatches++;
         }
       }
     }
@@ -114,7 +126,7 @@ describe('linked habitat', () => {
       for (let i = 0; i <= 720; i++) {
         const angle = (i / 720) * Math.PI * 2;
         for (const scale of [0.94, 0.999, 1, 1.001, 1.06]) {
-          for (const pool of [OPENING_POOL, INLET_POOL]) {
+          for (const pool of [OPENING_POOL, INLET_POOL, SEA_POOL]) {
             const point = poolCoastPoint(pool, angle, scale);
             if (isInPool(point.x, point.y, margin) !== waterSdf(point.x, point.y, margin) <= 0) mismatches++;
           }
@@ -132,6 +144,23 @@ describe('linked habitat', () => {
       }
     }
     expect(mismatches).toBe(0);
+  });
+
+  it('opens the northern mouth only while the tide is connected', () => {
+    const mouth = mouthSegment();
+    const mid = { x: (mouth.ax + mouth.bx) / 2, y: (mouth.ay + mouth.by) / 2 };
+    syncTide(0);
+    expect(tideConnectedAt(0)).toBe(false);
+    expect(isInPool(mid.x, mid.y)).toBe(false);
+    expect(inSea(SEA_POOL.x, SEA_POOL.y)).toBe(true);
+    expect(isInPool(SEA_POOL.x, SEA_POOL.y)).toBe(true);
+    syncTide(90);
+    expect(tideConnectedAt(90)).toBe(true);
+    expect(isInPool(mid.x, mid.y)).toBe(true);
+    expect(waterSdf(mid.x, mid.y) <= 0).toBe(true);
+    syncTide(270);
+    expect(tideConnectedAt(270)).toBe(false);
+    expect(isInPool(mid.x, mid.y)).toBe(false);
   });
 
   it('writes the same channel velocity into an out point as the allocating form', () => {

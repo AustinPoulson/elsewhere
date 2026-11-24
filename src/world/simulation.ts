@@ -14,7 +14,16 @@ import {
   type World,
   type WorldStats,
 } from './types';
-import { OPENING_POOL, inOpeningPool, linkedHabitat, waterSdf } from './habitat';
+import {
+  OPENING_POOL,
+  inOpeningPool,
+  linkedHabitat,
+  syncTide,
+  tideConnectedAt,
+  tideHeightAt,
+  waterSdf,
+} from './habitat';
+import { applyTide, beginTideStep, initializeSea, pigmentInSea, seaBodyCount } from './environment/tide';
 import { CALM_LIGHT_REACH, lightReachAt } from './weather';
 import { applyCurrentDrift } from './currents';
 import { confinePosition } from './geometry';
@@ -221,6 +230,10 @@ export function createWorld(seed = 20261006): World {
       marlgrubMaintenancePigment: 0,
       fossilsFormed: 0,
       seamDissolved: 0,
+      tidePigmentIn: 0,
+      tidePigmentOut: 0,
+      tideArrivals: 0,
+      tideDepartures: 0,
     },
     seed: normalizedSeed,
     randomState: normalizedSeed,
@@ -287,7 +300,9 @@ export function createWorld(seed = 20261006): World {
       3 + random(world) * 5,
     );
   }
+  initializeSea(world);
   initializeGrazers(world);
+  syncTide(world.elapsed);
   return world;
 }
 
@@ -488,6 +503,7 @@ export function stepWorld(world: World, dt = FIXED_STEP): void {
   }
   world.elapsed += dt;
   world.tick++;
+  const tideBefore = beginTideStep(world);
   dissolveMineralSeam(world, dt);
   for (const organism of world.organisms) updateLucent(world, organism, dt);
   for (const grazer of world.grazers) updateGrazer(world, grazer, dt);
@@ -504,6 +520,7 @@ export function stepWorld(world: World, dt = FIXED_STEP): void {
   tryMarlgrubFounding(world, admitMarlgrub);
   updateRemains(world, dt, world.tick % 6 === 0 ? 6 : 0);
   applyCurrentDrift(world, dt);
+  applyTide(world, tideBefore);
   compactShoreResources(world);
   slumpUnusedNests(world);
   slumpUnusedRemains(world);
@@ -550,5 +567,9 @@ export function getStats(world: World): WorldStats {
     seamRemaining: seamRemaining(world),
     seamDissolved: world.ecologyLedger.seamDissolved,
     deepPigment: pigmentInDeep(world),
+    tide: tideHeightAt(world.elapsed),
+    tideConnected: tideConnectedAt(world.elapsed),
+    seaPigment: pigmentInSea(world),
+    seaBodies: seaBodyCount(world),
   };
 }

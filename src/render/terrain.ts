@@ -1,6 +1,6 @@
 import { DEEP_BASIN } from '../world/environment/depth';
 import { MINERAL_SEAM } from '../world/environment/mineral-seam';
-import { channelSegment, INLET_POOL, OPENING_POOL, poolCoastPoint } from '../world/habitat';
+import { channelSegment, INLET_POOL, OPENING_POOL, SEA_POOL, poolCoastPoint } from '../world/habitat';
 import { WORLD_HEIGHT, WORLD_WIDTH, type HabitatPool } from '../world/types';
 
 const TAU = Math.PI * 2;
@@ -184,6 +184,16 @@ export function createTerrain(): HTMLCanvasElement {
   ctx.strokeStyle = 'rgba(130,146,119,.16)';
   ctx.lineWidth = 0.7;
   ctx.stroke();
+  const seaWater = ctx.createLinearGradient(720, 0, 720, 70);
+  seaWater.addColorStop(0, '#06141c');
+  seaWater.addColorStop(1, '#0c2c33');
+  coastline(ctx, 1, 0, SEA_POOL);
+  ctx.fillStyle = seaWater;
+  ctx.fill();
+  coastline(ctx, 1.004, 0, SEA_POOL);
+  ctx.strokeStyle = 'rgba(120,168,158,.22)';
+  ctx.lineWidth = 0.8;
+  ctx.stroke();
   for (let grain = 0; grain < 2400; grain++) {
     const angle = random() * TAU;
     const distance = 1.006 + Math.pow(random(), 2.7) * 0.19;
@@ -315,7 +325,7 @@ export function createTerrain(): HTMLCanvasElement {
   const edges = [
     { from: [0, 0], to: [fade, 0], rect: [0, 0, fade, WORLD_HEIGHT] },
     { from: [WORLD_WIDTH, 0], to: [WORLD_WIDTH - fade, 0], rect: [WORLD_WIDTH - fade, 0, fade, WORLD_HEIGHT] },
-    { from: [0, 0], to: [0, fade], rect: [0, 0, WORLD_WIDTH, fade] },
+    { from: [0, 0], to: [0, 18], rect: [0, 0, WORLD_WIDTH, 18] },
     { from: [0, WORLD_HEIGHT], to: [0, WORLD_HEIGHT - fade], rect: [0, WORLD_HEIGHT - fade, WORLD_WIDTH, fade] },
   ];
   for (const edge of edges) {

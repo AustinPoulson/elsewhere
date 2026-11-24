@@ -36,9 +36,9 @@ function captureFile(seed = 7, worldDays = 2) {
 
 describe('named eras', () => {
   it('keeps the live snapshot at the current revision and stores eras beside it', () => {
-    expect(SCHEMA_REVISION).toBe(19);
+    expect(SCHEMA_REVISION).toBe(20);
     const opening = createWorld(1);
-    expect(opening.schemaRevision).toBe(19);
+    expect(opening.schemaRevision).toBe(20);
     expect(opening.fossils).toEqual([]);
     expect('camera' in opening).toBe(false);
     expect('journal' in opening).toBe(false);
@@ -207,7 +207,7 @@ describe('named eras', () => {
     expect(captured!.era.provenance.worldDays).toBe(0);
     expect(captured!.era.name).toBe('This shore at its opening');
     expect(captured!.era.note).toContain('Kept from seed 1 at its opening');
-    expect(captured!.era.note).toContain('24 lucents and 4 grazers remain');
+    expect(captured!.era.note).toContain('28 lucents and 4 grazers remain');
     expect(captured!.era.note).toContain('No visitor light was left');
     expect(captured!.era.note.length).toBeLessThanOrEqual(MAX_ERA_NOTE_LENGTH);
     const identity = describeKeptEra(opening);

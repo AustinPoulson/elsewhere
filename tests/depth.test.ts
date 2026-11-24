@@ -149,18 +149,18 @@ describe('deeper basin physics', () => {
   });
 
   it('opens with the habitat only: no extra life, pigment, or energy', () => {
-    expect(SCHEMA_REVISION).toBe(19);
+    expect(SCHEMA_REVISION).toBe(20);
     const world = createWorld(1);
-    expect(world.schemaRevision).toBe(19);
-    expect(world.organisms).toHaveLength(24);
+    expect(world.schemaRevision).toBe(20);
+    expect(world.organisms).toHaveLength(28);
     expect(world.grazers).toHaveLength(4);
-    expect(world.sediment).toHaveLength(48);
+    expect(world.sediment).toHaveLength(56);
     expect(world.skimmers).toEqual([]);
     expect(world.remains).toEqual([]);
     expect(getStats(world).deepPigment).toBeGreaterThanOrEqual(0);
     expect(restoreWorld(serializeWorld(world))).toEqual(world);
     const previous = structuredClone(world) as unknown as Record<string, unknown>;
-    previous.schemaRevision = 20;
+    previous.schemaRevision = 21;
     expect(restoreWorld(JSON.stringify(previous))).toBeNull();
   });
 

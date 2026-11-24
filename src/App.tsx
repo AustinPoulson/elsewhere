@@ -38,6 +38,7 @@ import { lockedColorReturning } from './world/environment/locked-return';
 import { unusedNestsSlumping } from './world/environment/nest-slump';
 import { unusedRemainsSlumping } from './world/environment/remain-slump';
 import { getSeason } from './world/environment/seasons';
+import { tideNote } from './world/environment/tide';
 import { describeBulk, describeDrive } from './world/traits';
 import { MAX_CURRENTS } from './world/actions/current';
 import { FOSSIL_LABEL } from './world/species/fossils';
@@ -1111,6 +1112,7 @@ export function App() {
   const openPanel = (next: Panel) => setPanel((current) => (current === next ? null : next));
   const weather = effectiveWeather(worldRef.current);
   const season = getSeason(worldRef.current.elapsed);
+  const tide = tideNote(worldRef.current.elapsed);
   const shoreMemoryNote = describeShoreMemory(shoreMemory);
 
   return (
@@ -1316,6 +1318,12 @@ export function App() {
           {stats.deepPigment >= 0.05
             ? `A deeper basin lies in the northeastern water. ${stats.deepPigment.toFixed(1)} pigment has settled there.`
             : 'A deeper basin lies in the northeastern water. Light thins there; color settles.'}
+        </div>
+        <div className="tide-readout" aria-live="polite">
+          {tide}
+          {stats.tideConnected
+            ? ` ${stats.seaBodies} ${stats.seaBodies === 1 ? 'body' : 'bodies'} offshore; ${stats.seaPigment.toFixed(1)} pigment in the sea.`
+            : ` The sea holds ${stats.seaBodies} ${stats.seaBodies === 1 ? 'body' : 'bodies'} and ${stats.seaPigment.toFixed(1)} pigment.`}
         </div>
         {unusedNestsSlumping(worldRef.current) ? (
           <div className="slump-readout" aria-live="polite">
@@ -1869,6 +1877,20 @@ export function App() {
                       settle into the floor. Nothing is granted: the basin is habitat, not a species. Opening worlds and
                       old saves receive the depth, not extra life or color. Observe a body or stain in that water to
                       name it; the observations list keeps the line for everyone, including a screen reader.
+                    </p>
+                  </div>
+                </div>
+                <div className="guide-entry">
+                  <span className="entry-number">24</span>
+                  <div>
+                    <h3>The tide and the sea</h3>
+                    <p>
+                      The pool is a pocket of a larger sea. Once each world day the water rises, opens a northern mouth,
+                      and color can wash both ways. A body that crosses carries its own reserves; nothing is granted. At
+                      low tide the mouth closes and the pool keeps whatever assortment it holds. The sea is real water
+                      with its own pigment and a few coarse lives. Opening worlds pay for that sea from conserved color.
+                      An old save receives the empty basin, not a gifted population. The observations list names the
+                      tide for everyone, including a screen reader. Reduced motion keeps the indicator still.
                     </p>
                   </div>
                 </div>
