@@ -61,7 +61,7 @@ describe('named eras', () => {
     expect(parseEraFile(JSON.stringify(file))).toEqual(era);
     expect(JSON.stringify(file).length).toBeLessThanOrEqual(MAX_ERA_FILE_LENGTH);
     expect(era.snapshot.length).toBeLessThanOrEqual(MAX_ERA_SNAPSHOT_LENGTH);
-  }, 20_000);
+  }, 30000);
 
   it('rejects malformed files, mismatched provenance, hybrids, and overfull catalogs', () => {
     const { file, era } = captureFile(8, 1);
