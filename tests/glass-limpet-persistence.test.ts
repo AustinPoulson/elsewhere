@@ -47,6 +47,10 @@ function revision6(world: World): Record<string, any> {
     'marlgrubMaintenancePigment',
     'fossilsFormed',
     'seamDissolved',
+    'tidePigmentIn',
+    'tidePigmentOut',
+    'tideArrivals',
+    'tideDepartures',
   ])
     delete old.ecologyLedger[key];
   return old;
@@ -94,7 +98,7 @@ describe('glass limpet snapshot revision', () => {
     const migrated = restoreWorld(serialized)!;
     expect(migrated).not.toBeNull();
     expect(migrated).toMatchObject({
-      schemaRevision: 19,
+      schemaRevision: SCHEMA_REVISION,
       lastSeenAt: null,
       glassLimpets: [],
       cargoMites: [],
@@ -266,6 +270,10 @@ describe('glass limpet snapshot revision', () => {
       world.glassLimpets.reduce((sum, body) => sum + body.body + body.reserve + body.cargo, 0);
     const previous = structuredClone(world) as Record<string, any>;
     previous.schemaRevision = 18;
+    delete previous.ecologyLedger.tidePigmentIn;
+    delete previous.ecologyLedger.tidePigmentOut;
+    delete previous.ecologyLedger.tideArrivals;
+    delete previous.ecologyLedger.tideDepartures;
     previous.glassLimpets = previous.glassLimpets.map(
       ({ parentId: _parentId, nextBirthAt: _nextBirthAt, ...rest }: Record<string, unknown>) => rest,
     );

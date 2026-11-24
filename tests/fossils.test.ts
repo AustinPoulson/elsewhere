@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { composeJournal } from '../src/world/catchup';
 import { MINERAL_SEAM } from '../src/world/environment/mineral-seam';
 import { createWorld, stepWorld } from '../src/world/simulation';
-import { FOSSIL_CAPACITY, LIMITS, type World } from '../src/world/types';
+import { FOSSIL_CAPACITY, LIMITS, SCHEMA_REVISION, type World } from '../src/world/types';
 import { depositFossil, heldFossilPigment } from '../src/world/species/fossils';
 import {
   DEATH_SEDIMENT_FRACTION,
@@ -170,6 +170,6 @@ describe('opening worlds', () => {
     const world = createWorld(4);
     expect(world.fossils).toEqual([]);
     expect(world.ecologyLedger.fossilsFormed).toBe(0);
-    expect(world.schemaRevision).toBe(19);
+    expect(world.schemaRevision).toBe(SCHEMA_REVISION);
   });
 });

@@ -4,6 +4,7 @@ import {
   LIMITS,
   NEST_CAPACITY,
   MAX_CHANNEL_ARROWS,
+  MAX_TIDE_ARROWS,
   WORLD_HEIGHT,
   WORLD_WIDTH,
   isInPool,
@@ -16,9 +17,14 @@ import {
   HABITAT_POOLS,
   INLET_POOL,
   OPENING_POOL,
+  SEA_POOL,
   channelFlowAt,
   channelSegment,
+  mouthSegment,
   poolCoastPoint,
+  tideConnectedAt,
+  tideFlowAt,
+  tideHeightAt,
 } from '../world/habitat';
 import { createBloom, createBody, createTerrain } from './terrain';
 import {
@@ -141,6 +147,7 @@ export class TidepoolRenderer {
   private readonly tendrils = new Graphics();
   private readonly trails = new Graphics();
   private readonly seasonWash = new Graphics();
+  private readonly tideWash = new Graphics();
   private readonly deepBasin = new Graphics();
   private readonly seamVein = new Graphics();
   private readonly caustics = new Graphics();
@@ -171,6 +178,7 @@ export class TidepoolRenderer {
   private readonly colors = new Map<number, number>();
   private reducedMotion = false;
   private destroyed = false;
+  private mouthOpen = false;
   private awayTraces: readonly AwayTrace[] = [];
   private frame = 0;
   private view: CameraView = openingView();
@@ -203,6 +211,7 @@ export class TidepoolRenderer {
     this.water.mask = this.mask;
     this.water.addChild(
       this.seasonWash,
+      this.tideWash,
       this.deepBasin,
       this.seamVein,
       this.lightPatchLayer,
@@ -320,19 +329,29 @@ export class TidepoolRenderer {
     this.mask.closePath().fill(0xffffff);
   }
 
-  private traceWaterMask(): void {
-    for (const pool of HABITAT_POOLS) this.tracePool(pool);
-    const link = channelSegment();
-    const half = link.width / 2;
-    const nx = link.uy;
-    const ny = -link.ux;
+  private traceLink(ax: number, ay: number, bx: number, by: number, ux: number, uy: number, width: number): void {
+    const half = width / 2;
+    const nx = uy;
+    const ny = -ux;
     const start = Math.atan2(ny, nx);
-    this.mask.moveTo(link.ax + nx * half, link.ay + ny * half);
-    this.mask.lineTo(link.bx + nx * half, link.by + ny * half);
-    this.mask.arc(link.bx, link.by, half, start, start + Math.PI);
-    this.mask.lineTo(link.ax - nx * half, link.ay - ny * half);
-    this.mask.arc(link.ax, link.ay, half, start + Math.PI, start);
+    this.mask.moveTo(ax + nx * half, ay + ny * half);
+    this.mask.lineTo(bx + nx * half, by + ny * half);
+    this.mask.arc(bx, by, half, start, start + Math.PI);
+    this.mask.lineTo(ax - nx * half, ay - ny * half);
+    this.mask.arc(ax, ay, half, start + Math.PI, start);
     this.mask.closePath().fill(0xffffff);
+  }
+
+  private traceWaterMask(connected = false): void {
+    this.mask.clear();
+    for (const pool of HABITAT_POOLS) this.tracePool(pool);
+    this.tracePool(SEA_POOL);
+    const link = channelSegment();
+    this.traceLink(link.ax, link.ay, link.bx, link.by, link.ux, link.uy, link.width);
+    if (connected) {
+      const mouth = mouthSegment();
+      this.traceLink(mouth.ax, mouth.ay, mouth.bx, mouth.by, mouth.ux, mouth.uy, mouth.width);
+    }
   }
 
   private resize(): void {
@@ -373,7 +392,13 @@ export class TidepoolRenderer {
     this.frame++;
     const time = this.reducedMotion ? 0 : world.elapsed;
     const weather = effectiveWeather(world);
+    const connected = tideConnectedAt(world.elapsed);
+    if (connected !== this.mouthOpen) {
+      this.mouthOpen = connected;
+      this.traceWaterMask(connected);
+    }
     this.drawWater(time, daylight(world), world.elapsed);
+    this.drawTide(world, time);
     this.drawDeepBasin(time);
     this.drawMineralSeam(world, time);
     // The first held ringlets acknowledge a paused call; feeding reach still uses actual intensity.
@@ -618,6 +643,65 @@ export class TidepoolRenderer {
       }
     }
     this.drawChannelCurrent(world);
+    this.drawTideCurrent(world);
+  }
+
+  private drawTideCurrent(world: World): void {
+    const flow = tideFlowAt(world.elapsed);
+    if (Math.abs(flow) < 0.05) return;
+    const link = mouthSegment();
+    const strength = Math.min(1, Math.abs(flow) / 3.6);
+    const dir = flow >= 0 ? 1 : -1;
+    this.currentRibbonStyle.alpha = 0.1 + strength * 0.18;
+    this.currentRibbonStyle.width = 1.3;
+    const midX = (link.ax + link.bx) / 2;
+    const midY = (link.ay + link.by) / 2;
+    const span = Math.hypot(link.bx - link.ax, link.by - link.ay) * 0.42;
+    for (let ribbon = 0; ribbon < 2; ribbon++) {
+      const offset = (ribbon - 0.5) * link.width * 0.28;
+      const x = midX - link.uy * offset;
+      const y = midY + link.ux * offset;
+      this.indicator
+        .moveTo(x - link.ux * span, y - link.uy * span)
+        .lineTo(x + link.ux * span, y + link.uy * span)
+        .stroke(this.currentRibbonStyle);
+    }
+    this.currentArrowStyle.alpha = 0.26 + strength * 0.3;
+    const phase = this.reducedMotion ? 0.5 : (world.elapsed * 0.07) % 1;
+    for (let arrow = 0; arrow < MAX_TIDE_ARROWS; arrow++) {
+      const along = (arrow + phase) / MAX_TIDE_ARROWS;
+      const travel = (along - 0.5) * span * 2;
+      this.drawFlowArrow(
+        midX + link.ux * travel,
+        midY + link.uy * travel,
+        link.ux * dir,
+        link.uy * dir,
+        this.currentArrowStyle,
+      );
+    }
+  }
+
+  private drawTide(world: World, time: number): void {
+    this.tideWash.clear();
+    const height = (tideHeightAt(world.elapsed) + 1) / 2;
+    const pulse = time === 0 ? 0 : Math.sin(time * 0.12) * 0.02;
+    const alpha = 0.08 + height * 0.16 + pulse;
+    this.tideWash.ellipse(720, 36, 210, 28).fill({
+      color: 0x7eb7b0,
+      alpha,
+    });
+    const markY = 78 - height * 22;
+    this.tideWash.ellipse(720, markY, 36 + height * 18, 4.5 + height * 2.2).fill({
+      color: 0xd7efe8,
+      alpha: 0.16 + height * 0.28,
+    });
+    if (tideConnectedAt(world.elapsed)) {
+      const mouth = mouthSegment();
+      this.tideWash.ellipse((mouth.ax + mouth.bx) / 2, (mouth.ay + mouth.by) / 2, 22, 16).fill({
+        color: 0x9fd0c6,
+        alpha: 0.12 + height * 0.14,
+      });
+    }
   }
 
   private drawChannelCurrent(world: World): void {

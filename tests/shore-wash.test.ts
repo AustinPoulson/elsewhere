@@ -147,10 +147,10 @@ describe('rain shore wash', () => {
   it('leaves schema 19 unchanged and grants nothing to a restored world', () => {
     const world = createWorld(3);
     expect(world.schemaRevision).toBe(SCHEMA_REVISION);
-    expect(SCHEMA_REVISION).toBe(19);
+    expect(SCHEMA_REVISION).toBe(20);
     const restored = restoreWorld(serializeWorld(world));
     expect(restored).not.toBeNull();
-    expect(restored!.schemaRevision).toBe(19);
+    expect(restored!.schemaRevision).toBe(SCHEMA_REVISION);
     expect(restored!.organisms.length).toBe(world.organisms.length);
     expect(restored!.sediment.length).toBe(world.sediment.length);
     expect(pigment(restored!)).toBeCloseTo(pigment(world), 9);

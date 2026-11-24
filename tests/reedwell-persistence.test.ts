@@ -3,7 +3,7 @@ import historicalStudy from '../src/app/shower-study.json';
 import { restoreWorld, serializeWorld } from '../src/world/persistence';
 import { baselineTraits } from '../src/world/traits';
 import { createWorld, stepWorld } from '../src/world/simulation';
-import type { Reedwell, World } from '../src/world/types';
+import { SCHEMA_REVISION, type Reedwell, type World } from '../src/world/types';
 
 const reedwellLedgerKeys = [
   'daylightHarvested',
@@ -134,6 +134,10 @@ function revision3(world: World): Record<string, any> {
     'marlgrubMaintenancePigment',
     'fossilsFormed',
     'seamDissolved',
+    'tidePigmentIn',
+    'tidePigmentOut',
+    'tideArrivals',
+    'tideDepartures',
   ])
     delete result.ecologyLedger[key];
   return result;
@@ -201,6 +205,10 @@ describe('reedwell snapshot revision', () => {
       'marlgrubMaintenancePigment',
       'fossilsFormed',
       'seamDissolved',
+      'tidePigmentIn',
+      'tidePigmentOut',
+      'tideArrivals',
+      'tideDepartures',
     ]) {
       expect(oldLedger[key]).toBe(0);
       delete oldLedger[key];
@@ -219,7 +227,7 @@ describe('reedwell snapshot revision', () => {
     const before = JSON.stringify(historicalStudy);
     const restored = restoreWorld(before)!;
     expect(restored).toMatchObject({
-      schemaRevision: 19,
+      schemaRevision: SCHEMA_REVISION,
       reedwells: [],
       reedwellAdmissionAt: historicalStudy.elapsed,
       reedwellCandidateAfterId: 0,
@@ -400,7 +408,7 @@ describe('reedwell snapshot revision', () => {
         w.nextId += 7;
       },
       (w) => {
-        w.schemaRevision = 20;
+        w.schemaRevision = 21;
       },
     ];
     for (const key of reedwellLedgerKeys) {

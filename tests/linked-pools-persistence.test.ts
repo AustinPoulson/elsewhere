@@ -13,6 +13,10 @@ function previousRevision(world: World): Record<string, unknown> {
   delete previous.shoreMemory;
   delete previous.channel;
   delete (previous.ecologyLedger as { seamDissolved?: number }).seamDissolved;
+  delete (previous.ecologyLedger as { tidePigmentIn?: number }).tidePigmentIn;
+  delete (previous.ecologyLedger as { tidePigmentOut?: number }).tidePigmentOut;
+  delete (previous.ecologyLedger as { tideArrivals?: number }).tideArrivals;
+  delete (previous.ecologyLedger as { tideDepartures?: number }).tideDepartures;
   return previous;
 }
 
@@ -71,7 +75,7 @@ describe('linked habitat snapshot revision', () => {
         w.schemaRevision = 12;
       },
       (w) => {
-        w.schemaRevision = 20;
+        w.schemaRevision = 21;
       },
       (w) => {
         (w.pools as { x: number }[])[1].x = 900;

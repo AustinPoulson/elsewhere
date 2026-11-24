@@ -86,11 +86,17 @@ describe('headless harness', () => {
     expect(parseHarnessArgs(['--days', '2', '--seed', '1', '--visitor-light']).visitorLight).toBe(true);
     const quiet = runHarness({ days: 2, seed: 1, visitorLight: false });
     expect(quiet.traitDrift.length).toBeGreaterThan(1);
-    expect(quiet.traitDrift[0].lucents).toMatchObject({ count: 24, drive: 1, bulk: 1 });
+    expect(quiet.traitDrift[0].lucents).toMatchObject({ count: 28, drive: 1, bulk: 1 });
+    expect(quiet.basins.length).toBeGreaterThan(1);
+    expect(quiet.basins[0].sea.lucents).toBe(4);
+    expect(quiet.basins[0].pool.lucents).toBe(24);
+    expect(quiet.ledger.tideArrivals).toBeGreaterThanOrEqual(0);
+    expect(quiet.ledger.tideDepartures).toBeGreaterThanOrEqual(0);
     expect(quiet.lifetimeTraits.lucents).toMatchObject({ count: expect.any(Number), drive: 1, bulk: 1 });
     expect(quiet.resources.ambientHarvested).toBeGreaterThan(0);
     expect(quiet.conservationCheck.remainsBalanced).toBe(true);
     expect(quiet.conservationCheck.fossilsBalanced).toBe(true);
+    expect(quiet.conservationCheck.tidePartitioned).toBe(true);
     expect(quiet.founding.glassLimpet.polls).toBeGreaterThan(0);
     expect(quiet.foundingStock.length).toBeGreaterThan(1);
     expect(

@@ -3,7 +3,7 @@ import historicalStudy from '../src/app/shower-study.json';
 import { restoreWorld, serializeWorld } from '../src/world/persistence';
 import { baselineTraits } from '../src/world/traits';
 import { createWorld, stepWorld } from '../src/world/simulation';
-import type { World } from '../src/world/types';
+import { SCHEMA_REVISION, type World } from '../src/world/types';
 
 const rainbellLedgerKeys = ['rainbellIntake', 'rainbellPumpingPigment', 'rainbellMaintenancePigment'];
 const siltstitcherLedgerKeys = [
@@ -149,6 +149,10 @@ function revision4(world: World): Record<string, any> {
     'marlgrubMaintenancePigment',
     'fossilsFormed',
     'seamDissolved',
+    'tidePigmentIn',
+    'tidePigmentOut',
+    'tideArrivals',
+    'tideDepartures',
   ])
     delete result.ecologyLedger[key];
   return result;
@@ -224,7 +228,7 @@ describe('rainbell snapshot revision', () => {
       skimmerCandidateAfterId: _skimmerCandidate,
       ...oldFields
     } = restored;
-    expect(restored.schemaRevision).toBe(19);
+    expect(restored.schemaRevision).toBe(SCHEMA_REVISION);
     expect(rainbells).toEqual([]);
     expect(rainbellAdmissionAt).toBe(source.elapsed);
     expect(rainbellCandidateAfterId).toBe(0);
@@ -245,6 +249,10 @@ describe('rainbell snapshot revision', () => {
       'marlgrubMaintenancePigment',
       'fossilsFormed',
       'seamDissolved',
+      'tidePigmentIn',
+      'tidePigmentOut',
+      'tideArrivals',
+      'tideDepartures',
     ]) {
       expect(oldLedger[key]).toBe(0);
       delete oldLedger[key];
@@ -272,7 +280,7 @@ describe('rainbell snapshot revision', () => {
       const before = JSON.stringify(source);
       const restored = restoreWorld(before)!;
       expect(restored).toMatchObject({
-        schemaRevision: 19,
+        schemaRevision: SCHEMA_REVISION,
         rainbells: [],
         rainbellAdmissionAt: source.elapsed,
         rainbellCandidateAfterId: 0,
@@ -446,7 +454,7 @@ describe('rainbell snapshot revision', () => {
         w.nextId += 5;
       },
       (w) => {
-        w.schemaRevision = 20;
+        w.schemaRevision = 21;
       },
     ];
     for (const target of ['feedTargetSedimentId', 'pumpTargetSedimentId']) {

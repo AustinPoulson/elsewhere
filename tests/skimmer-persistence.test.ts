@@ -122,7 +122,7 @@ describe('prism snapshot revision', () => {
       expect(restored).not.toBeNull();
       expect(restored).toMatchObject({
         version: 3,
-        schemaRevision: 19,
+        schemaRevision: SCHEMA_REVISION,
         skimmers: [],
         skimmerAdmissionAt: 123,
         elapsed: 123,
@@ -326,7 +326,7 @@ describe('prism snapshot revision', () => {
         w.nextId += 7;
       },
       (w) => {
-        w.schemaRevision = 20;
+        w.schemaRevision = 21;
       },
     ];
     for (const change of changes) {
@@ -368,6 +368,10 @@ describe('prism snapshot revision', () => {
       world.skimmers.reduce((sum, body) => sum + body.body + body.reserve, 0);
     const previous = structuredClone(world) as Record<string, any>;
     previous.schemaRevision = 15;
+    delete previous.ecologyLedger.tidePigmentIn;
+    delete previous.ecologyLedger.tidePigmentOut;
+    delete previous.ecologyLedger.tideArrivals;
+    delete previous.ecologyLedger.tideDepartures;
     previous.skimmers = previous.skimmers.map(
       ({ parentId: _parentId, nextBirthAt: _nextBirthAt, ...rest }: Record<string, unknown>) => rest,
     );

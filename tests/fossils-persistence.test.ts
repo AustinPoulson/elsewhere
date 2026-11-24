@@ -3,7 +3,7 @@ import { restoreWorld, serializeWorld } from '../src/world/persistence';
 import { createWorld, stepWorld } from '../src/world/simulation';
 import { depositFossil } from '../src/world/species/fossils';
 import { depositRemain } from '../src/world/species/remains';
-import type { World } from '../src/world/types';
+import { SCHEMA_REVISION, type World } from '../src/world/types';
 
 function previousRevision(world: World): Record<string, unknown> {
   const previous = structuredClone(world) as unknown as Record<string, any>;
@@ -16,6 +16,10 @@ function previousRevision(world: World): Record<string, unknown> {
   delete previous.channel;
   delete previous.ecologyLedger.fossilsFormed;
   delete previous.ecologyLedger.seamDissolved;
+  delete previous.ecologyLedger.tidePigmentIn;
+  delete previous.ecologyLedger.tidePigmentOut;
+  delete previous.ecologyLedger.tideArrivals;
+  delete previous.ecologyLedger.tideDepartures;
   for (const remain of previous.remains ?? []) delete remain.source;
   return previous;
 }
@@ -39,7 +43,7 @@ describe('fossil snapshot revision', () => {
     const migrated = restoreWorld(source)!;
     expect(migrated).not.toBeNull();
     expect(migrated).toMatchObject({
-      schemaRevision: 19,
+      schemaRevision: SCHEMA_REVISION,
       lastSeenAt: null,
       fossils: [],
       nextId: old.nextId,
@@ -80,7 +84,7 @@ describe('fossil snapshot revision', () => {
         w.schemaRevision = 11;
       },
       (w) => {
-        w.schemaRevision = 20;
+        w.schemaRevision = 21;
       },
       (w) => {
         w.fossils[0].pigment = 1.3;

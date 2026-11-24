@@ -28,7 +28,7 @@ import {
 } from './types';
 import { TRACE_MARK_CAP, TRACE_MEMORY_CAP, isAwayTraceKind, placeAwayTrace, settleAwayTraces } from './traces';
 import { MINERAL_SEAM } from './environment/mineral-seam';
-import { containingPool, isAuthoredHabitat, linkedHabitat, shoreRho } from './habitat';
+import { containingPool, isAuthoredHabitat, linkedHabitat, shoreRho, syncTide } from './habitat';
 import { initializeGrazers } from './simulation';
 import { cargoMiteReserveCapacity } from './species/cargo-mite';
 import { glassLimpetReserveCapacity } from './species/glass-limpet';
@@ -246,6 +246,7 @@ const REMAINS_LEDGER_KEYS = [
 ] as const;
 const FOSSIL_LEDGER_KEYS = ['fossilsFormed'] as const;
 const SEAM_LEDGER_KEYS = ['seamDissolved'] as const;
+const TIDE_LEDGER_KEYS = ['tidePigmentIn', 'tidePigmentOut', 'tideArrivals', 'tideDepartures'] as const;
 
 function ledger(
   value: unknown,
@@ -258,6 +259,7 @@ function ledger(
   remains: boolean,
   fossils: boolean,
   seam: boolean,
+  tide: boolean,
 ): boolean {
   return (
     record(value) &&
@@ -288,7 +290,10 @@ function ledger(
       : FOSSIL_LEDGER_KEYS.every((key) => !(key in value))) &&
     (seam
       ? SEAM_LEDGER_KEYS.every((key) => range(value[key], 0, MINERAL_SEAM.capacity))
-      : SEAM_LEDGER_KEYS.every((key) => !(key in value)))
+      : SEAM_LEDGER_KEYS.every((key) => !(key in value))) &&
+    (tide
+      ? TIDE_LEDGER_KEYS.every((key) => range(value[key], 0, MAX_NUMBER))
+      : TIDE_LEDGER_KEYS.every((key) => !(key in value)))
   );
 }
 
@@ -565,7 +570,8 @@ function marlgrub(value: unknown, elapsed: number, nextId: number, withTraits = 
 }
 
 type PrePrismOrganism = Omit<Organism, 'pigmentCredit'>;
-type Revision13Ledger = Omit<EcologyLedger, (typeof SEAM_LEDGER_KEYS)[number]>;
+type Revision19Ledger = Omit<EcologyLedger, (typeof TIDE_LEDGER_KEYS)[number]>;
+type Revision13Ledger = Omit<Revision19Ledger, (typeof SEAM_LEDGER_KEYS)[number]>;
 type Revision11Ledger = Omit<Revision13Ledger, (typeof FOSSIL_LEDGER_KEYS)[number]>;
 type Revision11Remain = Omit<Remain, 'source'>;
 type Revision9Ledger = Omit<Revision11Ledger, (typeof REMAINS_LEDGER_KEYS)[number]>;
@@ -576,7 +582,11 @@ type RainbellLedger = Omit<Revision6Ledger, (typeof SILTSTITCHER_LEDGER_KEYS)[nu
 type ReedwellLedger = Omit<RainbellLedger, (typeof RAINBELL_LEDGER_KEYS)[number]>;
 type PrismLedger = Omit<ReedwellLedger, (typeof REEDWELL_LEDGER_KEYS)[number]>;
 type Revision18GlassLimpet = Omit<GlassLimpet, 'parentId' | 'nextBirthAt'>;
-type Revision18World = Omit<World, 'schemaRevision' | 'glassLimpets'> & {
+type Revision19World = Omit<World, 'schemaRevision' | 'ecologyLedger'> & {
+  schemaRevision: 19;
+  ecologyLedger: Revision19Ledger;
+};
+type Revision18World = Omit<Revision19World, 'schemaRevision' | 'glassLimpets'> & {
   schemaRevision: 18;
   glassLimpets: Revision18GlassLimpet[];
 };
@@ -895,11 +905,25 @@ function withGlassLimpetLineage(limpet: Revision18GlassLimpet, elapsed: number):
   };
 }
 
-function migrateRevision18To19(previous: Revision18World): World {
+function migrateRevision18To19(previous: Revision18World): Revision19World {
   return {
     ...previous,
     schemaRevision: 19,
     glassLimpets: previous.glassLimpets.map((limpet) => withGlassLimpetLineage(limpet, previous.elapsed)),
+  };
+}
+
+function migrateRevision19To20(previous: Revision19World): World {
+  return {
+    ...previous,
+    schemaRevision: 20,
+    ecologyLedger: {
+      ...previous.ecologyLedger,
+      tidePigmentIn: 0,
+      tidePigmentOut: 0,
+      tideArrivals: 0,
+      tideDepartures: 0,
+    },
   };
 }
 
@@ -930,12 +954,13 @@ export function restoreWorld(input: string): World | null {
 
   if (
     (parsed.version === 3 &&
-      (!integer(parsed.schemaRevision, 1, 19) || !weatherCall(parsed.weatherCall, parsed.elapsed))) ||
+      (!integer(parsed.schemaRevision, 1, 20) || !weatherCall(parsed.weatherCall, parsed.elapsed))) ||
     (parsed.version !== 3 && ('schemaRevision' in parsed || 'weatherCall' in parsed || 'currents' in parsed))
   )
     return null;
+  syncTide(parsed.elapsed as number);
   let currents: Current[] = [];
-  if (parsed.version === 3 && integer(parsed.schemaRevision, 2, 19)) {
+  if (parsed.version === 3 && integer(parsed.schemaRevision, 2, 20)) {
     if (
       !Array.isArray(parsed.currents) ||
       parsed.currents.length > MAX_CURRENTS ||
@@ -945,7 +970,8 @@ export function restoreWorld(input: string): World | null {
     currents = parsed.currents as Current[];
   } else if ('currents' in parsed) return null;
 
-  const limpetLineageRevision = parsed.version === 3 && parsed.schemaRevision === 19;
+  const tideRevision = parsed.version === 3 && parsed.schemaRevision === 20;
+  const limpetLineageRevision = parsed.version === 3 && (parsed.schemaRevision === 19 || tideRevision);
   const grubLineageRevision = parsed.version === 3 && (parsed.schemaRevision === 18 || limpetLineageRevision);
   const stitcherLineageRevision = parsed.version === 3 && (parsed.schemaRevision === 17 || grubLineageRevision);
   const lineageRevision = parsed.version === 3 && (parsed.schemaRevision === 16 || stitcherLineageRevision);
@@ -997,6 +1023,7 @@ export function restoreWorld(input: string): World | null {
         remainsRevision,
         fossilsRevision,
         seamRevision,
+        tideRevision,
       )
     )
       return null;
@@ -1576,32 +1603,48 @@ export function restoreWorld(input: string): World | null {
             marlgrubs,
           }
         : migrateRevision17To18(revision17);
-    return limpetLineageRevision
+    const revision19: Revision19World = tideRevision
       ? {
           ...revision18,
           schemaRevision: 19,
           glassLimpets,
+          ecologyLedger: { ...(parsed.ecologyLedger as Revision19Ledger) },
         }
-      : migrateRevision18To19(revision18);
+      : parsed.schemaRevision === 19 || limpetLineageRevision
+        ? {
+            ...revision18,
+            schemaRevision: 19,
+            glassLimpets,
+          }
+        : migrateRevision18To19(revision18);
+    return tideRevision
+      ? {
+          ...revision19,
+          schemaRevision: 20,
+          ecologyLedger: { ...(parsed.ecologyLedger as EcologyLedger) },
+        }
+      : migrateRevision19To20(revision19);
   }
   let legacy: LegacyWorld = { ...ecology, version: parsed.version };
   if (legacy.version === 1) legacy = migrateV1ToV2(legacy);
-  return migrateRevision18To19(
-    migrateRevision17To18(
-      migrateRevision16To17(
-        migrateRevision15To16(
-          migrateRevision14To15(
-            migrateRevision13To14(
-              migrateRevision12To13(
-                migrateRevision11To12(
-                  migrateRevision10To11(
-                    migrateRevision9To10(
-                      migrateRevision8To9(
-                        migrateRevision7To8(
-                          migrateRevision6To7(
-                            migrateRevision5To6(
-                              migrateRevision4To5(
-                                migrateRevision3To4(migrateRevision2To3(migrateRevision1To2(migrateV2ToV3(legacy)))),
+  return migrateRevision19To20(
+    migrateRevision18To19(
+      migrateRevision17To18(
+        migrateRevision16To17(
+          migrateRevision15To16(
+            migrateRevision14To15(
+              migrateRevision13To14(
+                migrateRevision12To13(
+                  migrateRevision11To12(
+                    migrateRevision10To11(
+                      migrateRevision9To10(
+                        migrateRevision8To9(
+                          migrateRevision7To8(
+                            migrateRevision6To7(
+                              migrateRevision5To6(
+                                migrateRevision4To5(
+                                  migrateRevision3To4(migrateRevision2To3(migrateRevision1To2(migrateV2ToV3(legacy)))),
+                                ),
                               ),
                             ),
                           ),

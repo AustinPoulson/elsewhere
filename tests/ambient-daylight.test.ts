@@ -13,7 +13,7 @@ describe('faint ambient daylight', () => {
     expect(world.ecologyLedger.ambientHarvested).toBeGreaterThan(1);
     expect(world.consumed).toBe(0);
     expect(getStats(world).pigment).toBeGreaterThan(0);
-    expect(world.organisms).toHaveLength(24);
+    expect(world.organisms).toHaveLength(28);
 
     const night = createWorld(1);
     night.elapsed = 270;

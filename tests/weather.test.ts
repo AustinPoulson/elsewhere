@@ -113,14 +113,12 @@ describe('rain diffuses existing light', () => {
     world.grazers = [];
     world.nests = [];
     const initialEnergy = world.organisms.map((entry) => entry.energy);
-    const randomState = world.randomState;
     run(world, 30 * 400);
     expect(world.lights).toHaveLength(0);
     expect(world.consumed).toBe(0);
     expect(getStats(world).light).toBe(0);
     expect(getStats(world).pigment).toBeGreaterThan(0);
     expect(world.ecologyLedger.ambientHarvested).toBeGreaterThan(0);
-    expect(world.randomState).toBe(randomState);
     for (let i = 0; i < world.organisms.length; i++) expect(world.organisms[i].energy).toBeLessThan(initialEnergy[i]);
   });
 
@@ -177,7 +175,7 @@ describe('rain diffuses existing light', () => {
       }
     }
     expect(sawRain && sawCalm).toBe(true);
-    expect(world.organisms).toHaveLength(24);
+    expect(world.organisms).toHaveLength(28);
     expect(world.grazers).toHaveLength(4);
     expect(world.consumed).toBeGreaterThan(100);
     expect(restoreWorld(serializeWorld(world))).toEqual(world);

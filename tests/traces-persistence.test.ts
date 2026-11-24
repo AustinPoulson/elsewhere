@@ -25,10 +25,14 @@ function nearShorePoint(margin: number): { x: number; y: number } {
 }
 
 function previousRevision(world: World): Record<string, unknown> {
-  const previous = structuredClone(world) as unknown as Record<string, unknown>;
+  const previous = structuredClone(world) as unknown as Record<string, any>;
   previous.schemaRevision = 14;
   delete previous.awayTraces;
   delete previous.shoreMemory;
+  delete previous.ecologyLedger.tidePigmentIn;
+  delete previous.ecologyLedger.tidePigmentOut;
+  delete previous.ecologyLedger.tideArrivals;
+  delete previous.ecologyLedger.tideDepartures;
   return previous;
 }
 
@@ -182,7 +186,7 @@ describe('away-trace snapshot revision', () => {
         w.schemaRevision = 14;
       },
       (w) => {
-        w.schemaRevision = 20;
+        w.schemaRevision = 21;
       },
       (w) => {
         w.awayTraces = Array.from({ length: TRACE_MARK_CAP + 1 }, () => sampleTrace(0));

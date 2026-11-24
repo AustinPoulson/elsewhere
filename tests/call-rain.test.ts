@@ -3,7 +3,7 @@ import fixture from '../src/app/shower-study.json';
 import { restoreWorld, serializeWorld } from '../src/world/persistence';
 import { addLight, createWorld, stepWorld } from '../src/world/simulation';
 import { callRain, effectiveLightReach, effectiveWeather, getWeather } from '../src/world/weather';
-import { FIXED_STEP, type World } from '../src/world/types';
+import { FIXED_STEP, SCHEMA_REVISION, type World } from '../src/world/types';
 
 function ecology(world: World) {
   const {
@@ -164,7 +164,7 @@ describe('versioned weather calls', () => {
     expect(ecology(migrated)).toEqual(original);
     expect(migrated).toMatchObject({
       version: 3,
-      schemaRevision: 19,
+      schemaRevision: SCHEMA_REVISION,
       weatherCall: { startedAt: null, nextAllowedAt: 0 },
     });
     expect(JSON.stringify(fixture)).toBe(old);
@@ -180,7 +180,7 @@ describe('versioned weather calls', () => {
         delete world.schemaRevision;
       },
       (world) => {
-        world.schemaRevision = 20;
+        world.schemaRevision = 21;
       },
       (world) => {
         world.weatherCall = null;

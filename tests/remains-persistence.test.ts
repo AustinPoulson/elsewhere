@@ -15,6 +15,10 @@ const remainsLedgerKeys = [
   'marlgrubMaintenancePigment',
   'fossilsFormed',
   'seamDissolved',
+  'tidePigmentIn',
+  'tidePigmentOut',
+  'tideArrivals',
+  'tideDepartures',
 ] as const;
 
 function previousRevision(world: World): Record<string, any> {
@@ -58,7 +62,7 @@ describe('remains snapshot revision', () => {
     const migrated = restoreWorld(source)!;
     expect(migrated).not.toBeNull();
     expect(migrated).toMatchObject({
-      schemaRevision: 19,
+      schemaRevision: SCHEMA_REVISION,
       lastSeenAt: null,
       remains: [],
       marlgrubs: [],
@@ -100,7 +104,7 @@ describe('remains snapshot revision', () => {
         w.schemaRevision = 9;
       },
       (w) => {
-        w.schemaRevision = 20;
+        w.schemaRevision = 21;
       },
       (w) => {
         w.remains[0].pigment = 2.1;
@@ -181,6 +185,10 @@ describe('remains snapshot revision', () => {
       world.marlgrubs.reduce((sum, grub) => sum + grub.body + grub.reserve, 0);
     const previous = structuredClone(world) as Record<string, any>;
     previous.schemaRevision = 17;
+    delete previous.ecologyLedger.tidePigmentIn;
+    delete previous.ecologyLedger.tidePigmentOut;
+    delete previous.ecologyLedger.tideArrivals;
+    delete previous.ecologyLedger.tideDepartures;
     previous.marlgrubs = previous.marlgrubs.map(
       ({ parentId: _parentId, nextBirthAt: _nextBirthAt, ...rest }: Record<string, unknown>) => rest,
     );

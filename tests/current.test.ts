@@ -3,7 +3,7 @@ import { applyCurrent, currentStrength } from '../src/world/actions/current';
 import { applyCurrentDrift } from '../src/world/currents';
 import { createWorld, stepWorld } from '../src/world/simulation';
 import { restoreWorld, serializeWorld } from '../src/world/persistence';
-import { FIXED_STEP, isInPool, type Current, type World } from '../src/world/types';
+import { FIXED_STEP, SCHEMA_REVISION, isInPool, type Current, type World } from '../src/world/types';
 
 const start = { x: 660, y: 500 };
 const end = { x: 780, y: 500 };
@@ -222,7 +222,7 @@ describe('current save revisions', () => {
     expect(migrated).toEqual({
       ...world,
       elapsed: 12,
-      schemaRevision: 19,
+      schemaRevision: SCHEMA_REVISION,
       skimmerAdmissionAt: 12,
       reedwellAdmissionAt: 12,
       rainbellAdmissionAt: 12,
@@ -246,7 +246,7 @@ describe('current save revisions', () => {
         w.currents = null;
       },
       (w) => {
-        w.schemaRevision = 20;
+        w.schemaRevision = 21;
       },
       (w) => {
         w.currents[0].x = 0;
