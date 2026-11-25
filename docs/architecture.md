@@ -38,7 +38,7 @@ One type definition describes the world and its entities. A seeded random state 
 
 ## Directional water
 
-`world/actions/current.ts` validates bounded 24–240-unit strokes and creates at most three fields. `world/currents.ts` applies decaying radial drift after creature locomotion: up to12 units/second per field, combined clamp16; sediment follows at0.35. A separate authored channel current, base 4.8 units/second and reversing every 180 world seconds from elapsed time, carries pigment and already-drifting bodies through the neck. Seasonal climate scales that authored flow by 0.82–1.18 (envelope at most 4.8×1.18 = 5.664) without changing visitor strokes. It does not count against the three visitor fields and grants no bodies or color. A second authored tide current, base 3.6 units/second along the northern mouth, follows a 360-second sine from elapsed time: the mouth opens when the height is at least 0.32, floods toward the pool on the rise, and ebbs toward the sea on the fall. While the mouth is closed the pool is cut off. A third authored current uses the same sine along the rock-pool mouth, phase-shifted by half a day, and opens only when that pocket height is at least 0.72 and still rising. The high sill therefore fills on the flood and isolates at the peak rather than emptying on the ebb. The opening pool and the rock pool connect on opposite tides: the pocket is isolated while the northern mouth is exchanging. Rare pool-sea washes use the world PRNG; the rock-pool wash uses tick phase only, so it does not change the pool PRNG draw order. Placement of the opening sea does not draw the pool PRNG. Physiological velocity, light, homes and resource amounts are unchanged. Shared geometry confines displacement without creating resources. Each visitor field expires after eight simulated seconds; pause and snapshots hold its age. Channel and tide currents are habitat physics, not stored visitor strokes.
+`world/actions/current.ts` validates bounded 24–240-unit strokes and creates at most three fields. `world/currents.ts` applies decaying radial drift after creature locomotion: up to12 units/second per field, combined clamp16; sediment follows at0.35. A separate authored channel current, base 4.8 units/second and reversing every 180 world seconds from elapsed time, carries pigment and already-drifting bodies through the neck. Seasonal climate scales that authored flow by 0.82–1.18 (envelope at most 4.8×1.18 = 5.664) without changing visitor strokes. It does not count against the three visitor fields and grants no bodies or color. A second authored tide current, base 3.6 units/second along the northern mouth, follows a 360-second sine from elapsed time: the mouth opens when the height is at least 0.32, floods toward the pool on the rise, and ebbs toward the sea on the fall. While the mouth is closed the pool is cut off. A third authored current uses the same sine along the rock-pool mouth, phase-shifted by half a day. It opens when that pocket height is at least 0.72 and still rising, and it leaks slowly when the height is at least 0.88 and falling (flow scaled by 0.32, 24-unit shove, no 0.45 speed floor). The high sill therefore fills on the flood, sits isolated through most of the fall, and only briefly returns workers to the sea near the peak. Sea grazers never wash into the pocket; sea lucents stay unless the sea is above its opening four and the pocket already holds two; sea grains stay unless the sea is above its opening eight. Visitor bodies and extra color can enter. Founders that live there pay only from color already in that basin. The opening pool and the rock pool connect on opposite tides: the pocket is isolated while the northern mouth is exchanging. Rare pool-sea washes use the world PRNG; the rock-pool wash uses tick phase only, so it does not change the pool PRNG draw order. Placement of the opening sea does not draw the pool PRNG. Physiological velocity, light, homes and resource amounts are unchanged. Shared geometry confines displacement without creating resources. Each visitor field expires after eight simulated seconds; pause and snapshots hold its age. Channel and tide currents are habitat physics, not stored visitor strokes.
 
 `app/stir.ts` owns ephemeral strokes and refuses cross-world commits. Pointer ownership, keyboard arrows/Enter, cancellation, blur and world transitions keep preview state separate from saved ecology. The renderer uses the same lifetime strength, bounded ribbons/arrows and static reduced-motion directions. No velocity grid, particles, history or background simulation is introduced.
 
@@ -46,56 +46,57 @@ One type definition describes the world and its entities. A seeded random state 
 
 The current explicit budgets are:
 
-| Collection                                                |                                                     Maximum |
-| --------------------------------------------------------- | ----------------------------------------------------------: |
-| Organisms                                                 |                                                          42 |
-| Active light sources                                      |                                                          32 |
-| Sediment marks                                            |                                                         600 |
-| Trail points per organism                                 |                                                          14 |
-| Pigment grazers                                           |                                                           8 |
-| Woven nests                                               |                                                          16 |
-| Active siltstitchers                                      |                    6 (within the shared 24 new-type bodies) |
-| Active glass limpets                                      |                    4 (within the shared 24 new-type bodies) |
-| Active marlgrubs                                          |                    4 (within the shared 24 new-type bodies) |
-| Remain cells                                              |                                                          48 |
-| Remain cores (renderer only)                              |                             1 graphics object, ≤48 ellipses |
-| Fossils                                                   |                                                          16 |
-| Fossil cores (renderer only)                              |                          1 graphics object, ≤16 impressions |
-| All active new-type bodies                                |                                           24 (type caps 34) |
-| New-type renderer objects                                 |                       96 (four per body, at most 24 active) |
-| New-type short cues                                       |                     16 (siltstitchers and limpets add none) |
-| Normal founding source searches                           |                               1 registered type per 6 ticks |
-| Shore wash compact                                        | 1 sediment pair and 1 remain pair per 6 ticks while raining |
-| Unused nest slump                                         |                              1 unused nest pair per 6 ticks |
-| Unused remain slump                                       |                            1 unused remain pair per 6 ticks |
-| Locked color return                                       |                                   1 shell catch per 6 ticks |
-| Successful new-body allocations                           |                 1 per 6 ticks across types and event offers |
-| Rain ringlet slots (renderer only)                        |                                                          48 |
-| Light floor patches (renderer only)                       |                                                          32 |
-| Pools                                                     |                                                           2 |
-| Habitat links                                             |                                                           1 |
-| Active visitor currents                                   |                                                           3 |
-| Current arrows, including gesture preview (renderer only) |                                                          12 |
-| Channel current arrows (renderer only)                    |                                                           4 |
-| Tide current arrows (renderer only)                       |                                                           4 |
-| Tide wash (renderer only)                                 |                                       1 graphics fill/frame |
-| Opening sea lucents                                       |                                                           4 |
-| Opening sea grains                                        |                                                           8 |
-| Sea-bound wash bodies                                     |                                                           8 |
-| Tide wash attempts                                        |                             1 candidate per 6 ticks, p=0.16 |
-| High rock pool bodies                                     |                                                           6 |
-| High rock pool grains                                     |                                                          24 |
-| Pocket current arrows (renderer only)                     |                                                           2 |
-| Pocket wash attempts                                      |     1 candidate per 6 ticks, 48-unit shove, tick phase only |
-| Inlet caustic ribbons (renderer only)                     |                                                           4 |
-| Season wash (renderer only)                               |                                       1 graphics fill/frame |
-| Mineral seam (renderer only)                              |                                       1 graphics fill/frame |
-| Deep basin (renderer only)                                |                                       1 graphics fill/frame |
-| Away traces                                               |                              5 marks, 1 graphics fill/frame |
-| Shore memory                                              |                                        4 remembered returns |
-| Named eras                                                |                                                           8 |
-| Era inner snapshot                                        |                                        1,000,000 characters |
-| Era catalog                                               |                                                   4,000,000 |
+| Collection                                                |                                                                          Maximum |
+| --------------------------------------------------------- | -------------------------------------------------------------------------------: |
+| Organisms                                                 |                                                                               42 |
+| Active light sources                                      |                                                                               32 |
+| Sediment marks                                            |                                                                              600 |
+| Trail points per organism                                 |                                                                               14 |
+| Pigment grazers                                           |                                                                                8 |
+| Woven nests                                               |                                                                               16 |
+| Active siltstitchers                                      |                                         6 (within the shared 24 new-type bodies) |
+| Active glass limpets                                      |                                         4 (within the shared 24 new-type bodies) |
+| Active marlgrubs                                          |                                         4 (within the shared 24 new-type bodies) |
+| Remain cells                                              |                                                                               48 |
+| Remain cores (renderer only)                              |                                                  1 graphics object, ≤48 ellipses |
+| Fossils                                                   |                                                                               16 |
+| Fossil cores (renderer only)                              |                                               1 graphics object, ≤16 impressions |
+| All active new-type bodies                                |                                                                24 (type caps 34) |
+| New-type renderer objects                                 |                                            96 (four per body, at most 24 active) |
+| New-type short cues                                       |                                          16 (siltstitchers and limpets add none) |
+| Normal founding source searches                           |                                                    1 registered type per 6 ticks |
+| Shore wash compact                                        |                      1 sediment pair and 1 remain pair per 6 ticks while raining |
+| Unused nest slump                                         |                                                   1 unused nest pair per 6 ticks |
+| Unused remain slump                                       |                                                 1 unused remain pair per 6 ticks |
+| Locked color return                                       |                                                        1 shell catch per 6 ticks |
+| Successful new-body allocations                           |                                      1 per 6 ticks across types and event offers |
+| Rain ringlet slots (renderer only)                        |                                                                               48 |
+| Light floor patches (renderer only)                       |                                                                               32 |
+| Pools                                                     |                                                                                2 |
+| Habitat links                                             |                                                                                1 |
+| Active visitor currents                                   |                                                                                3 |
+| Current arrows, including gesture preview (renderer only) |                                                                               12 |
+| Channel current arrows (renderer only)                    |                                                                                4 |
+| Tide current arrows (renderer only)                       |                                                                                4 |
+| Tide wash (renderer only)                                 |                                                            1 graphics fill/frame |
+| Opening sea lucents                                       |                                                                                4 |
+| Opening sea grains                                        |                                                                                8 |
+| Sea-bound wash bodies                                     |                                                                                8 |
+| Tide wash attempts                                        |                                                  1 candidate per 6 ticks, p=0.16 |
+| High rock pool bodies                                     |                                                                                6 |
+| High rock pool lucents from the sea                       |                                                                                2 |
+| High rock pool grains                                     |                                                                               24 |
+| Pocket current arrows (renderer only)                     |                                                                                2 |
+| Pocket wash attempts                                      | flood: 1/6 ticks, 48-unit shove; ebb: 1/18 ticks, 24-unit shove, tick phase only |
+| Inlet caustic ribbons (renderer only)                     |                                                                                4 |
+| Season wash (renderer only)                               |                                                            1 graphics fill/frame |
+| Mineral seam (renderer only)                              |                                                            1 graphics fill/frame |
+| Deep basin (renderer only)                                |                                                            1 graphics fill/frame |
+| Away traces                                               |                                                   5 marks, 1 graphics fill/frame |
+| Shore memory                                              |                                                             4 remembered returns |
+| Named eras                                                |                                                                                8 |
+| Era inner snapshot                                        |                                                             1,000,000 characters |
+| Era catalog                                               |                                                                        4,000,000 |
 
 New behavior must respect a budget. Accumulated visual history must age, compact, or remain capped. A beautiful trail should not become an unbounded list of draw calls after a long visit. Existing simple rules and loops are easier to inspect than a general plugin or entity framework at this stage.
 

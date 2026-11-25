@@ -1,4 +1,5 @@
 import { confinePosition } from '../geometry';
+import { sharesPocketColor } from '../habitat';
 import type { Marlgrub, Remain, Traits, World } from '../types';
 import { baselineTraits, mutateTraits, traitMobility } from '../traits';
 import { activeNewTypePopulation, NEW_TYPE_POPULATION_CAP, SPECIES_CATALOG } from './catalog';
@@ -98,6 +99,7 @@ function chooseTarget(world: World, grub: Marlgrub): void {
   let best = reach;
   for (const remain of world.remains) {
     if (remain.pigment <= 0) continue;
+    if (!sharesPocketColor(grub.x, grub.y, remain.x, remain.y)) continue;
     const distance = Math.hypot(grub.x - remain.x, grub.y - remain.y);
     if (distance > reach) continue;
     if (distance < best || (distance === best && (!nearest || remain.id < nearest.id))) {

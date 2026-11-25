@@ -1,4 +1,5 @@
 import { confinePosition } from '../geometry';
+import { sharesPocketColor } from '../habitat';
 import {
   LIMITS,
   isInPool,
@@ -94,6 +95,7 @@ function candidate(world: World, body: Siltstitcher, nest: Nest): Point | null {
   // grains. All sediment contributions are actual nonnegative pigment.
   for (const grain of world.sediment) {
     if (grain.strength <= 0) continue;
+    if (!sharesPocketColor(nest.x, nest.y, grain.x, grain.y)) continue;
     if (Math.hypot(grain.x - nest.x, grain.y - nest.y) <= RULE.homeFringeReach) homePigment += grain.strength;
     if (Math.hypot(grain.x - point.x, grain.y - point.y) <= RULE.destinationFringeReach)
       outwardPigment += grain.strength;
@@ -132,6 +134,7 @@ function tryDelivery(world: World, body: Siltstitcher, maySearch: boolean): bool
   let distance: number = RULE.deliveryMergeReach;
   for (const grain of world.sediment) {
     if (1 - grain.strength < body.cargo) continue;
+    if (!sharesPocketColor(body.x, body.y, grain.x, grain.y)) continue;
     const nextDistance = Math.hypot(grain.x - body.x, grain.y - body.y);
     if (nextDistance < distance || (nextDistance === distance && (!nearest || grain.id < nearest.id))) {
       distance = nextDistance;

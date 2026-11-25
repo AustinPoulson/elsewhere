@@ -1,3 +1,4 @@
+import { sharesPocketColor } from '../habitat';
 import { daylight } from '../environment/daylight';
 import { depthAt, lightScale } from '../environment/depth';
 import { LIMITS, isInPool, type Reedwell, type Sediment, type World } from '../types';
@@ -76,7 +77,9 @@ export function admitReedwell(world: World): boolean {
   world.reedwellCandidateAfterId = candidate.id;
   if (rainIntensityAt(world, candidate.x, candidate.y) < 0.5) return false;
   const center = candidate;
-  const sources = neighborhoods.within(center, RULE.rootReach);
+  const sources = neighborhoods
+    .within(center, RULE.rootReach)
+    .filter((grain) => sharesPocketColor(center.x, center.y, grain.x, grain.y));
   sources.sort(
     (a, b) => Math.hypot(a.x - center.x, a.y - center.y) - Math.hypot(b.x - center.x, b.y - center.y) || a.id - b.id,
   );

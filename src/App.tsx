@@ -1907,12 +1907,13 @@ export function App() {
                     <h3>A high rock pool</h3>
                     <p>
                       A second small basin sits on the same shore, fed by the same sea through its own mouth. It sits
-                      higher, and that mouth opens on the opposite tide from the northern gate, only while the pocket
-                      flood is still rising, so the basin fills and then sits cut off instead of emptying on the ebb. It
-                      starts empty: no gifted organisms or pigment. Color and bodies that wash in carry their own
-                      reserves. A lineage that dies in the opening pool can persist here and return only by a real
-                      crossing. The observations list names the pocket and whether it is open. Reduced motion keeps it
-                      still. Portrait keeps the same world coordinates.
+                      higher, and that mouth opens on the opposite tide from the northern gate. It fills on the flood
+                      and leaks slowly on a short ebb so sea lucents and grazers are not trapped. The sea keeps its
+                      grazers and opening lucents; at most two surplus lucents occupy the pocket, and founders there pay
+                      from color already in the pocket. It starts empty: no gifted organisms or pigment. A lineage that
+                      dies in the opening pool can persist here and return only by a real crossing. The observations
+                      list names the pocket and whether it is open. Reduced motion keeps it still. Portrait keeps the
+                      same world coordinates.
                     </p>
                   </div>
                 </div>

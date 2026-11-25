@@ -1,5 +1,5 @@
 import { sedimentCurrentVelocity } from '../currents';
-import { containingPool, shoreRho } from '../habitat';
+import { containingPool, sharesPocketColor, shoreRho } from '../habitat';
 import type { GlassLimpet, Sediment, Traits, World } from '../types';
 import { baselineTraits, mutateTraits } from '../traits';
 import { rainIntensityAt } from '../weather';
@@ -103,7 +103,12 @@ export function admitGlassLimpet(world: World): boolean {
   world.glassLimpetCandidateAfterId = center.id;
   const sources = neighborhoods
     .within(center, RULE.rootReach)
-    .filter((grain) => grain.strength >= RULE.coarseThreshold && !grainHeldForStocking(world, grain));
+    .filter(
+      (grain) =>
+        grain.strength >= RULE.coarseThreshold &&
+        !grainHeldForStocking(world, grain) &&
+        sharesPocketColor(center.x, center.y, grain.x, grain.y),
+    );
   sources.sort(
     (a, b) => Math.hypot(a.x - center.x, a.y - center.y) - Math.hypot(b.x - center.x, b.y - center.y) || a.id - b.id,
   );
@@ -149,6 +154,7 @@ function search(world: World, limpet: GlassLimpet): void {
   let distance: number = glassLimpetFeedReach(limpet.traits);
   for (const grain of world.sediment) {
     if (grain.strength <= MIN_SEDIMENT_GRAIN) continue;
+    if (!sharesPocketColor(limpet.x, limpet.y, grain.x, grain.y)) continue;
     const reach = Math.hypot(grain.x - limpet.x, grain.y - limpet.y);
     if (reach > distance || (reach === distance && nearest && grain.id >= nearest.id)) continue;
     if (!grainAvailable(world, limpet, grain)) continue;

@@ -8,6 +8,7 @@ import {
   TIDE_INFLUENCE,
   TIDE_PERIOD,
   TIDE_POCKET_CONNECT,
+  TIDE_POCKET_EBB_CONNECT,
   TIDE_POCKET_INFLUENCE,
   TIDE_POCKET_MOUTH_WIDTH,
   inInletPool,
@@ -17,8 +18,10 @@ import {
   isInPool,
   mouthSegment,
   pocketConnectedAt,
+  pocketEbbAt,
   pocketFlowAt,
   pocketMouthSegment,
+  sharesPocketColor,
   pocketVelocity,
   syncTide,
   tideConnectedAt,
@@ -33,11 +36,14 @@ import {
   pigmentOnShore,
   pocketBodyCount,
   pocketNote,
+  SEA_LUCENTS,
   seaBodyCount,
+  seaLucentCount,
   tideNameAt,
   tideNote,
 } from '../src/world/environment/tide';
 import { createWorld, getStats, stepWorld } from '../src/world/simulation';
+import { baselineTraits } from '../src/world/traits';
 import { POCKET_BODY_CAP, SEA_BODY_CAP, type Point } from '../src/world/types';
 
 function locatedPigment(world: ReturnType<typeof createWorld>): number {
@@ -183,8 +189,13 @@ describe('tide and sea', () => {
     expect(tideConnectedAt(240)).toBe(false);
     expect(pocketFlowAt(240)).toBeLessThan(0);
     expect(pocketConnectedAt(270)).toBe(false);
+    expect(TIDE_POCKET_EBB_CONNECT).toBeGreaterThan(TIDE_POCKET_CONNECT);
+    expect(pocketConnectedAt(280)).toBe(true);
+    expect(pocketEbbAt(280)).toBe(true);
+    expect(pocketFlowAt(280)).toBeGreaterThan(0);
     expect(pocketNote(240)).toMatch(/open to the sea/);
     expect(pocketNote(270)).toMatch(/cut off/);
+    expect(pocketNote(280)).toMatch(/leaking slowly/);
     expect(pocketNote(90)).toMatch(/cut off/);
     const mouth = pocketMouthSegment();
     const mid = { x: (mouth.ax + mouth.bx) / 2, y: (mouth.ay + mouth.by) / 2 };
@@ -197,6 +208,8 @@ describe('tide and sea', () => {
     syncTide(40);
     expect(isInPool(mid.x, mid.y)).toBe(false);
     expect(inPocket(POCKET_POOL.x, POCKET_POOL.y)).toBe(true);
+    expect(sharesPocketColor(POCKET_POOL.x, POCKET_POOL.y, POCKET_POOL.x + 8, POCKET_POOL.y)).toBe(true);
+    expect(sharesPocketColor(POCKET_POOL.x, POCKET_POOL.y, OPENING_POOL.x, OPENING_POOL.y)).toBe(false);
   });
 
   it('opens empty and fills only from conserved crossings', () => {
@@ -234,22 +247,43 @@ describe('tide and sea', () => {
     }
   });
 
-  it('lets a body carry its own reserves through the pocket mouth', () => {
+  it('keeps the sea opening lucents from washing into the rock pool', () => {
     const world = createWorld(1);
-    const body = world.organisms.find((entry) => inSea(entry.x, entry.y))!;
+    expect(seaLucentCount(world)).toBe(SEA_LUCENTS);
+    world.elapsed = 240;
+    world.tick = 3;
+    syncTide(world.elapsed);
+    for (let step = 0; step < 240; step++) stepWorld(world);
+    expect(seaLucentCount(world)).toBeGreaterThanOrEqual(SEA_LUCENTS);
+    expect(world.organisms.filter((entry) => inPocket(entry.x, entry.y))).toHaveLength(0);
+  });
+
+  it('lets a visitor carry its own reserves through the pocket mouth', () => {
+    const world = createWorld(1);
     const link = pocketMouthSegment();
-    Object.assign(body, {
+    const body = {
+      id: world.nextId++,
+      species: 'marlgrub' as const,
       x: link.bx + link.ux * 16,
       y: link.by + link.uy * 16,
       vx: 0,
       vy: 0,
-      pigmentCredit: 0.28,
-    });
+      body: 0.1 as const,
+      reserve: 0.28,
+      age: 10,
+      hue: 40,
+      starvedFor: 0,
+      targetRemainId: null,
+      parentId: null,
+      nextBirthAt: 100,
+      traits: baselineTraits(),
+    };
+    world.marlgrubs.push(body);
     world.elapsed = 240;
     world.tick = 3;
     syncTide(world.elapsed);
     expect(tideRegion(body.x, body.y)).toBe('sea');
-    const credit = body.pigmentCredit;
+    const reserve = body.reserve;
     let arrived = false;
     for (let step = 0; step < 720; step++) {
       const before = tideRegion(body.x, body.y);
@@ -259,7 +293,7 @@ describe('tide and sea', () => {
       const next = tideRegion(body.x, body.y);
       if (before === 'sea' && (next === 'pocket' || next === 'pocketMouth')) {
         arrived = true;
-        expect(body.pigmentCredit).toBeCloseTo(credit, 3);
+        expect(body.reserve).toBeCloseTo(reserve, 3);
         expect(world.ecologyLedger.pocketArrivals).toBeGreaterThanOrEqual(1);
         expect(world.ecologyLedger.pocketPigmentIn).toBeGreaterThanOrEqual(pigmentIn);
         expect(Math.abs(locatedPigment(world) - held)).toBeLessThan(0.02);

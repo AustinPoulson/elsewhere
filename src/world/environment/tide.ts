@@ -12,6 +12,7 @@ import {
   inSea,
   mouthSegment,
   pocketConnectedAt,
+  pocketEbbAt,
   pocketFlowAt,
   pocketMouthSegment,
   syncTide,
@@ -22,7 +23,7 @@ import {
   type TideRegion,
 } from '../habitat';
 
-export { pocketConnectedAt, pocketFlowAt, tideConnectedAt, tideFlowAt, tideHeightAt, tideRegion };
+export { pocketConnectedAt, pocketEbbAt, pocketFlowAt, tideConnectedAt, tideFlowAt, tideHeightAt, tideRegion };
 import { confinePosition } from '../geometry';
 import { baselineTraits } from '../traits';
 import {
@@ -45,8 +46,11 @@ const WASH_CHANCE = 0.16;
 const WASH_DISTANCE = 40;
 const POCKET_WASH_DISTANCE = 48;
 const POCKET_WASH_TICK = 6;
+const POCKET_EBB_WASH_DISTANCE = 24;
+const POCKET_EBB_WASH_TICK = 18;
 export const SEA_LUCENTS = 4;
 export const SEA_GRAINS = 8;
+export const POCKET_LUCENT_CAP = 2;
 
 export type TideName = 'low' | 'rising' | 'high' | 'falling';
 
@@ -91,9 +95,9 @@ export function tideNote(elapsed: number): string {
 }
 
 export function pocketNote(elapsed: number): string {
-  return pocketConnectedAt(elapsed)
-    ? 'A high rock pool is open to the sea.'
-    : 'A high rock pool sits cut off above the tide.';
+  if (!pocketConnectedAt(elapsed)) return 'A high rock pool sits cut off above the tide.';
+  if (pocketEbbAt(elapsed)) return 'A high rock pool is leaking slowly back to the sea.';
+  return 'A high rock pool is open to the sea.';
 }
 
 export function initializeSea(world: World): void {
@@ -208,6 +212,30 @@ export function pocketBodyCount(world: World): number {
   let count = 0;
   for (const body of livingBodies(world)) {
     if (inPocket(body.x, body.y)) count++;
+  }
+  return count;
+}
+
+export function seaLucentCount(world: World): number {
+  let count = 0;
+  for (const body of world.organisms) {
+    if (inSea(body.x, body.y)) count++;
+  }
+  return count;
+}
+
+export function pocketLucentCount(world: World): number {
+  let count = 0;
+  for (const body of world.organisms) {
+    if (inPocket(body.x, body.y)) count++;
+  }
+  return count;
+}
+
+export function seaGrainCount(world: World): number {
+  let count = 0;
+  for (const grain of world.sediment) {
+    if (inSea(grain.x, grain.y)) count++;
   }
   return count;
 }
@@ -336,12 +364,18 @@ function pocketWashCandidate(world: World): MobileBody | null {
   if (flow === 0) return null;
   const seaCount = seaBodyCount(world);
   const pocketCount = pocketBodyCount(world);
+  const seaLucents = seaLucentCount(world);
+  const pocketLucents = pocketLucentCount(world);
   const candidates: MobileBody[] = [];
   for (const body of mobileBodies(world)) {
     if (!inPocketMouthReach(body)) continue;
     if (!pocketShoreSide(tideRegion(body.x, body.y), flow)) continue;
     if (flow > 0 && !inSea(body.x, body.y) && seaCount >= SEA_BODY_CAP) continue;
     if (flow < 0 && !inPocket(body.x, body.y) && pocketCount >= POCKET_BODY_CAP) continue;
+    if (flow < 0 && inSea(body.x, body.y)) {
+      if (body.species === 'grazer') continue;
+      if (body.species === 'lucent' && (seaLucents <= SEA_LUCENTS || pocketLucents >= POCKET_LUCENT_CAP)) continue;
+    }
     candidates.push(body);
   }
   if (candidates.length === 0) return null;
@@ -354,9 +388,10 @@ function shoveAlongLink(
   flow: number,
   margin: number,
   distance = WASH_DISTANCE,
+  minSpeed = TIDE_FLOW * 0.45,
 ): void {
   const dir = flow >= 0 ? 1 : -1;
-  const speed = Math.max(Math.abs(flow), TIDE_FLOW * 0.45);
+  const speed = Math.max(Math.abs(flow), minSpeed);
   body.x += link.ux * dir * distance * (speed / TIDE_FLOW);
   body.y += link.uy * dir * distance * (speed / TIDE_FLOW);
   confinePosition(body, margin);
@@ -377,12 +412,22 @@ function washOnce(world: World): void {
 }
 
 function washPocketOnce(world: World): void {
-  if (world.tick % POCKET_WASH_TICK !== 4) return;
   if (!pocketConnectedAt(world.elapsed)) return;
+  const ebb = pocketEbbAt(world.elapsed);
+  const tick = ebb ? POCKET_EBB_WASH_TICK : POCKET_WASH_TICK;
+  if (world.tick % tick !== 4) return;
   const body = pocketWashCandidate(world);
   if (!body) return;
   const margin = 'size' in body && typeof body.size === 'number' ? body.size + 3 : 11;
-  shoveAlongLink(body, pocketMouthSegment(), pocketFlowAt(world.elapsed), margin, POCKET_WASH_DISTANCE);
+  const flow = pocketFlowAt(world.elapsed);
+  shoveAlongLink(
+    body,
+    pocketMouthSegment(),
+    flow,
+    margin,
+    ebb ? POCKET_EBB_WASH_DISTANCE : POCKET_WASH_DISTANCE,
+    ebb ? 0 : TIDE_FLOW * 0.45,
+  );
 }
 
 export function applyTide(world: World, before: Map<number, TideRegion>): void {

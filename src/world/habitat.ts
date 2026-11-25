@@ -15,9 +15,11 @@ export const CHANNEL_INFLUENCE = 28;
 export const TIDE_PERIOD = 360;
 export const TIDE_CONNECT = 0.32;
 export const TIDE_POCKET_CONNECT = 0.72;
+export const TIDE_POCKET_EBB_CONNECT = 0.88;
+export const TIDE_POCKET_EBB_SCALE = 0.32;
 export const TIDE_FLOW = 3.6;
 export const TIDE_INFLUENCE = 24;
-export const TIDE_POCKET_INFLUENCE = 12;
+export const TIDE_POCKET_INFLUENCE = 24;
 export const TIDE_POCKET_PHASE = TIDE_PERIOD / 2;
 const POOL_RADIUS_EXTENT = 1.11;
 
@@ -140,6 +142,7 @@ let tideLevel = 0;
 let tideOpen = false;
 let pocketLevel = 0;
 let pocketOpen = false;
+let pocketEbb = false;
 
 export function syncTide(elapsed: number): void {
   if (elapsed !== tideElapsed) {
@@ -149,7 +152,11 @@ export function syncTide(elapsed: number): void {
     tideOpen = tideLevel >= TIDE_CONNECT;
     const pocketTurns = ((elapsed + TIDE_POCKET_PHASE) / TIDE_PERIOD) * Math.PI * 2;
     pocketLevel = Math.sin(pocketTurns);
-    pocketOpen = pocketLevel >= TIDE_POCKET_CONNECT && Math.cos(pocketTurns) > 1e-6;
+    const pocketCos = Math.cos(pocketTurns);
+    const rising = pocketCos > 1e-6;
+    const falling = pocketCos < -1e-6;
+    pocketOpen = (pocketLevel >= TIDE_POCKET_CONNECT && rising) || (pocketLevel >= TIDE_POCKET_EBB_CONNECT && falling);
+    pocketEbb = pocketOpen && falling;
   }
 }
 
@@ -177,7 +184,17 @@ export function pocketConnectedAt(elapsed: number): boolean {
 export function pocketFlowAt(elapsed: number): number {
   syncTide(elapsed);
   if (!pocketOpen) return 0;
-  return -Math.cos(((elapsed + TIDE_POCKET_PHASE) / TIDE_PERIOD) * Math.PI * 2) * TIDE_FLOW;
+  const flow = -Math.cos(((elapsed + TIDE_POCKET_PHASE) / TIDE_PERIOD) * Math.PI * 2) * TIDE_FLOW;
+  return pocketEbb ? flow * TIDE_POCKET_EBB_SCALE : flow;
+}
+
+export function pocketEbbAt(elapsed: number): boolean {
+  syncTide(elapsed);
+  return pocketEbb;
+}
+
+export function sharesPocketColor(ax: number, ay: number, bx: number, by: number): boolean {
+  return inPocket(ax, ay) === inPocket(bx, by);
 }
 
 export function linkedHabitat(): { pools: HabitatPool[]; channel: HabitatChannel } {
