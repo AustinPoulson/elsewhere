@@ -1,6 +1,6 @@
 import { DEEP_BASIN } from './environment/depth';
 import { MINERAL_SEAM } from './environment/mineral-seam';
-import { INLET_POOL, channelSegment, confineToWater, inInletPool, inOpeningPool } from './habitat';
+import { INLET_POOL, channelSegment, confineToWater, inInletPool, inOpeningPool, inPocket, inSea } from './habitat';
 import { isInPool, type AwayTrace, type AwayTraceKind, type Point, type ShoreMemory, type World } from './types';
 
 export const TRACE_MARK_CAP = 5;
@@ -36,7 +36,7 @@ function clamp01(value: number): number {
 }
 
 function inNeck(x: number, y: number): boolean {
-  return isInPool(x, y) && !inOpeningPool(x, y) && !inInletPool(x, y);
+  return isInPool(x, y) && !inOpeningPool(x, y) && !inInletPool(x, y) && !inSea(x, y) && !inPocket(x, y);
 }
 
 export function colorInInlet(world: Pick<World, 'sediment' | 'remains'>): number {

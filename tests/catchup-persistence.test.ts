@@ -19,6 +19,10 @@ function previousRevision(world: World): Record<string, unknown> {
   delete (previous.ecologyLedger as { tidePigmentOut?: number }).tidePigmentOut;
   delete (previous.ecologyLedger as { tideArrivals?: number }).tideArrivals;
   delete (previous.ecologyLedger as { tideDepartures?: number }).tideDepartures;
+  delete (previous.ecologyLedger as { pocketPigmentIn?: number }).pocketPigmentIn;
+  delete (previous.ecologyLedger as { pocketPigmentOut?: number }).pocketPigmentOut;
+  delete (previous.ecologyLedger as { pocketArrivals?: number }).pocketArrivals;
+  delete (previous.ecologyLedger as { pocketDepartures?: number }).pocketDepartures;
   return previous;
 }
 
@@ -85,7 +89,7 @@ describe('catch-up snapshot revision', () => {
         w.schemaRevision = 10;
       },
       (w) => {
-        w.schemaRevision = 21;
+        w.schemaRevision = 22;
       },
     ];
     for (const edit of edits) {

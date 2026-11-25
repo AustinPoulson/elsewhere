@@ -4,6 +4,7 @@ import {
   LIMITS,
   NEST_CAPACITY,
   MAX_CHANNEL_ARROWS,
+  MAX_POCKET_ARROWS,
   MAX_TIDE_ARROWS,
   WORLD_HEIGHT,
   WORLD_WIDTH,
@@ -17,10 +18,14 @@ import {
   HABITAT_POOLS,
   INLET_POOL,
   OPENING_POOL,
+  POCKET_POOL,
   SEA_POOL,
   channelFlowAt,
   channelSegment,
   mouthSegment,
+  pocketConnectedAt,
+  pocketFlowAt,
+  pocketMouthSegment,
   poolCoastPoint,
   tideConnectedAt,
   tideFlowAt,
@@ -179,6 +184,7 @@ export class TidepoolRenderer {
   private reducedMotion = false;
   private destroyed = false;
   private mouthOpen = false;
+  private pocketOpen = false;
   private awayTraces: readonly AwayTrace[] = [];
   private frame = 0;
   private view: CameraView = openingView();
@@ -342,14 +348,19 @@ export class TidepoolRenderer {
     this.mask.closePath().fill(0xffffff);
   }
 
-  private traceWaterMask(connected = false): void {
+  private traceWaterMask(connected = false, pocket = false): void {
     this.mask.clear();
     for (const pool of HABITAT_POOLS) this.tracePool(pool);
     this.tracePool(SEA_POOL);
+    this.tracePool(POCKET_POOL);
     const link = channelSegment();
     this.traceLink(link.ax, link.ay, link.bx, link.by, link.ux, link.uy, link.width);
     if (connected) {
       const mouth = mouthSegment();
+      this.traceLink(mouth.ax, mouth.ay, mouth.bx, mouth.by, mouth.ux, mouth.uy, mouth.width);
+    }
+    if (pocket) {
+      const mouth = pocketMouthSegment();
       this.traceLink(mouth.ax, mouth.ay, mouth.bx, mouth.by, mouth.ux, mouth.uy, mouth.width);
     }
   }
@@ -393,9 +404,11 @@ export class TidepoolRenderer {
     const time = this.reducedMotion ? 0 : world.elapsed;
     const weather = effectiveWeather(world);
     const connected = tideConnectedAt(world.elapsed);
-    if (connected !== this.mouthOpen) {
+    const pocket = pocketConnectedAt(world.elapsed);
+    if (connected !== this.mouthOpen || pocket !== this.pocketOpen) {
       this.mouthOpen = connected;
-      this.traceWaterMask(connected);
+      this.pocketOpen = pocket;
+      this.traceWaterMask(connected, pocket);
     }
     this.drawWater(time, daylight(world), world.elapsed);
     this.drawTide(world, time);
@@ -644,6 +657,7 @@ export class TidepoolRenderer {
     }
     this.drawChannelCurrent(world);
     this.drawTideCurrent(world);
+    this.drawPocketCurrent(world);
   }
 
   private drawTideCurrent(world: World): void {
@@ -701,6 +715,48 @@ export class TidepoolRenderer {
         color: 0x9fd0c6,
         alpha: 0.12 + height * 0.14,
       });
+    }
+    this.tideWash.ellipse(POCKET_POOL.x, POCKET_POOL.y, POCKET_POOL.rx * 0.9, POCKET_POOL.ry * 0.74).fill({
+      color: 0x6ea4a0,
+      alpha: 0.07 + height * 0.12 + pulse,
+    });
+    if (pocketConnectedAt(world.elapsed)) {
+      const mouth = pocketMouthSegment();
+      this.tideWash.ellipse((mouth.ax + mouth.bx) / 2, (mouth.ay + mouth.by) / 2, 16, 11).fill({
+        color: 0x9fd0c6,
+        alpha: 0.1 + height * 0.12,
+      });
+    }
+  }
+
+  private drawPocketCurrent(world: World): void {
+    const flow = pocketFlowAt(world.elapsed);
+    if (Math.abs(flow) < 0.05) return;
+    const link = pocketMouthSegment();
+    const strength = Math.min(1, Math.abs(flow) / 3.6);
+    const dir = flow >= 0 ? 1 : -1;
+    this.currentRibbonStyle.alpha = 0.1 + strength * 0.16;
+    this.currentRibbonStyle.width = 1.15;
+    const midX = (link.ax + link.bx) / 2;
+    const midY = (link.ay + link.by) / 2;
+    const span = Math.hypot(link.bx - link.ax, link.by - link.ay) * 0.42;
+    const offset = link.width * 0.18;
+    this.indicator
+      .moveTo(midX - link.uy * offset - link.ux * span, midY + link.ux * offset - link.uy * span)
+      .lineTo(midX - link.uy * offset + link.ux * span, midY + link.ux * offset + link.uy * span)
+      .stroke(this.currentRibbonStyle);
+    this.currentArrowStyle.alpha = 0.24 + strength * 0.28;
+    const phase = this.reducedMotion ? 0.5 : (world.elapsed * 0.07) % 1;
+    for (let arrow = 0; arrow < MAX_POCKET_ARROWS; arrow++) {
+      const along = (arrow + phase) / MAX_POCKET_ARROWS;
+      const travel = (along - 0.5) * span * 2;
+      this.drawFlowArrow(
+        midX + link.ux * travel,
+        midY + link.uy * travel,
+        link.ux * dir,
+        link.uy * dir,
+        this.currentArrowStyle,
+      );
     }
   }
 
@@ -1264,6 +1320,21 @@ export class TidepoolRenderer {
         color: caustic,
         width: 0.6,
         alpha: (glow + Math.sin(time * 0.3 + ribbon) * 0.015) * (1 - 0.72 * depthAt(x, y)),
+      });
+    }
+    for (let ribbon = 0; ribbon < 3; ribbon++) {
+      const x = POCKET_POOL.x - 28 + ((ribbon * 31) % 56);
+      const y = POCKET_POOL.y - 12 + ((ribbon * 19) % 28);
+      this.caustics.moveTo(x, y);
+      for (let segment = 1; segment <= 5; segment++) {
+        const offset = segment * 8;
+        const wave = Math.sin(time * 0.15 + ribbon + segment * 0.46);
+        this.caustics.lineTo(x + offset * 0.7, y - offset * 0.16 + wave * 3.5);
+      }
+      this.caustics.stroke({
+        color: caustic,
+        width: 0.5,
+        alpha: glow * 0.7 + Math.sin(time * 0.26 + ribbon) * 0.01,
       });
     }
     for (let ribbon = 0; ribbon < 4; ribbon++) {

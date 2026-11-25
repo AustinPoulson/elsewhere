@@ -38,7 +38,7 @@ import { lockedColorReturning } from './world/environment/locked-return';
 import { unusedNestsSlumping } from './world/environment/nest-slump';
 import { unusedRemainsSlumping } from './world/environment/remain-slump';
 import { getSeason } from './world/environment/seasons';
-import { tideNote } from './world/environment/tide';
+import { pocketNote, tideNote } from './world/environment/tide';
 import { describeBulk, describeDrive } from './world/traits';
 import { MAX_CURRENTS } from './world/actions/current';
 import { FOSSIL_LABEL } from './world/species/fossils';
@@ -1113,6 +1113,7 @@ export function App() {
   const weather = effectiveWeather(worldRef.current);
   const season = getSeason(worldRef.current.elapsed);
   const tide = tideNote(worldRef.current.elapsed);
+  const pocket = pocketNote(worldRef.current.elapsed);
   const shoreMemoryNote = describeShoreMemory(shoreMemory);
 
   return (
@@ -1324,6 +1325,12 @@ export function App() {
           {stats.tideConnected
             ? ` ${stats.seaBodies} ${stats.seaBodies === 1 ? 'body' : 'bodies'} offshore; ${stats.seaPigment.toFixed(1)} pigment in the sea.`
             : ` The sea holds ${stats.seaBodies} ${stats.seaBodies === 1 ? 'body' : 'bodies'} and ${stats.seaPigment.toFixed(1)} pigment.`}
+        </div>
+        <div className="pocket-readout" aria-live="polite">
+          {pocket}{' '}
+          {stats.pocketBodies === 0 && stats.pocketPigment < 0.05
+            ? 'It is empty until color or bodies wash in from the sea.'
+            : `It holds ${stats.pocketBodies} ${stats.pocketBodies === 1 ? 'body' : 'bodies'} and ${stats.pocketPigment.toFixed(1)} pigment.`}
         </div>
         {unusedNestsSlumping(worldRef.current) ? (
           <div className="slump-readout" aria-live="polite">
@@ -1891,6 +1898,21 @@ export function App() {
                       with its own pigment and a few coarse lives. Opening worlds pay for that sea from conserved color.
                       An old save receives the empty basin, not a gifted population. The observations list names the
                       tide for everyone, including a screen reader. Reduced motion keeps the indicator still.
+                    </p>
+                  </div>
+                </div>
+                <div className="guide-entry">
+                  <span className="entry-number">25</span>
+                  <div>
+                    <h3>A high rock pool</h3>
+                    <p>
+                      A second small basin sits on the same shore, fed by the same sea through its own mouth. It sits
+                      higher, and that mouth opens on the opposite tide from the northern gate, only while the pocket
+                      flood is still rising, so the basin fills and then sits cut off instead of emptying on the ebb. It
+                      starts empty: no gifted organisms or pigment. Color and bodies that wash in carry their own
+                      reserves. A lineage that dies in the opening pool can persist here and return only by a real
+                      crossing. The observations list names the pocket and whether it is open. Reduced motion keeps it
+                      still. Portrait keeps the same world coordinates.
                     </p>
                   </div>
                 </div>

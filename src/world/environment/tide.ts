@@ -6,8 +6,14 @@ import {
   TIDE_INFLUENCE,
   TIDE_MOUTH_WIDTH,
   TIDE_PERIOD,
+  TIDE_POCKET_INFLUENCE,
+  TIDE_POCKET_MOUTH_WIDTH,
+  inPocket,
   inSea,
   mouthSegment,
+  pocketConnectedAt,
+  pocketFlowAt,
+  pocketMouthSegment,
   syncTide,
   tideConnectedAt,
   tideFlowAt,
@@ -16,11 +22,12 @@ import {
   type TideRegion,
 } from '../habitat';
 
-export { tideConnectedAt, tideFlowAt, tideHeightAt, tideRegion };
+export { pocketConnectedAt, pocketFlowAt, tideConnectedAt, tideFlowAt, tideHeightAt, tideRegion };
 import { confinePosition } from '../geometry';
 import { baselineTraits } from '../traits';
 import {
   LIMITS,
+  POCKET_BODY_CAP,
   SEA_BODY_CAP,
   SEA_SEDIMENT_CAP,
   type CargoMite,
@@ -36,6 +43,8 @@ import {
 const TAU = Math.PI * 2;
 const WASH_CHANCE = 0.16;
 const WASH_DISTANCE = 40;
+const POCKET_WASH_DISTANCE = 48;
+const POCKET_WASH_TICK = 6;
 export const SEA_LUCENTS = 4;
 export const SEA_GRAINS = 8;
 
@@ -79,6 +88,12 @@ export function tideNote(elapsed: number): string {
   return connected
     ? 'The tide is falling. The mouth is still open.'
     : 'The tide is falling. The pool is cut off from the sea.';
+}
+
+export function pocketNote(elapsed: number): string {
+  return pocketConnectedAt(elapsed)
+    ? 'A high rock pool is open to the sea.'
+    : 'A high rock pool sits cut off above the tide.';
 }
 
 export function initializeSea(world: World): void {
@@ -167,9 +182,8 @@ function allLocated(world: World): Point[] {
   ];
 }
 
-export function seaBodyCount(world: World): number {
-  let count = 0;
-  for (const body of [
+function livingBodies(world: World): Point[] {
+  return [
     ...world.organisms,
     ...world.grazers,
     ...world.skimmers,
@@ -179,54 +193,47 @@ export function seaBodyCount(world: World): number {
     ...world.glassLimpets,
     ...world.cargoMites,
     ...world.marlgrubs,
-  ]) {
+  ];
+}
+
+export function seaBodyCount(world: World): number {
+  let count = 0;
+  for (const body of livingBodies(world)) {
     if (inSea(body.x, body.y)) count++;
   }
   return count;
 }
 
-export function pigmentInSea(world: World): number {
+export function pocketBodyCount(world: World): number {
+  let count = 0;
+  for (const body of livingBodies(world)) {
+    if (inPocket(body.x, body.y)) count++;
+  }
+  return count;
+}
+
+function pigmentInRegion(world: World, inRegion: (x: number, y: number) => boolean): number {
   let total = 0;
-  for (const grain of world.sediment) if (inSea(grain.x, grain.y)) total += grain.strength;
-  for (const remain of world.remains) if (inSea(remain.x, remain.y)) total += remain.pigment;
-  for (const fossil of world.fossils) if (inSea(fossil.x, fossil.y)) total += fossil.pigment;
-  for (const nest of world.nests) if (inSea(nest.x, nest.y)) total += nest.pigment;
-  for (const body of [
-    ...world.organisms,
-    ...world.grazers,
-    ...world.skimmers,
-    ...world.siltstitchers,
-    ...world.reedwells,
-    ...world.rainbells,
-    ...world.glassLimpets,
-    ...world.cargoMites,
-    ...world.marlgrubs,
-  ]) {
-    if (inSea(body.x, body.y)) total += carriedPigment(body);
+  for (const grain of world.sediment) if (inRegion(grain.x, grain.y)) total += grain.strength;
+  for (const remain of world.remains) if (inRegion(remain.x, remain.y)) total += remain.pigment;
+  for (const fossil of world.fossils) if (inRegion(fossil.x, fossil.y)) total += fossil.pigment;
+  for (const nest of world.nests) if (inRegion(nest.x, nest.y)) total += nest.pigment;
+  for (const body of livingBodies(world)) {
+    if (inRegion(body.x, body.y)) total += carriedPigment(body);
   }
   return total;
 }
 
+export function pigmentInSea(world: World): number {
+  return pigmentInRegion(world, inSea);
+}
+
+export function pigmentInPocket(world: World): number {
+  return pigmentInRegion(world, inPocket);
+}
+
 export function pigmentOnShore(world: World): number {
-  let total = 0;
-  for (const grain of world.sediment) if (!inSea(grain.x, grain.y)) total += grain.strength;
-  for (const remain of world.remains) if (!inSea(remain.x, remain.y)) total += remain.pigment;
-  for (const fossil of world.fossils) if (!inSea(fossil.x, fossil.y)) total += fossil.pigment;
-  for (const nest of world.nests) if (!inSea(nest.x, nest.y)) total += nest.pigment;
-  for (const body of [
-    ...world.organisms,
-    ...world.grazers,
-    ...world.skimmers,
-    ...world.siltstitchers,
-    ...world.reedwells,
-    ...world.rainbells,
-    ...world.glassLimpets,
-    ...world.cargoMites,
-    ...world.marlgrubs,
-  ]) {
-    if (!inSea(body.x, body.y)) total += carriedPigment(body);
-  }
-  return total;
+  return pigmentInRegion(world, (x, y) => !inSea(x, y) && !inPocket(x, y));
 }
 
 function shoreSide(region: TideRegion, flow: number): boolean {
@@ -234,14 +241,31 @@ function shoreSide(region: TideRegion, flow: number): boolean {
   return region === 'pool' || region === 'mouth';
 }
 
-function inMouthReach(body: Point): boolean {
-  const link = mouthSegment();
-  const reach = TIDE_MOUTH_WIDTH / 2 + TIDE_INFLUENCE;
+function pocketShoreSide(region: TideRegion, flow: number): boolean {
+  if (flow < 0) return region === 'sea' || region === 'pocketMouth';
+  return region === 'pocket' || region === 'pocketMouth';
+}
+
+function inLinkReach(
+  body: Point,
+  link: { ax: number; ay: number; bx: number; by: number },
+  width: number,
+  influence: number,
+): boolean {
+  const reach = width / 2 + influence;
   const abx = link.bx - link.ax;
   const aby = link.by - link.ay;
   const span = abx * abx + aby * aby;
   const t = span === 0 ? 0 : Math.min(1, Math.max(0, ((body.x - link.ax) * abx + (body.y - link.ay) * aby) / span));
   return Math.hypot(body.x - (link.ax + t * abx), body.y - (link.ay + t * aby)) <= reach;
+}
+
+function inMouthReach(body: Point): boolean {
+  return inLinkReach(body, mouthSegment(), TIDE_MOUTH_WIDTH, TIDE_INFLUENCE);
+}
+
+function inPocketMouthReach(body: Point): boolean {
+  return inLinkReach(body, pocketMouthSegment(), TIDE_POCKET_MOUTH_WIDTH, TIDE_POCKET_INFLUENCE);
 }
 
 function snapshotRegions(world: World): Map<number, TideRegion> {
@@ -263,6 +287,8 @@ function accountCrossings(world: World, before: Map<number, TideRegion>): void {
     if (!previous || previous === next) continue;
     const fromSea = previous === 'sea' && (next === 'pool' || next === 'mouth');
     const toSea = next === 'sea' && (previous === 'pool' || previous === 'mouth');
+    const intoPocket = previous === 'sea' && (next === 'pocket' || next === 'pocketMouth');
+    const outOfPocket = next === 'sea' && (previous === 'pocket' || previous === 'pocketMouth');
     const pigment = carriedPigment(body);
     const isBody = 'species' in body && body.species !== 'remain' && body.species !== 'fossil';
     const mobile =
@@ -279,6 +305,13 @@ function accountCrossings(world: World, before: Map<number, TideRegion>): void {
     } else if (toSea) {
       world.ecologyLedger.tidePigmentOut += pigment;
       if (mobile) world.ecologyLedger.tideDepartures += 1;
+    }
+    if (intoPocket) {
+      world.ecologyLedger.pocketPigmentIn += pigment;
+      if (mobile) world.ecologyLedger.pocketArrivals += 1;
+    } else if (outOfPocket) {
+      world.ecologyLedger.pocketPigmentOut += pigment;
+      if (mobile) world.ecologyLedger.pocketDepartures += 1;
     }
   }
 }
@@ -298,14 +331,39 @@ function washCandidate(world: World): MobileBody | null {
   return candidates[Math.floor(world.tick / 6) % candidates.length];
 }
 
-function shoveAlongTide(body: Point, elapsed: number, margin: number): void {
-  const link = mouthSegment();
-  const flow = tideFlowAt(elapsed);
+function pocketWashCandidate(world: World): MobileBody | null {
+  const flow = pocketFlowAt(world.elapsed);
+  if (flow === 0) return null;
+  const seaCount = seaBodyCount(world);
+  const pocketCount = pocketBodyCount(world);
+  const candidates: MobileBody[] = [];
+  for (const body of mobileBodies(world)) {
+    if (!inPocketMouthReach(body)) continue;
+    if (!pocketShoreSide(tideRegion(body.x, body.y), flow)) continue;
+    if (flow > 0 && !inSea(body.x, body.y) && seaCount >= SEA_BODY_CAP) continue;
+    if (flow < 0 && !inPocket(body.x, body.y) && pocketCount >= POCKET_BODY_CAP) continue;
+    candidates.push(body);
+  }
+  if (candidates.length === 0) return null;
+  return candidates[Math.floor(world.tick / 6) % candidates.length];
+}
+
+function shoveAlongLink(
+  body: Point,
+  link: { ux: number; uy: number },
+  flow: number,
+  margin: number,
+  distance = WASH_DISTANCE,
+): void {
   const dir = flow >= 0 ? 1 : -1;
   const speed = Math.max(Math.abs(flow), TIDE_FLOW * 0.45);
-  body.x += link.ux * dir * WASH_DISTANCE * (speed / TIDE_FLOW);
-  body.y += link.uy * dir * WASH_DISTANCE * (speed / TIDE_FLOW);
+  body.x += link.ux * dir * distance * (speed / TIDE_FLOW);
+  body.y += link.uy * dir * distance * (speed / TIDE_FLOW);
   confinePosition(body, margin);
+}
+
+function shoveAlongTide(body: Point, elapsed: number, margin: number): void {
+  shoveAlongLink(body, mouthSegment(), tideFlowAt(elapsed), margin);
 }
 
 function washOnce(world: World): void {
@@ -318,15 +376,25 @@ function washOnce(world: World): void {
   shoveAlongTide(body, world.elapsed, margin);
 }
 
+function washPocketOnce(world: World): void {
+  if (world.tick % POCKET_WASH_TICK !== 4) return;
+  if (!pocketConnectedAt(world.elapsed)) return;
+  const body = pocketWashCandidate(world);
+  if (!body) return;
+  const margin = 'size' in body && typeof body.size === 'number' ? body.size + 3 : 11;
+  shoveAlongLink(body, pocketMouthSegment(), pocketFlowAt(world.elapsed), margin, POCKET_WASH_DISTANCE);
+}
+
 export function applyTide(world: World, before: Map<number, TideRegion>): void {
   syncTide(world.elapsed);
   washOnce(world);
+  washPocketOnce(world);
   if (before.size > 0) accountCrossings(world, before);
 }
 
 export function beginTideStep(world: World): Map<number, TideRegion> {
   syncTide(world.elapsed);
-  if (!tideConnectedAt(world.elapsed)) return new Map();
+  if (!tideConnectedAt(world.elapsed) && !pocketConnectedAt(world.elapsed)) return new Map();
   return snapshotRegions(world);
 }
 

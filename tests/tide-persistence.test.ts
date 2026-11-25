@@ -14,11 +14,19 @@ function previousRevision(world: World): Record<string, unknown> {
     tidePigmentOut?: number;
     tideArrivals?: number;
     tideDepartures?: number;
+    pocketPigmentIn?: number;
+    pocketPigmentOut?: number;
+    pocketArrivals?: number;
+    pocketDepartures?: number;
   };
   delete ledger.tidePigmentIn;
   delete ledger.tidePigmentOut;
   delete ledger.tideArrivals;
   delete ledger.tideDepartures;
+  delete ledger.pocketPigmentIn;
+  delete ledger.pocketPigmentOut;
+  delete ledger.pocketArrivals;
+  delete ledger.pocketDepartures;
   return previous;
 }
 
@@ -83,7 +91,7 @@ describe('tide snapshot revision', () => {
         w.schemaRevision = 19;
       },
       (w) => {
-        w.schemaRevision = 21;
+        w.schemaRevision = 22;
       },
       (w) => {
         (w.ecologyLedger as { tideArrivals: number }).tideArrivals = -1;

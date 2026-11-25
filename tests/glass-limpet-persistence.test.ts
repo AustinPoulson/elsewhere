@@ -51,6 +51,10 @@ function revision6(world: World): Record<string, any> {
     'tidePigmentOut',
     'tideArrivals',
     'tideDepartures',
+    'pocketPigmentIn',
+    'pocketPigmentOut',
+    'pocketArrivals',
+    'pocketDepartures',
   ])
     delete old.ecologyLedger[key];
   return old;
@@ -274,6 +278,10 @@ describe('glass limpet snapshot revision', () => {
     delete previous.ecologyLedger.tidePigmentOut;
     delete previous.ecologyLedger.tideArrivals;
     delete previous.ecologyLedger.tideDepartures;
+    delete previous.ecologyLedger.pocketPigmentIn;
+    delete previous.ecologyLedger.pocketPigmentOut;
+    delete previous.ecologyLedger.pocketArrivals;
+    delete previous.ecologyLedger.pocketDepartures;
     previous.glassLimpets = previous.glassLimpets.map(
       ({ parentId: _parentId, nextBirthAt: _nextBirthAt, ...rest }: Record<string, unknown>) => rest,
     );

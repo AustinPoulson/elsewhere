@@ -1,6 +1,6 @@
 import { DEEP_BASIN } from '../world/environment/depth';
 import { MINERAL_SEAM } from '../world/environment/mineral-seam';
-import { channelSegment, INLET_POOL, OPENING_POOL, SEA_POOL, poolCoastPoint } from '../world/habitat';
+import { channelSegment, INLET_POOL, OPENING_POOL, POCKET_POOL, SEA_POOL, poolCoastPoint } from '../world/habitat';
 import { WORLD_HEIGHT, WORLD_WIDTH, type HabitatPool } from '../world/types';
 
 const TAU = Math.PI * 2;
@@ -193,6 +193,27 @@ export function createTerrain(): HTMLCanvasElement {
   coastline(ctx, 1.004, 0, SEA_POOL);
   ctx.strokeStyle = 'rgba(120,168,158,.22)';
   ctx.lineWidth = 0.8;
+  ctx.stroke();
+  const pocketWater = ctx.createRadialGradient(
+    POCKET_POOL.x,
+    POCKET_POOL.y,
+    8,
+    POCKET_POOL.x,
+    POCKET_POOL.y,
+    POCKET_POOL.rx,
+  );
+  pocketWater.addColorStop(0, '#0c2c33');
+  pocketWater.addColorStop(1, '#0a2428');
+  coastline(ctx, 1, 0, POCKET_POOL);
+  ctx.fillStyle = pocketWater;
+  ctx.fill();
+  coastline(ctx, 1.008, 0, POCKET_POOL);
+  ctx.strokeStyle = 'rgba(150,160,133,.22)';
+  ctx.lineWidth = 0.9;
+  ctx.stroke();
+  coastline(ctx, 1.03, 0, POCKET_POOL);
+  ctx.strokeStyle = 'rgba(130,146,119,.14)';
+  ctx.lineWidth = 0.6;
   ctx.stroke();
   for (let grain = 0; grain < 2400; grain++) {
     const angle = random() * TAU;

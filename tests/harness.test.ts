@@ -90,8 +90,12 @@ describe('headless harness', () => {
     expect(quiet.basins.length).toBeGreaterThan(1);
     expect(quiet.basins[0].sea.lucents).toBe(4);
     expect(quiet.basins[0].pool.lucents).toBe(24);
+    expect(quiet.basins[0].pocket.lucents).toBe(0);
     expect(quiet.ledger.tideArrivals).toBeGreaterThanOrEqual(0);
     expect(quiet.ledger.tideDepartures).toBeGreaterThanOrEqual(0);
+    expect(quiet.ledger.pocketArrivals).toBeGreaterThanOrEqual(0);
+    expect(quiet.ledger.pocketDepartures).toBeGreaterThanOrEqual(0);
+    expect(quiet.conservationCheck.pocketPartitioned).toBe(true);
     expect(quiet.lifetimeTraits.lucents).toMatchObject({ count: expect.any(Number), drive: 1, bulk: 1 });
     expect(quiet.resources.ambientHarvested).toBeGreaterThan(0);
     expect(quiet.conservationCheck.remainsBalanced).toBe(true);
