@@ -138,6 +138,8 @@ function revision3(world: World): Record<string, any> {
     'tidePigmentOut',
     'tideArrivals',
     'tideDepartures',
+    'strandlineSettled',
+    'strandlineLeached',
   ])
     delete result.ecologyLedger[key];
   return result;
@@ -209,6 +211,8 @@ describe('reedwell snapshot revision', () => {
       'tidePigmentOut',
       'tideArrivals',
       'tideDepartures',
+      'strandlineSettled',
+      'strandlineLeached',
     ]) {
       expect(oldLedger[key]).toBe(0);
       delete oldLedger[key];
@@ -408,7 +412,7 @@ describe('reedwell snapshot revision', () => {
         w.nextId += 7;
       },
       (w) => {
-        w.schemaRevision = 21;
+        w.schemaRevision = 22;
       },
     ];
     for (const key of reedwellLedgerKeys) {

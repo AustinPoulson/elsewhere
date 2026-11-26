@@ -33,6 +33,8 @@ function previousRevision(world: World): Record<string, unknown> {
   delete previous.ecologyLedger.tidePigmentOut;
   delete previous.ecologyLedger.tideArrivals;
   delete previous.ecologyLedger.tideDepartures;
+  delete previous.ecologyLedger.strandlineSettled;
+  delete previous.ecologyLedger.strandlineLeached;
   return previous;
 }
 
@@ -46,6 +48,7 @@ function sampleTrace(formedAt: number, strength = 0.5): AwayTrace {
       inletDelta: 0,
       inletBodiesDelta: 0,
       channelOccupied: false,
+      strandlineDelta: 0,
     })[0] ?? {
       kind: 'extinction',
       x: 640,
@@ -150,6 +153,7 @@ describe('away-trace snapshot revision', () => {
       inletDelta: 0,
       inletBodiesDelta: 0,
       channelOccupied: false,
+      strandlineDelta: 0,
     });
     expect(traces).toHaveLength(1);
     expect(isInPool(traces[0].x, traces[0].y, TRACE_POOL_MARGIN)).toBe(true);
@@ -186,7 +190,7 @@ describe('away-trace snapshot revision', () => {
         w.schemaRevision = 14;
       },
       (w) => {
-        w.schemaRevision = 21;
+        w.schemaRevision = 22;
       },
       (w) => {
         w.awayTraces = Array.from({ length: TRACE_MARK_CAP + 1 }, () => sampleTrace(0));

@@ -15,6 +15,7 @@ import {
   tideRegion,
   type TideRegion,
 } from '../habitat';
+import { inStrandline } from './strandline';
 
 export { tideConnectedAt, tideFlowAt, tideHeightAt, tideRegion };
 import { confinePosition } from '../geometry';
@@ -55,6 +56,12 @@ function seaPoint(seed: number, lane: number, margin: number): Point {
     y: SEA_POOL.y + Math.sin(angle) * radius * (SEA_POOL.ry - margin),
   };
   confinePosition(point, margin);
+  while (inStrandline(point.x, point.y)) {
+    point.x = SEA_POOL.x + (point.x - SEA_POOL.x) * 0.62;
+    point.y = SEA_POOL.y + (point.y - SEA_POOL.y) * 0.62;
+    confinePosition(point, margin);
+    if (Math.hypot(point.x - SEA_POOL.x, point.y - SEA_POOL.y) < 8) break;
+  }
   return point;
 }
 
@@ -112,7 +119,7 @@ export function initializeSea(world: World): void {
   for (const grain of world.sediment) if (inSea(grain.x, grain.y)) seaGrains++;
   for (let i = 0; i < SEA_GRAINS && world.sediment.length < LIMITS.sediment && seaGrains < SEA_SEDIMENT_CAP; i++) {
     const point = seaPoint(world.seed, 200 + i * 5, 12);
-    if (!inSea(point.x, point.y)) continue;
+    if (!inSea(point.x, point.y) || inStrandline(point.x, point.y)) continue;
     seaGrains++;
     world.sediment.push({
       id: world.nextId++,

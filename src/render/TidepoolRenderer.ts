@@ -47,6 +47,7 @@ import { cargoMiteDisplayPoint } from './cargoMiteDisplay';
 import { daylight } from '../world/environment/daylight';
 import { DEEP_BASIN, depthAt, lightScale, rainScale } from '../world/environment/depth';
 import { MINERAL_SEAM, seamRemaining } from '../world/environment/mineral-seam';
+import { STRANDLINE, pigmentOnStrandline, strandlineAnchor } from '../world/environment/strandline';
 import { seasonCausticColor, seasonWashColor } from '../world/environment/seasons';
 import { skimmerReserveCapacity } from '../world/species/skimmer';
 import { appearanceGlow, appearanceScale } from '../world/traits';
@@ -148,6 +149,7 @@ export class TidepoolRenderer {
   private readonly trails = new Graphics();
   private readonly seasonWash = new Graphics();
   private readonly tideWash = new Graphics();
+  private readonly strandlineWash = new Graphics();
   private readonly deepBasin = new Graphics();
   private readonly seamVein = new Graphics();
   private readonly caustics = new Graphics();
@@ -212,6 +214,7 @@ export class TidepoolRenderer {
     this.water.addChild(
       this.seasonWash,
       this.tideWash,
+      this.strandlineWash,
       this.deepBasin,
       this.seamVein,
       this.lightPatchLayer,
@@ -399,6 +402,7 @@ export class TidepoolRenderer {
     }
     this.drawWater(time, daylight(world), world.elapsed);
     this.drawTide(world, time);
+    this.drawStrandline(world, time);
     this.drawDeepBasin(time);
     this.drawMineralSeam(world, time);
     // The first held ringlets acknowledge a paused call; feeding reach still uses actual intensity.
@@ -946,6 +950,11 @@ export class TidepoolRenderer {
         this.awayMarks.ellipse(trace.x, trace.y, 18, 12).stroke({ color: 0xd7e6cc, alpha: fade * 0.32, width: 1.1 });
         continue;
       }
+      if (trace.kind === 'strandline') {
+        this.awayMarks.ellipse(trace.x, trace.y, 48, 14).fill({ color: 0x6a4a2c, alpha: fade * 0.32 });
+        this.awayMarks.ellipse(trace.x, trace.y, 22, 6).fill({ color: tint, alpha: fade * 0.22 });
+        continue;
+      }
       this.awayMarks.ellipse(trace.x, trace.y, 16, 7).fill({ color: 0x241c16, alpha: fade * 0.38 });
       this.awayMarks.ellipse(trace.x, trace.y, 16, 7).stroke({ color: tint, alpha: fade * 0.55, width: 1.2 });
       this.awayMarks
@@ -1203,6 +1212,22 @@ export class TidepoolRenderer {
         this.grazers.delete(id);
       }
     }
+  }
+
+  private drawStrandline(world: World, time: number): void {
+    this.strandlineWash.clear();
+    const held = pigmentOnStrandline(world);
+    const pulse = time === 0 ? 0 : Math.sin(time * 0.09) * 0.02;
+    const load = Math.min(1, held / 1.2);
+    const center = strandlineAnchor();
+    this.strandlineWash.ellipse(center.x, center.y, STRANDLINE.rx, STRANDLINE.ry).fill({
+      color: 0x6d5340,
+      alpha: 0.12 + load * 0.22 + pulse,
+    });
+    this.strandlineWash.ellipse(center.x, center.y + 4, STRANDLINE.rx * 0.72, STRANDLINE.ry * 0.42).fill({
+      color: 0xc4a06a,
+      alpha: 0.08 + load * 0.2 + pulse,
+    });
   }
 
   private drawDeepBasin(time: number): void {

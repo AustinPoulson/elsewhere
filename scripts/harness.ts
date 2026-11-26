@@ -16,6 +16,7 @@ import { fossilsInDeep, inDeep, pigmentInDeep, remainsInDeep } from '../src/worl
 import { inInletPool, inOpeningPool, inSea } from '../src/world/habitat';
 import { seasonName, YEAR_DAYS, YEAR_SECONDS, type SeasonName } from '../src/world/environment/seasons';
 import { pigmentInSea, pigmentOnShore, tideConnectedAt, tideNameAt } from '../src/world/environment/tide';
+import { inStrandline, pigmentOnStrandline } from '../src/world/environment/strandline';
 import { FIXED_STEP, type FossilSource, type Traits, type World } from '../src/world/types';
 import * as fs from 'node:fs';
 
@@ -87,8 +88,10 @@ interface BasinSample {
   tide: ReturnType<typeof tideNameAt>;
   pool: RegionLineages;
   sea: RegionLineages;
+  strandline: RegionLineages;
   poolPigment: number;
   seaPigment: number;
+  strandlinePigment: number;
 }
 
 const LINEAGE_KEYS: (keyof RegionLineages)[] = [
@@ -146,6 +149,8 @@ export interface HarnessReport {
     seaPigment: number;
     shorePigment: number;
     seaBodies: number;
+    strandlinePigment: number;
+    strandlineBodies: number;
   };
   tide: {
     arrivals: number;
@@ -154,6 +159,7 @@ export interface HarnessReport {
     pigmentOut: number;
     poolExtinctAt: Record<keyof RegionLineages, number | null>;
     seaExtinctAt: Record<keyof RegionLineages, number | null>;
+    strandlineExtinctAt: Record<keyof RegionLineages, number | null>;
   };
   fossilsBySource: Record<FossilSource, { count: number; pigment: number }>;
   founding: FoundingCensus;
@@ -175,6 +181,7 @@ export interface HarnessReport {
     seamAccrued: number;
     seamBalanced: boolean;
     tidePartitioned: boolean;
+    strandlinePartitioned: boolean;
     note: string;
   };
 }
@@ -398,9 +405,11 @@ export function runHarness(config: HarnessConfig): HarnessReport {
       connected: tideConnectedAt(world.elapsed),
       tide: tideNameAt(world.elapsed),
       pool: regionLineages((x, y) => !inSea(x, y)),
-      sea: regionLineages(inSea),
+      sea: regionLineages((x, y) => inSea(x, y) && !inStrandline(x, y)),
+      strandline: regionLineages(inStrandline),
       poolPigment: pigmentOnShore(world),
       seaPigment: pigmentInSea(world),
+      strandlinePigment: pigmentOnStrandline(world),
     };
   }
 
@@ -420,20 +429,26 @@ export function runHarness(config: HarnessConfig): HarnessReport {
 
   const poolExtinctAt = emptyExtinctions();
   const seaExtinctAt = emptyExtinctions();
+  const strandlineExtinctAt = emptyExtinctions();
   let prevPool = regionLineages((x, y) => !inSea(x, y));
-  let prevSea = regionLineages(inSea);
+  let prevSea = regionLineages((x, y) => inSea(x, y) && !inStrandline(x, y));
+  let prevStrandline = regionLineages(inStrandline);
 
   function updateRegionExtinctions(): void {
     const pool = regionLineages((x, y) => !inSea(x, y));
-    const sea = regionLineages(inSea);
+    const sea = regionLineages((x, y) => inSea(x, y) && !inStrandline(x, y));
+    const strand = regionLineages(inStrandline);
     for (const kind of LINEAGE_KEYS) {
       if (pool[kind] === 0 && prevPool[kind] > 0) poolExtinctAt[kind] = world.elapsed;
       if (pool[kind] > 0) poolExtinctAt[kind] = null;
       if (sea[kind] === 0 && prevSea[kind] > 0) seaExtinctAt[kind] = world.elapsed;
       if (sea[kind] > 0) seaExtinctAt[kind] = null;
+      if (strand[kind] === 0 && prevStrandline[kind] > 0) strandlineExtinctAt[kind] = world.elapsed;
+      if (strand[kind] > 0) strandlineExtinctAt[kind] = null;
     }
     prevPool = pool;
     prevSea = sea;
+    prevStrandline = strand;
   }
 
   function samplePopulation(): PopulationSample {
@@ -615,6 +630,18 @@ export function runHarness(config: HarnessConfig): HarnessReport {
         ...world.cargoMites,
         ...world.marlgrubs,
       ].filter((body) => inSea(body.x, body.y)).length,
+      strandlinePigment: pigmentOnStrandline(world),
+      strandlineBodies: [
+        ...world.organisms,
+        ...world.grazers,
+        ...world.skimmers,
+        ...world.siltstitchers,
+        ...world.reedwells,
+        ...world.rainbells,
+        ...world.glassLimpets,
+        ...world.cargoMites,
+        ...world.marlgrubs,
+      ].filter((body) => inStrandline(body.x, body.y)).length,
     },
     tide: {
       arrivals: world.ecologyLedger.tideArrivals,
@@ -623,6 +650,7 @@ export function runHarness(config: HarnessConfig): HarnessReport {
       pigmentOut: world.ecologyLedger.tidePigmentOut,
       poolExtinctAt,
       seaExtinctAt,
+      strandlineExtinctAt,
     },
     fossilsBySource: fossilsBySource(world),
     founding: watchFounding(world),
@@ -660,7 +688,12 @@ export function runHarness(config: HarnessConfig): HarnessReport {
         Number.isFinite(pigmentOnShore(world)) &&
         world.ecologyLedger.tidePigmentIn >= 0 &&
         world.ecologyLedger.tidePigmentOut >= 0,
-      note: 'Remains created equal held plus consumed plus decayed. Fossil pigment equals fossils formed; it is paid remain color, not a new population. Seam remaining plus accrued plus dissolved equals the finite vein. Tide pigment in and out are transfers of already-paid color, not new pigment. Daylight and visitor light correlate with pigment rather than matching because of the energy floor, fade, and night.',
+      strandlinePartitioned:
+        Number.isFinite(pigmentOnStrandline(world)) &&
+        world.ecologyLedger.strandlineSettled >= 0 &&
+        world.ecologyLedger.strandlineLeached >= 0 &&
+        pigmentOnStrandline(world) <= pigmentInSea(world) + 1e-9,
+      note: 'Remains created equal held plus consumed plus decayed. Fossil pigment equals fossils formed; it is paid remain color, not a new population. Seam remaining plus accrued plus dissolved equals the finite vein. Tide pigment in and out are transfers of already-paid color, not new pigment. Strandline settled and leached are transfers of color that crossed the mouth, not new pigment; held wrack is a subset of sea pigment. Daylight and visitor light correlate with pigment rather than matching because of the energy floor, fade, and night.',
     },
   };
 }
@@ -703,6 +736,9 @@ export function printReport(report: HarnessReport): void {
   console.log(`   Glass limpets: ${final.glassLimpets}`);
   console.log(`   Cargo mites: ${final.cargoMites}`);
   console.log(`   Marlgrubs: ${final.marlgrubs}`);
+  const visitorLineages =
+    (final.siltstitchers > 0 ? 1 : 0) + (final.glassLimpets > 0 ? 1 : 0) + (final.marlgrubs > 0 ? 1 : 0);
+  console.log(`   Visitor lineages alive: ${visitorLineages} of 3 (siltstitcher, glass limpet, marlgrub)`);
   console.log(`   Remains: ${final.remains}`);
   console.log(`   Fossils: ${final.fossils}`);
 
@@ -854,6 +890,8 @@ export function printReport(report: HarnessReport): void {
   console.log(`   Sea pigment: ${report.resources.seaPigment.toFixed(3)}`);
   console.log(`   Shore pigment: ${report.resources.shorePigment.toFixed(3)}`);
   console.log(`   Sea bodies: ${report.resources.seaBodies}`);
+  console.log(`   Strandline pigment: ${report.resources.strandlinePigment.toFixed(3)}`);
+  console.log(`   Strandline bodies: ${report.resources.strandlineBodies}`);
 
   console.log(`\n🌙 Tide and sea`);
   console.log(`   Arrivals (sea → pool): ${report.tide.arrivals}`);
@@ -870,10 +908,15 @@ export function printReport(report: HarnessReport): void {
     const at = report.tide.seaExtinctAt[kind];
     console.log(`     ${kind}: ${at === null ? '—' : formatTime(at)}`);
   }
+  console.log('   Strandline extinctions:');
+  for (const kind of LINEAGE_KEYS) {
+    const at = report.tide.strandlineExtinctAt[kind];
+    console.log(`     ${kind}: ${at === null ? '—' : formatTime(at)}`);
+  }
   console.log(
-    '   Time       | Tide    | Open | Pool L/G/S/R/B/St/Gl/M/Mg | Sea L/G/S/R/B/St/Gl/M/Mg | Pool pig | Sea pig',
+    '   Time       | Tide    | Open | Pool L/G/S/R/B/St/Gl/M/Mg | Sea L/G/S/R/B/St/Gl/M/Mg | Strand L/G/S/R/B/St/Gl/M/Mg | Pool pig | Sea pig | Strand pig',
   );
-  console.log('   ' + '-'.repeat(108));
+  console.log('   ' + '-'.repeat(148));
   function lineageCounts(region: RegionLineages): string {
     return `${region.lucents}/${region.grazers}/${region.skimmers}/${region.reedwells}/${region.rainbells}/${region.siltstitchers}/${region.glassLimpets}/${region.cargoMites}/${region.marlgrubs}`;
   }
@@ -887,7 +930,7 @@ export function printReport(report: HarnessReport): void {
   for (const i of basinRows) {
     const b = report.basins[i];
     console.log(
-      `   ${formatTime(b.worldTime).padEnd(10)} | ${b.tide.padEnd(7)} | ${b.connected ? 'yes' : ' no'} | ${lineageCounts(b.pool).padEnd(23)} | ${lineageCounts(b.sea).padEnd(22)} | ${b.poolPigment.toFixed(2).padStart(8)} | ${b.seaPigment.toFixed(2).padStart(7)}`,
+      `   ${formatTime(b.worldTime).padEnd(10)} | ${b.tide.padEnd(7)} | ${b.connected ? 'yes' : ' no'} | ${lineageCounts(b.pool).padEnd(23)} | ${lineageCounts(b.sea).padEnd(22)} | ${lineageCounts(b.strandline).padEnd(25)} | ${b.poolPigment.toFixed(2).padStart(8)} | ${b.seaPigment.toFixed(2).padStart(7)} | ${b.strandlinePigment.toFixed(2).padStart(10)}`,
     );
   }
 
@@ -910,6 +953,8 @@ export function printReport(report: HarnessReport): void {
   console.log(`   Tide pigment out: ${report.ledger.tidePigmentOut.toFixed(3)}`);
   console.log(`   Tide arrivals: ${report.ledger.tideArrivals}`);
   console.log(`   Tide departures: ${report.ledger.tideDepartures}`);
+  console.log(`   Strandline settled: ${report.ledger.strandlineSettled.toFixed(3)}`);
+  console.log(`   Strandline leached: ${report.ledger.strandlineLeached.toFixed(3)}`);
 
   console.log(`\n⚖️  Conservation Check`);
   console.log(`   Input (consumed + remaining + ambient): ${report.conservationCheck.inputLight.toFixed(2)}`);
@@ -925,6 +970,9 @@ export function printReport(report: HarnessReport): void {
   );
   console.log(
     `   Tide pigment (sea ${report.resources.seaPigment.toFixed(3)} + shore ${report.resources.shorePigment.toFixed(3)}; in ${report.tide.pigmentIn.toFixed(3)} / out ${report.tide.pigmentOut.toFixed(3)} transfers) ${report.conservationCheck.tidePartitioned ? '✓' : '✗'}`,
+  );
+  console.log(
+    `   Strandline (held ${report.resources.strandlinePigment.toFixed(3)} ≤ sea; settled ${report.ledger.strandlineSettled.toFixed(3)} / leached ${report.ledger.strandlineLeached.toFixed(3)}) ${report.conservationCheck.strandlinePartitioned ? '✓' : '✗'}`,
   );
   console.log(`   Note: ${report.conservationCheck.note}`);
 

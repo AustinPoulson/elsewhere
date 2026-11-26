@@ -1,5 +1,6 @@
 import { DEEP_BASIN } from './environment/depth';
 import { MINERAL_SEAM } from './environment/mineral-seam';
+import { strandlineAnchor } from './environment/strandline';
 import { INLET_POOL, channelSegment, confineToWater, inInletPool, inOpeningPool } from './habitat';
 import { isInPool, type AwayTrace, type AwayTraceKind, type Point, type ShoreMemory, type World } from './types';
 
@@ -10,7 +11,7 @@ export const TRACE_EXTINCTION_RECORD_CAP = 16;
 export const TRACE_FADE_SECONDS = 8 * 60;
 export const TRACE_SETTLE_THRESHOLD = 0.2;
 export const TRACE_MEMORY_CAP = 4;
-export const TRACE_KINDS: readonly AwayTraceKind[] = ['extinction', 'deep', 'seam', 'inlet', 'channel'];
+export const TRACE_KINDS: readonly AwayTraceKind[] = ['extinction', 'deep', 'seam', 'inlet', 'channel', 'strandline'];
 
 export type { AwayTrace, AwayTraceKind, ShoreMemory };
 
@@ -28,6 +29,7 @@ export interface AwayTraceFacts {
   inletDelta: number;
   inletBodiesDelta: number;
   channelOccupied: boolean;
+  strandlineDelta: number;
 }
 
 function clamp01(value: number): number {
@@ -178,6 +180,10 @@ export function composeAwayTraces(facts: AwayTraceFacts): AwayTrace[] {
   if (facts.inletDelta >= TRACE_SETTLE_THRESHOLD && traces.length < TRACE_MARK_CAP) {
     traces.push(mark('inlet', INLET_POOL.x, INLET_POOL.y, 164, 0.28 + clamp01(facts.inletDelta) * 0.3, facts.formedAt));
   }
+  if (facts.strandlineDelta >= TRACE_SETTLE_THRESHOLD && traces.length < TRACE_MARK_CAP) {
+    const wrack = strandlineAnchor();
+    traces.push(mark('strandline', wrack.x, wrack.y, 48, 0.28 + clamp01(facts.strandlineDelta) * 0.3, facts.formedAt));
+  }
   return traces.slice(0, TRACE_MARK_CAP);
 }
 
@@ -202,7 +208,7 @@ export function describeAwayTraces(traces: readonly AwayTrace[]): string | null 
   if (traces.length === 0) return null;
   const kinds = new Set(traces.map((trace) => trace.kind));
   const ended = kinds.has('extinction');
-  const settled = kinds.has('deep') || kinds.has('seam') || kinds.has('inlet');
+  const settled = kinds.has('deep') || kinds.has('seam') || kinds.has('inlet') || kinds.has('strandline');
   const drifted = kinds.has('channel');
   if (ended && (settled || drifted)) {
     return 'The shore kept faint marks of that time: where a lineage ended, and where color moved.';
@@ -218,7 +224,14 @@ export function describeAwayTraces(traces: readonly AwayTrace[]): string | null 
 }
 
 export function isAwayTraceKind(value: unknown): value is AwayTraceKind {
-  return value === 'extinction' || value === 'deep' || value === 'seam' || value === 'inlet' || value === 'channel';
+  return (
+    value === 'extinction' ||
+    value === 'deep' ||
+    value === 'seam' ||
+    value === 'inlet' ||
+    value === 'channel' ||
+    value === 'strandline'
+  );
 }
 
 function uniqueKinds(kinds: readonly AwayTraceKind[]): AwayTraceKind[] {
@@ -302,7 +315,7 @@ export function describeShoreMemory(memory: readonly ShoreMemory[]): string | nu
   if (memory.length > 1) return 'The shore still remembers a few earlier returns.';
   const kinds = new Set(memory[0].kinds);
   const ended = kinds.has('extinction');
-  const settled = kinds.has('deep') || kinds.has('seam') || kinds.has('inlet');
+  const settled = kinds.has('deep') || kinds.has('seam') || kinds.has('inlet') || kinds.has('strandline');
   const drifted = kinds.has('channel');
   if (ended && (settled || drifted)) {
     return 'The shore still remembers an earlier return: a lineage ending, and color that moved.';
