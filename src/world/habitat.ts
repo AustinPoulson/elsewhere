@@ -4,16 +4,20 @@ import { poolRadius, type HabitatChannel, type HabitatPool, type Point } from '.
 export const OPENING_POOL: HabitatPool = { id: 1, x: 720, y: 500, rx: 610, ry: 400 };
 export const INLET_POOL: HabitatPool = { id: 2, x: 745, y: 1275, rx: 260, ry: 200 };
 export const SEA_POOL: HabitatPool = { id: 3, x: 720, y: -72, rx: 250, ry: 128 };
+export const POCKET_POOL: HabitatPool = { id: 4, x: 580, y: 70, rx: 40, ry: 22 };
 export const HABITAT_POOLS: readonly HabitatPool[] = [OPENING_POOL, INLET_POOL];
-export const WATER_BASINS: readonly HabitatPool[] = [OPENING_POOL, INLET_POOL, SEA_POOL];
+export const WATER_BASINS: readonly HabitatPool[] = [OPENING_POOL, INLET_POOL, SEA_POOL, POCKET_POOL];
 export const HABITAT_CHANNEL: HabitatChannel = { from: 1, to: 2, width: 72, flow: 4.8 };
 export const TIDE_MOUTH_WIDTH = 52;
+export const TIDE_POCKET_MOUTH_WIDTH = 22;
 export const CHANNEL_PERIOD = 180;
 export const CHANNEL_INFLUENCE = 28;
 export const TIDE_PERIOD = 360;
 export const TIDE_CONNECT = 0.32;
+export const TIDE_POCKET_CONNECT = 0.72;
 export const TIDE_FLOW = 3.6;
 export const TIDE_INFLUENCE = 24;
+export const TIDE_POCKET_INFLUENCE = 14;
 const POOL_RADIUS_EXTENT = 1.11;
 
 function clamp(value: number, low: number, high: number): number {
@@ -75,7 +79,7 @@ function channel(): ReturnType<typeof channelAxis> {
   return channelCache;
 }
 
-function mouthAxis(): {
+type MouthAxis = {
   ax: number;
   ay: number;
   bx: number;
@@ -89,14 +93,16 @@ function mouthAxis(): {
   maxX: number;
   minY: number;
   maxY: number;
-} {
-  const dx = SEA_POOL.x - OPENING_POOL.x;
-  const dy = SEA_POOL.y - OPENING_POOL.y;
+};
+
+function basinAxis(from: HabitatPool, to: HabitatPool): MouthAxis {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
   const length = Math.hypot(dx, dy);
   const ux = dx / length;
   const uy = dy / length;
-  const start = rimPoint(OPENING_POOL, ux, uy);
-  const end = rimPoint(SEA_POOL, -ux, -uy);
+  const start = rimPoint(from, ux, uy);
+  const end = rimPoint(to, -ux, -uy);
   const abx = end.x - start.x;
   const aby = end.y - start.y;
   return {
@@ -116,21 +122,35 @@ function mouthAxis(): {
   };
 }
 
-let mouthCache: ReturnType<typeof mouthAxis> | null = null;
-function mouth(): ReturnType<typeof mouthAxis> {
-  if (!mouthCache) mouthCache = mouthAxis();
+let mouthCache: MouthAxis | null = null;
+function mouth(): MouthAxis {
+  if (!mouthCache) mouthCache = basinAxis(OPENING_POOL, SEA_POOL);
   return mouthCache;
+}
+
+let pocketMouthCache: MouthAxis | null = null;
+function pocketMouth(): MouthAxis {
+  if (!pocketMouthCache) pocketMouthCache = basinAxis(POCKET_POOL, SEA_POOL);
+  return pocketMouthCache;
+}
+
+let pocketShoreCache: MouthAxis | null = null;
+function pocketShore(): MouthAxis {
+  if (!pocketShoreCache) pocketShoreCache = basinAxis(POCKET_POOL, OPENING_POOL);
+  return pocketShoreCache;
 }
 
 let tideElapsed = NaN;
 let tideLevel = 0;
 let tideOpen = false;
+let pocketOpen = false;
 
 export function syncTide(elapsed: number): void {
   if (elapsed !== tideElapsed) {
     tideElapsed = elapsed;
     tideLevel = Math.sin((elapsed / TIDE_PERIOD) * Math.PI * 2);
     tideOpen = tideLevel >= TIDE_CONNECT;
+    pocketOpen = tideLevel >= TIDE_POCKET_CONNECT;
   }
 }
 
@@ -148,6 +168,23 @@ export function tideFlowAt(elapsed: number): number {
   syncTide(elapsed);
   if (!tideOpen) return 0;
   return -Math.cos((elapsed / TIDE_PERIOD) * Math.PI * 2) * TIDE_FLOW;
+}
+
+export function pocketConnectedAt(elapsed: number): boolean {
+  syncTide(elapsed);
+  return pocketOpen;
+}
+
+export function pocketFlowAt(elapsed: number): number {
+  syncTide(elapsed);
+  if (!pocketOpen) return 0;
+  const flow = -Math.cos((elapsed / TIDE_PERIOD) * Math.PI * 2) * TIDE_FLOW;
+  if (flow > 0) return flow * 0.2;
+  return flow;
+}
+
+export function sharesPocketColor(ax: number, ay: number, bx: number, by: number): boolean {
+  return inPocket(ax, ay) === inPocket(bx, by);
 }
 
 export function linkedHabitat(): { pools: HabitatPool[]; channel: HabitatChannel } {
@@ -196,6 +233,48 @@ export function mouthSegment(): {
   return { ax: link.ax, ay: link.ay, bx: link.bx, by: link.by, ux: link.ux, uy: link.uy, width: TIDE_MOUTH_WIDTH };
 }
 
+export function pocketMouthSegment(): {
+  ax: number;
+  ay: number;
+  bx: number;
+  by: number;
+  ux: number;
+  uy: number;
+  width: number;
+} {
+  const link = pocketMouth();
+  return {
+    ax: link.ax,
+    ay: link.ay,
+    bx: link.bx,
+    by: link.by,
+    ux: link.ux,
+    uy: link.uy,
+    width: TIDE_POCKET_MOUTH_WIDTH,
+  };
+}
+
+export function pocketShoreSegment(): {
+  ax: number;
+  ay: number;
+  bx: number;
+  by: number;
+  ux: number;
+  uy: number;
+  width: number;
+} {
+  const link = pocketShore();
+  return {
+    ax: link.ax,
+    ay: link.ay,
+    bx: link.bx,
+    by: link.by,
+    ux: link.ux,
+    uy: link.uy,
+    width: TIDE_POCKET_MOUTH_WIDTH,
+  };
+}
+
 function ellipseSdf(x: number, y: number, pool: HabitatPool, margin: number): number {
   const rx = pool.rx - margin;
   const ry = pool.ry - margin;
@@ -219,16 +298,31 @@ function channelSdf(x: number, y: number, margin: number): number {
   return distanceToSegment(x, y) - half;
 }
 
-function distanceToMouth(x: number, y: number): number {
-  const link = mouth();
+function distanceToLink(x: number, y: number, link: MouthAxis): number {
   const t = link.span === 0 ? 0 : clamp(((x - link.ax) * link.abx + (y - link.ay) * link.aby) / link.span, 0, 1);
   return Math.hypot(x - (link.ax + t * link.abx), y - (link.ay + t * link.aby));
+}
+
+function distanceToMouth(x: number, y: number): number {
+  return distanceToLink(x, y, mouth());
 }
 
 function mouthSdf(x: number, y: number, margin: number): number {
   const half = TIDE_MOUTH_WIDTH / 2 - margin;
   if (half <= 0) return 1;
   return distanceToMouth(x, y) - half;
+}
+
+function pocketMouthSdf(x: number, y: number, margin: number): number {
+  const half = TIDE_POCKET_MOUTH_WIDTH / 2 - margin;
+  if (half <= 0) return 1;
+  return distanceToLink(x, y, pocketMouth()) - half;
+}
+
+function pocketShoreSdf(x: number, y: number, margin: number): number {
+  const half = TIDE_POCKET_MOUTH_WIDTH / 2 - margin;
+  if (half <= 0) return 1;
+  return distanceToLink(x, y, pocketShore()) - half;
 }
 
 function inEllipse(x: number, y: number, pool: HabitatPool, margin: number): boolean {
@@ -255,14 +349,33 @@ export function inMouth(x: number, y: number, margin = 0): boolean {
   return distanceToMouth(x, y) <= half;
 }
 
+export function inPocketGate(x: number, y: number, margin = 0): boolean {
+  const half = TIDE_POCKET_MOUTH_WIDTH / 2 - margin;
+  if (half <= 0) return false;
+  const sea = pocketMouth();
+  const shore = pocketShore();
+  const inSeaLink =
+    !(x < sea.minX - half || x > sea.maxX + half || y < sea.minY - half || y > sea.maxY + half) &&
+    distanceToLink(x, y, sea) <= half;
+  const inShoreLink =
+    !(x < shore.minX - half || x > shore.maxX + half || y < shore.minY - half || y > shore.maxY + half) &&
+    distanceToLink(x, y, shore) <= half;
+  return inSeaLink || inShoreLink;
+}
+
 export function waterSdf(x: number, y: number, margin = 0): number {
-  const shore = Math.min(
+  let shore = Math.min(
     ellipseSdf(x, y, OPENING_POOL, margin),
     ellipseSdf(x, y, INLET_POOL, margin),
     ellipseSdf(x, y, SEA_POOL, margin),
+    ellipseSdf(x, y, POCKET_POOL, margin),
     channelSdf(x, y, margin),
   );
-  return tideOpen ? Math.min(shore, mouthSdf(x, y, margin)) : shore;
+  if (tideOpen) shore = Math.min(shore, mouthSdf(x, y, margin));
+  if (pocketOpen) {
+    shore = Math.min(shore, pocketMouthSdf(x, y, margin), pocketShoreSdf(x, y, margin));
+  }
+  return shore;
 }
 
 export function isInPool(x: number, y: number, margin = 0): boolean {
@@ -271,7 +384,9 @@ export function isInPool(x: number, y: number, margin = 0): boolean {
     inInletPool(x, y, margin) ||
     inChannel(x, y, margin) ||
     inSea(x, y, margin) ||
-    (tideOpen && inMouth(x, y, margin))
+    inPocket(x, y, margin) ||
+    (tideOpen && inMouth(x, y, margin)) ||
+    (pocketOpen && inPocketGate(x, y, margin))
   );
 }
 
@@ -291,6 +406,14 @@ export function inTideMouth(x: number, y: number, margin = 0): boolean {
   return tideOpen && inMouth(x, y, margin);
 }
 
+export function inPocket(x: number, y: number, margin = 0): boolean {
+  return inEllipse(x, y, POCKET_POOL, margin);
+}
+
+export function inPocketMouth(x: number, y: number, margin = 0): boolean {
+  return pocketOpen && inPocketGate(x, y, margin);
+}
+
 export function containingPool(x: number, y: number, margin = 0): HabitatPool | null {
   for (const pool of WATER_BASINS) {
     if (inEllipse(x, y, pool, margin)) return pool;
@@ -298,11 +421,13 @@ export function containingPool(x: number, y: number, margin = 0): HabitatPool | 
   return null;
 }
 
-export type TideRegion = 'pool' | 'sea' | 'mouth' | 'land';
+export type TideRegion = 'pool' | 'sea' | 'mouth' | 'pocket' | 'pocketMouth' | 'land';
 
 export function tideRegion(x: number, y: number, margin = 0): TideRegion {
+  if (inPocket(x, y, margin)) return 'pocket';
   if (inSea(x, y, margin)) return 'sea';
   if (inOpeningPool(x, y, margin) || inInletPool(x, y, margin) || inChannel(x, y, margin)) return 'pool';
+  if (pocketOpen && inPocketGate(x, y, margin)) return 'pocketMouth';
   if (tideOpen && inMouth(x, y, margin)) return 'mouth';
   return 'land';
 }
@@ -328,10 +453,9 @@ function confineToEllipse(point: Point, pool: HabitatPool, margin: number): void
   point.y = pool.y + ny * scale * ry;
 }
 
-function confineToMouth(point: Point, margin: number): void {
-  const half = TIDE_MOUTH_WIDTH / 2 - margin;
+function confineToLink(point: Point, margin: number, link: MouthAxis, width: number): void {
+  const half = width / 2 - margin;
   if (half <= 0) return;
-  const link = mouth();
   const t =
     link.span === 0 ? 0 : clamp(((point.x - link.ax) * link.abx + (point.y - link.ay) * link.aby) / link.span, 0, 1);
   const cx = link.ax + t * link.abx;
@@ -370,12 +494,21 @@ function confineToChannel(point: Point, margin: number): void {
   point.y = cy + dy * scale;
 }
 
+function canConfineEllipse(pool: HabitatPool, margin: number): boolean {
+  return pool.rx - margin > 0 && pool.ry - margin > 0;
+}
+
+function canConfineLink(width: number, margin: number): boolean {
+  return width / 2 - margin > 0;
+}
+
 export function confineToWater(point: Point, margin: number): void {
   if (isInPool(point.x, point.y, margin)) return;
   let bestX = point.x;
   let bestY = point.y;
   let best = Infinity;
   for (const pool of WATER_BASINS) {
+    if (!canConfineEllipse(pool, margin)) continue;
     const candidate = { x: point.x, y: point.y };
     confineToEllipse(candidate, pool, margin);
     const distance = Math.hypot(candidate.x - point.x, candidate.y - point.y);
@@ -385,21 +518,41 @@ export function confineToWater(point: Point, margin: number): void {
       bestY = candidate.y;
     }
   }
-  const channel = { x: point.x, y: point.y };
-  confineToChannel(channel, margin);
-  const distance = Math.hypot(channel.x - point.x, channel.y - point.y);
-  if (distance < best) {
-    best = distance;
-    bestX = channel.x;
-    bestY = channel.y;
+  if (canConfineLink(HABITAT_CHANNEL.width, margin)) {
+    const channel = { x: point.x, y: point.y };
+    confineToChannel(channel, margin);
+    const distance = Math.hypot(channel.x - point.x, channel.y - point.y);
+    if (distance < best) {
+      best = distance;
+      bestX = channel.x;
+      bestY = channel.y;
+    }
   }
-  if (tideOpen) {
+  if (tideOpen && canConfineLink(TIDE_MOUTH_WIDTH, margin)) {
     const gate = { x: point.x, y: point.y };
-    confineToMouth(gate, margin);
+    confineToLink(gate, margin, mouth(), TIDE_MOUTH_WIDTH);
     const mouthDistance = Math.hypot(gate.x - point.x, gate.y - point.y);
     if (mouthDistance < best) {
+      best = mouthDistance;
       bestX = gate.x;
       bestY = gate.y;
+    }
+  }
+  if (pocketOpen && canConfineLink(TIDE_POCKET_MOUTH_WIDTH, margin)) {
+    const gate = { x: point.x, y: point.y };
+    confineToLink(gate, margin, pocketMouth(), TIDE_POCKET_MOUTH_WIDTH);
+    const mouthDistance = Math.hypot(gate.x - point.x, gate.y - point.y);
+    if (mouthDistance < best) {
+      best = mouthDistance;
+      bestX = gate.x;
+      bestY = gate.y;
+    }
+    const shelf = { x: point.x, y: point.y };
+    confineToLink(shelf, margin, pocketShore(), TIDE_POCKET_MOUTH_WIDTH);
+    const shoreDistance = Math.hypot(shelf.x - point.x, shelf.y - point.y);
+    if (shoreDistance < best) {
+      bestX = shelf.x;
+      bestY = shelf.y;
     }
   }
   point.x = bestX;
@@ -417,16 +570,22 @@ export function channelFlowAt(elapsed: number): number {
   return flowValue;
 }
 
-export function tideVelocity(body: Point, elapsed: number, scale: number, out?: Point): Point {
+function mouthVelocity(
+  body: Point,
+  scale: number,
+  out: Point | undefined,
+  link: MouthAxis,
+  width: number,
+  influence: number,
+  flow: number,
+): Point {
   const result = out ?? { x: 0, y: 0 };
-  const flow = tideFlowAt(elapsed);
   if (flow === 0) {
     result.x = 0;
     result.y = 0;
     return result;
   }
-  const link = mouth();
-  const reach = TIDE_MOUTH_WIDTH / 2 + TIDE_INFLUENCE;
+  const reach = width / 2 + influence;
   if (
     body.x < link.minX - reach ||
     body.x > link.maxX + reach ||
@@ -437,16 +596,45 @@ export function tideVelocity(body: Point, elapsed: number, scale: number, out?: 
     result.y = 0;
     return result;
   }
-  const sdf = distanceToMouth(body.x, body.y) - TIDE_MOUTH_WIDTH / 2;
-  if (sdf > TIDE_INFLUENCE) {
+  const sdf = distanceToLink(body.x, body.y, link) - width / 2;
+  if (sdf > influence) {
     result.x = 0;
     result.y = 0;
     return result;
   }
-  const strength = sdf <= 0 ? 1 : 1 - sdf / TIDE_INFLUENCE;
+  const strength = sdf <= 0 ? 1 : 1 - sdf / influence;
   const speed = flow * strength * scale;
   result.x = link.ux * speed;
   result.y = link.uy * speed;
+  return result;
+}
+
+export function tideVelocity(body: Point, elapsed: number, scale: number, out?: Point): Point {
+  return mouthVelocity(body, scale, out, mouth(), TIDE_MOUTH_WIDTH, TIDE_INFLUENCE, tideFlowAt(elapsed));
+}
+
+export function pocketVelocity(body: Point, elapsed: number, scale: number, out?: Point): Point {
+  const result = mouthVelocity(
+    body,
+    scale,
+    out,
+    pocketMouth(),
+    TIDE_POCKET_MOUTH_WIDTH,
+    TIDE_POCKET_INFLUENCE,
+    pocketFlowAt(elapsed),
+  );
+  syncTide(elapsed);
+  const shelf = mouthVelocity(
+    body,
+    scale,
+    undefined,
+    pocketShore(),
+    TIDE_POCKET_MOUTH_WIDTH,
+    TIDE_POCKET_INFLUENCE,
+    pocketOpen ? -TIDE_FLOW * 0.8 : 0,
+  );
+  result.x += shelf.x;
+  result.y += shelf.y;
   return result;
 }
 

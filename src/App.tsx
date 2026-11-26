@@ -39,7 +39,7 @@ import { lockedColorReturning } from './world/environment/locked-return';
 import { unusedNestsSlumping } from './world/environment/nest-slump';
 import { unusedRemainsSlumping } from './world/environment/remain-slump';
 import { getSeason } from './world/environment/seasons';
-import { tideNote } from './world/environment/tide';
+import { pocketNote, tideNote } from './world/environment/tide';
 import { describeBulk, describeDrive } from './world/traits';
 import { MAX_CURRENTS } from './world/actions/current';
 import { FOSSIL_LABEL } from './world/species/fossils';
@@ -1327,6 +1327,12 @@ export function App() {
             ? ` ${stats.seaBodies} ${stats.seaBodies === 1 ? 'body' : 'bodies'} offshore; ${stats.seaPigment.toFixed(1)} pigment in the sea.`
             : ` The sea holds ${stats.seaBodies} ${stats.seaBodies === 1 ? 'body' : 'bodies'} and ${stats.seaPigment.toFixed(1)} pigment.`}
         </div>
+        <div className="pocket-readout" aria-live="polite">
+          {pocketNote(worldRef.current.elapsed)}
+          {stats.pocketConnected
+            ? ` ${stats.pocketBodies} ${stats.pocketBodies === 1 ? 'body' : 'bodies'} in the high pool; ${stats.pocketPigment.toFixed(1)} pigment there.`
+            : ` The high pool holds ${stats.pocketBodies} ${stats.pocketBodies === 1 ? 'body' : 'bodies'} and ${stats.pocketPigment.toFixed(1)} pigment.`}
+        </div>
         <div className="strandline-readout" aria-live="polite">
           {strandlineNote(worldRef.current)}
         </div>
@@ -1901,6 +1907,20 @@ export function App() {
                 </div>
                 <div className="guide-entry">
                   <span className="entry-number">25</span>
+                  <div>
+                    <h3>A high rock pool</h3>
+                    <p>
+                      West of the northern mouth, a small rock pool sits higher on the same shore. It is habitat, not a
+                      creature: it opens empty and fills only when color and bodies actually wash in from the sea at the
+                      top of the tide. At lower water it is cut off longer than the opening pool. A lineage that dies in
+                      one pocket can persist in the other and return only by a real crossing. Opening worlds and old
+                      saves receive the empty basin, not a gifted population. The observations list names it; reduced
+                      motion keeps the indicator still; portrait keeps the same world coordinates.
+                    </p>
+                  </div>
+                </div>
+                <div className="guide-entry">
+                  <span className="entry-number">26</span>
                   <div>
                     <h3>A strandline beyond the mouth</h3>
                     <p>

@@ -854,6 +854,14 @@ h1 em {
   max-width: 280px;
   color: #8fb8b2;
 }
+.pocket-readout {
+  margin-top: 6px;
+  font-size: 10px;
+  letter-spacing: 0;
+  line-height: 1.45;
+  max-width: 280px;
+  color: #7aa8b0;
+}
 .strandline-readout {
   margin-top: 6px;
   font-size: 10px;
@@ -1020,6 +1028,7 @@ h1 em {
   .seam-readout,
   .deep-readout,
   .tide-readout,
+  .pocket-readout,
   .strandline-readout,
   .slump-readout,
   .remain-slump-readout,

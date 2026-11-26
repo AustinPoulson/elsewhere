@@ -23,7 +23,16 @@ import {
   tideHeightAt,
   waterSdf,
 } from './habitat';
-import { applyTide, beginTideStep, initializeSea, pigmentInSea, seaBodyCount } from './environment/tide';
+import {
+  applyTide,
+  beginTideStep,
+  initializeSea,
+  pigmentInPocket,
+  pigmentInSea,
+  pocketBodyCount,
+  pocketConnectedAt,
+  seaBodyCount,
+} from './environment/tide';
 import { compactStrandline, leachStrandline, pigmentOnStrandline, strandlineBodyCount } from './environment/strandline';
 import { CALM_LIGHT_REACH, lightReachAt } from './weather';
 import { applyCurrentDrift } from './currents';
@@ -237,6 +246,10 @@ export function createWorld(seed = 20261006): World {
       tideDepartures: 0,
       strandlineSettled: 0,
       strandlineLeached: 0,
+      pocketPigmentIn: 0,
+      pocketPigmentOut: 0,
+      pocketArrivals: 0,
+      pocketDepartures: 0,
     },
     seed: normalizedSeed,
     randomState: normalizedSeed,
@@ -578,5 +591,8 @@ export function getStats(world: World): WorldStats {
     seaBodies: seaBodyCount(world),
     strandlinePigment: pigmentOnStrandline(world),
     strandlineBodies: strandlineBodyCount(world),
+    pocketConnected: pocketConnectedAt(world.elapsed),
+    pocketPigment: pigmentInPocket(world),
+    pocketBodies: pocketBodyCount(world),
   };
 }

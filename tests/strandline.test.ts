@@ -14,13 +14,13 @@ import {
   strandlineSettleVelocity,
 } from '../src/world/environment/strandline';
 import { inSea, mouthSegment, syncTide, tideFlowAt, tideRegion } from '../src/world/habitat';
-import { pigmentInSea, pigmentOnShore } from '../src/world/environment/tide';
+import { pigmentInPocket, pigmentInSea, pigmentOnShore } from '../src/world/environment/tide';
 import { createWorld, getStats, stepWorld } from '../src/world/simulation';
 import { SCHEMA_REVISION, STRANDLINE_GRAIN_CAP, STRANDLINE_REMAIN_CAP } from '../src/world/types';
 import { runHarness } from '../scripts/harness';
 
 function locatedPigment(world: ReturnType<typeof createWorld>): number {
-  return pigmentInSea(world) + pigmentOnShore(world);
+  return pigmentInSea(world) + pigmentOnShore(world) + pigmentInPocket(world);
 }
 
 describe('strandline wrack', () => {

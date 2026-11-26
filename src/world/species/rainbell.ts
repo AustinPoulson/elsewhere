@@ -1,4 +1,5 @@
 import { applyCurrent } from '../actions/current';
+import { sharesPocketColor } from '../habitat';
 import { isInPool, type Rainbell, type Sediment, type World } from '../types';
 import { baselineTraits } from '../traits';
 import { effectiveWeather, rainIntensityAt } from '../weather';
@@ -17,7 +18,7 @@ function search(world: World, bell: Rainbell): void {
   let pumpDistance: number = RULE.pumpMaxReach;
   // Both roles share one bounded sediment pass at the body's saved search phase.
   for (const grain of world.sediment) {
-    if (grain.strength <= 0) continue;
+    if (grain.strength <= 0 || !sharesPocketColor(bell.x, bell.y, grain.x, grain.y)) continue;
     const distance = Math.hypot(grain.x - bell.x, grain.y - bell.y);
     if (
       distance <= RULE.feedReach &&
@@ -114,7 +115,9 @@ export function admitRainbell(world: World): boolean {
   if (!center) return false;
   world.rainbellCandidateAfterId = center.id;
   if (rainIntensityAt(world, center.x, center.y) < 0.5) return false;
-  const sources = neighborhoods.within(center, RULE.rootReach);
+  const sources = neighborhoods
+    .within(center, RULE.rootReach)
+    .filter((grain) => sharesPocketColor(center.x, center.y, grain.x, grain.y));
   sources.sort(
     (a, b) => Math.hypot(a.x - center.x, a.y - center.y) - Math.hypot(b.x - center.x, b.y - center.y) || a.id - b.id,
   );

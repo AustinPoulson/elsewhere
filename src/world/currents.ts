@@ -3,7 +3,7 @@ import { depthAt, settleVelocity, stillScale } from './environment/depth';
 import { washShorePoint } from './environment/shore-wash';
 import { inStrandline, strandlineSettleVelocity, wrackPigment } from './environment/strandline';
 import { confinePosition } from './geometry';
-import { channelVelocity, tideVelocity } from './habitat';
+import { channelVelocity, pocketVelocity, tideVelocity } from './habitat';
 import { effectiveWeather } from './weather';
 import type { Point, World } from './types';
 
@@ -11,6 +11,7 @@ const driftVelocity: Point = { x: 0, y: 0 };
 const settleScratch: Point = { x: 0, y: 0 };
 const wrackScratch: Point = { x: 0, y: 0 };
 const tideScratch: Point = { x: 0, y: 0 };
+const pocketScratch: Point = { x: 0, y: 0 };
 
 function currentVelocity(world: World, body: Point, scale: number, out: Point, settle = false): Point {
   let vx = 0;
@@ -33,6 +34,12 @@ function currentVelocity(world: World, body: Point, scale: number, out: Point, s
   tideVelocity(body, world.elapsed, scale, tideScratch);
   out.x += tideScratch.x;
   out.y += tideScratch.y;
+  const species = 'species' in body ? (body as { species?: string }).species : undefined;
+  if (species !== 'lucent' && species !== 'grazer') {
+    pocketVelocity(body, world.elapsed, scale, pocketScratch);
+    out.x += pocketScratch.x;
+    out.y += pocketScratch.y;
+  }
   const still = stillScale(depthAt(body.x, body.y));
   out.x *= still;
   out.y *= still;

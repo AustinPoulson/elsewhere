@@ -14,12 +14,19 @@ import {
   tideRegion,
   tideVelocity,
 } from '../src/world/habitat';
-import { pigmentInSea, pigmentOnShore, seaBodyCount, tideNameAt, tideNote } from '../src/world/environment/tide';
+import {
+  pigmentInPocket,
+  pigmentInSea,
+  pigmentOnShore,
+  seaBodyCount,
+  tideNameAt,
+  tideNote,
+} from '../src/world/environment/tide';
 import { createWorld, getStats, stepWorld } from '../src/world/simulation';
 import { SEA_BODY_CAP, type Point } from '../src/world/types';
 
 function locatedPigment(world: ReturnType<typeof createWorld>): number {
-  return pigmentInSea(world) + pigmentOnShore(world);
+  return pigmentInSea(world) + pigmentOnShore(world) + pigmentInPocket(world);
 }
 
 describe('tide and sea', () => {

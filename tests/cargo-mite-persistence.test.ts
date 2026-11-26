@@ -38,6 +38,10 @@ function previousRevision(world: World): Record<string, any> {
     'tideDepartures',
     'strandlineSettled',
     'strandlineLeached',
+    'pocketPigmentIn',
+    'pocketPigmentOut',
+    'pocketArrivals',
+    'pocketDepartures',
   ])
     delete previous.ecologyLedger[key];
   return previous;

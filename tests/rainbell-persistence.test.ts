@@ -155,6 +155,10 @@ function revision4(world: World): Record<string, any> {
     'tideDepartures',
     'strandlineSettled',
     'strandlineLeached',
+    'pocketPigmentIn',
+    'pocketPigmentOut',
+    'pocketArrivals',
+    'pocketDepartures',
   ])
     delete result.ecologyLedger[key];
   return result;
@@ -257,6 +261,10 @@ describe('rainbell snapshot revision', () => {
       'tideDepartures',
       'strandlineSettled',
       'strandlineLeached',
+      'pocketPigmentIn',
+      'pocketPigmentOut',
+      'pocketArrivals',
+      'pocketDepartures',
     ]) {
       expect(oldLedger[key]).toBe(0);
       delete oldLedger[key];
@@ -458,7 +466,7 @@ describe('rainbell snapshot revision', () => {
         w.nextId += 5;
       },
       (w) => {
-        w.schemaRevision = 22;
+        w.schemaRevision = 23;
       },
     ];
     for (const target of ['feedTargetSedimentId', 'pumpTargetSedimentId']) {

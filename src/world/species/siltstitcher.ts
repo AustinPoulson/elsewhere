@@ -1,3 +1,4 @@
+import { sharesPocketColor } from '../habitat';
 import { confinePosition } from '../geometry';
 import {
   LIMITS,
@@ -82,6 +83,7 @@ function candidate(world: World, body: Siltstitcher, nest: Nest): Point | null {
   const angle = (nest.id % 4096) * 2.39996322973 + ((index % 8) * TAU) / 8;
   const radius = RULE.destinationMinReach + Math.floor(index / 8) * 20;
   const point = { x: nest.x + Math.cos(angle) * radius, y: nest.y + Math.sin(angle) * radius };
+  if (!sharesPocketColor(nest.x, nest.y, point.x, point.y)) return null;
   for (let i = 0; i <= 8; i++) {
     if (!isInPool(nest.x + ((point.x - nest.x) * i) / 8, nest.y + ((point.y - nest.y) * i) / 8, RULE.margin))
       return null;
@@ -94,8 +96,15 @@ function candidate(world: World, body: Siltstitcher, nest: Nest): Point | null {
   // grains. All sediment contributions are actual nonnegative pigment.
   for (const grain of world.sediment) {
     if (grain.strength <= 0) continue;
-    if (Math.hypot(grain.x - nest.x, grain.y - nest.y) <= RULE.homeFringeReach) homePigment += grain.strength;
-    if (Math.hypot(grain.x - point.x, grain.y - point.y) <= RULE.destinationFringeReach)
+    if (
+      sharesPocketColor(nest.x, nest.y, grain.x, grain.y) &&
+      Math.hypot(grain.x - nest.x, grain.y - nest.y) <= RULE.homeFringeReach
+    )
+      homePigment += grain.strength;
+    if (
+      sharesPocketColor(point.x, point.y, grain.x, grain.y) &&
+      Math.hypot(grain.x - point.x, grain.y - point.y) <= RULE.destinationFringeReach
+    )
       outwardPigment += grain.strength;
   }
   return outwardPigment < homePigment ? point : null;
@@ -131,7 +140,7 @@ function tryDelivery(world: World, body: Siltstitcher, maySearch: boolean): bool
   let nearest: Sediment | undefined;
   let distance: number = RULE.deliveryMergeReach;
   for (const grain of world.sediment) {
-    if (1 - grain.strength < body.cargo) continue;
+    if (1 - grain.strength < body.cargo || !sharesPocketColor(body.x, body.y, grain.x, grain.y)) continue;
     const nextDistance = Math.hypot(grain.x - body.x, grain.y - body.y);
     if (nextDistance < distance || (nextDistance === distance && (!nearest || grain.id < nearest.id))) {
       distance = nextDistance;

@@ -1,3 +1,4 @@
+import { sharesPocketColor } from '../habitat';
 import { confinePosition } from '../geometry';
 import { LIMITS, type Nest, type Sediment, type Skimmer, type Traits, type World } from '../types';
 import { baselineTraits, mutateTraits, traitMobility } from '../traits';
@@ -25,7 +26,7 @@ function findFood(world: World, skimmer: Skimmer): number | null {
   let best: Sediment | undefined;
   let distance = skimmerSeekReach(skimmer.traits);
   for (const grain of world.sediment) {
-    if (grain.strength <= 0.025) continue;
+    if (grain.strength <= 0.025 || !sharesPocketColor(skimmer.x, skimmer.y, grain.x, grain.y)) continue;
     const candidate = Math.hypot(grain.x - skimmer.x, grain.y - skimmer.y);
     if (candidate < distance || (candidate === distance && (!best || grain.id < best.id))) {
       distance = candidate;

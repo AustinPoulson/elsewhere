@@ -4,6 +4,7 @@ import {
   CHANNEL_INFLUENCE,
   INLET_POOL,
   OPENING_POOL,
+  POCKET_POOL,
   SEA_POOL,
   channelFlowAt,
   channelSegment,
@@ -11,6 +12,7 @@ import {
   containingPool,
   inInletPool,
   inOpeningPool,
+  inPocket,
   inSea,
   isInPool,
   linkedHabitat,
@@ -55,6 +57,8 @@ describe('linked habitat', () => {
     expect(world.sediment.some((entry) => inInletPool(entry.x, entry.y))).toBe(false);
     expect(world.ecologyLedger.tideArrivals).toBe(0);
     expect(world.ecologyLedger.tideDepartures).toBe(0);
+    expect(world.ecologyLedger.pocketArrivals).toBe(0);
+    expect(world.ecologyLedger.pocketDepartures).toBe(0);
   });
 
   it('carries pigment through the channel instead of teleporting it', () => {
@@ -114,10 +118,12 @@ describe('linked habitat', () => {
           const opening = inOpeningPool(x, y, margin);
           const inlet = inInletPool(x, y, margin);
           const sea = inSea(x, y, margin);
+          const pocket = inPocket(x, y, margin);
           if (opening && pool !== OPENING_POOL) mismatches++;
           if (!opening && inlet && pool !== INLET_POOL) mismatches++;
           if (!opening && !inlet && sea && pool !== SEA_POOL) mismatches++;
-          if (!opening && !inlet && !sea && pool !== null) mismatches++;
+          if (!opening && !inlet && !sea && pocket && pool !== POCKET_POOL) mismatches++;
+          if (!opening && !inlet && !sea && !pocket && pool !== null) mismatches++;
         }
       }
     }
@@ -126,7 +132,7 @@ describe('linked habitat', () => {
       for (let i = 0; i <= 720; i++) {
         const angle = (i / 720) * Math.PI * 2;
         for (const scale of [0.94, 0.999, 1, 1.001, 1.06]) {
-          for (const pool of [OPENING_POOL, INLET_POOL, SEA_POOL]) {
+          for (const pool of [OPENING_POOL, INLET_POOL, SEA_POOL, POCKET_POOL]) {
             const point = poolCoastPoint(pool, angle, scale);
             if (isInPool(point.x, point.y, margin) !== waterSdf(point.x, point.y, margin) <= 0) mismatches++;
           }

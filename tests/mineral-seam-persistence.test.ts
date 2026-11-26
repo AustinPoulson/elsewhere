@@ -17,6 +17,10 @@ function previousRevision(world: World): Record<string, unknown> {
   delete previous.ecologyLedger.tideDepartures;
   delete previous.ecologyLedger.strandlineSettled;
   delete previous.ecologyLedger.strandlineLeached;
+  delete previous.ecologyLedger.pocketPigmentIn;
+  delete previous.ecologyLedger.pocketPigmentOut;
+  delete previous.ecologyLedger.pocketArrivals;
+  delete previous.ecologyLedger.pocketDepartures;
   return previous;
 }
 
@@ -75,7 +79,7 @@ describe('mineral seam snapshot revision', () => {
         w.schemaRevision = 13;
       },
       (w) => {
-        w.schemaRevision = 22;
+        w.schemaRevision = 23;
       },
       (w) => {
         w.seamAccrued = 2;

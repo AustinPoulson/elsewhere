@@ -13,9 +13,16 @@ import {
 } from '../src/world/species/founding-report';
 import { MINERAL_SEAM, pigmentNearSeam, seamRemaining } from '../src/world/environment/mineral-seam';
 import { fossilsInDeep, inDeep, pigmentInDeep, remainsInDeep } from '../src/world/environment/depth';
-import { inInletPool, inOpeningPool, inSea } from '../src/world/habitat';
+import { inInletPool, inOpeningPool, inPocket, inSea } from '../src/world/habitat';
 import { seasonName, YEAR_DAYS, YEAR_SECONDS, type SeasonName } from '../src/world/environment/seasons';
-import { pigmentInSea, pigmentOnShore, tideConnectedAt, tideNameAt } from '../src/world/environment/tide';
+import {
+  pigmentInPocket,
+  pigmentInSea,
+  pigmentOnShore,
+  pocketConnectedAt,
+  tideConnectedAt,
+  tideNameAt,
+} from '../src/world/environment/tide';
 import { inStrandline, pigmentOnStrandline } from '../src/world/environment/strandline';
 import { FIXED_STEP, type FossilSource, type Traits, type World } from '../src/world/types';
 import * as fs from 'node:fs';
@@ -85,11 +92,14 @@ interface RegionLineages {
 interface BasinSample {
   worldTime: number;
   connected: boolean;
+  pocketConnected: boolean;
   tide: ReturnType<typeof tideNameAt>;
   pool: RegionLineages;
+  pocket: RegionLineages;
   sea: RegionLineages;
   strandline: RegionLineages;
   poolPigment: number;
+  pocketPigment: number;
   seaPigment: number;
   strandlinePigment: number;
 }
@@ -151,13 +161,20 @@ export interface HarnessReport {
     seaBodies: number;
     strandlinePigment: number;
     strandlineBodies: number;
+    pocketPigment: number;
+    pocketBodies: number;
   };
   tide: {
     arrivals: number;
     departures: number;
     pigmentIn: number;
     pigmentOut: number;
+    pocketArrivals: number;
+    pocketDepartures: number;
+    pocketPigmentIn: number;
+    pocketPigmentOut: number;
     poolExtinctAt: Record<keyof RegionLineages, number | null>;
+    pocketExtinctAt: Record<keyof RegionLineages, number | null>;
     seaExtinctAt: Record<keyof RegionLineages, number | null>;
     strandlineExtinctAt: Record<keyof RegionLineages, number | null>;
   };
@@ -403,11 +420,14 @@ export function runHarness(config: HarnessConfig): HarnessReport {
     return {
       worldTime: world.elapsed,
       connected: tideConnectedAt(world.elapsed),
+      pocketConnected: pocketConnectedAt(world.elapsed),
       tide: tideNameAt(world.elapsed),
-      pool: regionLineages((x, y) => !inSea(x, y)),
+      pool: regionLineages((x, y) => !inSea(x, y) && !inPocket(x, y)),
+      pocket: regionLineages(inPocket),
       sea: regionLineages((x, y) => inSea(x, y) && !inStrandline(x, y)),
       strandline: regionLineages(inStrandline),
       poolPigment: pigmentOnShore(world),
+      pocketPigment: pigmentInPocket(world),
       seaPigment: pigmentInSea(world),
       strandlinePigment: pigmentOnStrandline(world),
     };
@@ -428,25 +448,31 @@ export function runHarness(config: HarnessConfig): HarnessReport {
   }
 
   const poolExtinctAt = emptyExtinctions();
+  const pocketExtinctAt = emptyExtinctions();
   const seaExtinctAt = emptyExtinctions();
   const strandlineExtinctAt = emptyExtinctions();
-  let prevPool = regionLineages((x, y) => !inSea(x, y));
+  let prevPool = regionLineages((x, y) => !inSea(x, y) && !inPocket(x, y));
+  let prevPocket = regionLineages(inPocket);
   let prevSea = regionLineages((x, y) => inSea(x, y) && !inStrandline(x, y));
   let prevStrandline = regionLineages(inStrandline);
 
   function updateRegionExtinctions(): void {
-    const pool = regionLineages((x, y) => !inSea(x, y));
+    const pool = regionLineages((x, y) => !inSea(x, y) && !inPocket(x, y));
+    const pocket = regionLineages(inPocket);
     const sea = regionLineages((x, y) => inSea(x, y) && !inStrandline(x, y));
     const strand = regionLineages(inStrandline);
     for (const kind of LINEAGE_KEYS) {
       if (pool[kind] === 0 && prevPool[kind] > 0) poolExtinctAt[kind] = world.elapsed;
       if (pool[kind] > 0) poolExtinctAt[kind] = null;
+      if (pocket[kind] === 0 && prevPocket[kind] > 0) pocketExtinctAt[kind] = world.elapsed;
+      if (pocket[kind] > 0) pocketExtinctAt[kind] = null;
       if (sea[kind] === 0 && prevSea[kind] > 0) seaExtinctAt[kind] = world.elapsed;
       if (sea[kind] > 0) seaExtinctAt[kind] = null;
       if (strand[kind] === 0 && prevStrandline[kind] > 0) strandlineExtinctAt[kind] = world.elapsed;
       if (strand[kind] > 0) strandlineExtinctAt[kind] = null;
     }
     prevPool = pool;
+    prevPocket = pocket;
     prevSea = sea;
     prevStrandline = strand;
   }
@@ -642,13 +668,30 @@ export function runHarness(config: HarnessConfig): HarnessReport {
         ...world.cargoMites,
         ...world.marlgrubs,
       ].filter((body) => inStrandline(body.x, body.y)).length,
+      pocketPigment: pigmentInPocket(world),
+      pocketBodies: [
+        ...world.organisms,
+        ...world.grazers,
+        ...world.skimmers,
+        ...world.siltstitchers,
+        ...world.reedwells,
+        ...world.rainbells,
+        ...world.glassLimpets,
+        ...world.cargoMites,
+        ...world.marlgrubs,
+      ].filter((body) => inPocket(body.x, body.y)).length,
     },
     tide: {
       arrivals: world.ecologyLedger.tideArrivals,
       departures: world.ecologyLedger.tideDepartures,
       pigmentIn: world.ecologyLedger.tidePigmentIn,
       pigmentOut: world.ecologyLedger.tidePigmentOut,
+      pocketArrivals: world.ecologyLedger.pocketArrivals,
+      pocketDepartures: world.ecologyLedger.pocketDepartures,
+      pocketPigmentIn: world.ecologyLedger.pocketPigmentIn,
+      pocketPigmentOut: world.ecologyLedger.pocketPigmentOut,
       poolExtinctAt,
+      pocketExtinctAt,
       seaExtinctAt,
       strandlineExtinctAt,
     },
@@ -686,14 +729,17 @@ export function runHarness(config: HarnessConfig): HarnessReport {
       tidePartitioned:
         Number.isFinite(pigmentInSea(world)) &&
         Number.isFinite(pigmentOnShore(world)) &&
+        Number.isFinite(pigmentInPocket(world)) &&
         world.ecologyLedger.tidePigmentIn >= 0 &&
-        world.ecologyLedger.tidePigmentOut >= 0,
+        world.ecologyLedger.tidePigmentOut >= 0 &&
+        world.ecologyLedger.pocketPigmentIn >= 0 &&
+        world.ecologyLedger.pocketPigmentOut >= 0,
       strandlinePartitioned:
         Number.isFinite(pigmentOnStrandline(world)) &&
         world.ecologyLedger.strandlineSettled >= 0 &&
         world.ecologyLedger.strandlineLeached >= 0 &&
         pigmentOnStrandline(world) <= pigmentInSea(world) + 1e-9,
-      note: 'Remains created equal held plus consumed plus decayed. Fossil pigment equals fossils formed; it is paid remain color, not a new population. Seam remaining plus accrued plus dissolved equals the finite vein. Tide pigment in and out are transfers of already-paid color, not new pigment. Strandline settled and leached are transfers of color that crossed the mouth, not new pigment; held wrack is a subset of sea pigment. Daylight and visitor light correlate with pigment rather than matching because of the energy floor, fade, and night.',
+      note: 'Remains created equal held plus consumed plus decayed. Fossil pigment equals fossils formed; it is paid remain color, not a new population. Seam remaining plus accrued plus dissolved equals the finite vein. Tide pigment in and out are transfers of already-paid color, not new pigment. Pocket pigment in and out are transfers of already-paid color through the high-pool mouth. Strandline settled and leached are transfers of color that crossed the mouth, not new pigment; held wrack is a subset of sea pigment. Daylight and visitor light correlate with pigment rather than matching because of the energy floor, fade, and night.',
     },
   };
 }
@@ -892,15 +938,26 @@ export function printReport(report: HarnessReport): void {
   console.log(`   Sea bodies: ${report.resources.seaBodies}`);
   console.log(`   Strandline pigment: ${report.resources.strandlinePigment.toFixed(3)}`);
   console.log(`   Strandline bodies: ${report.resources.strandlineBodies}`);
+  console.log(`   Pocket pigment: ${report.resources.pocketPigment.toFixed(3)}`);
+  console.log(`   Pocket bodies: ${report.resources.pocketBodies}`);
 
   console.log(`\n🌙 Tide and sea`);
   console.log(`   Arrivals (sea → pool): ${report.tide.arrivals}`);
   console.log(`   Departures (pool → sea): ${report.tide.departures}`);
   console.log(`   Tide pigment in: ${report.tide.pigmentIn.toFixed(3)}`);
   console.log(`   Tide pigment out: ${report.tide.pigmentOut.toFixed(3)}`);
+  console.log(`   Arrivals (sea → pocket): ${report.tide.pocketArrivals}`);
+  console.log(`   Departures (pocket → sea): ${report.tide.pocketDepartures}`);
+  console.log(`   Pocket pigment in: ${report.tide.pocketPigmentIn.toFixed(3)}`);
+  console.log(`   Pocket pigment out: ${report.tide.pocketPigmentOut.toFixed(3)}`);
   console.log('   Pool extinctions:');
   for (const kind of LINEAGE_KEYS) {
     const at = report.tide.poolExtinctAt[kind];
+    console.log(`     ${kind}: ${at === null ? '—' : formatTime(at)}`);
+  }
+  console.log('   Pocket extinctions:');
+  for (const kind of LINEAGE_KEYS) {
+    const at = report.tide.pocketExtinctAt[kind];
     console.log(`     ${kind}: ${at === null ? '—' : formatTime(at)}`);
   }
   console.log('   Sea extinctions:');
@@ -914,9 +971,9 @@ export function printReport(report: HarnessReport): void {
     console.log(`     ${kind}: ${at === null ? '—' : formatTime(at)}`);
   }
   console.log(
-    '   Time       | Tide    | Open | Pool L/G/S/R/B/St/Gl/M/Mg | Sea L/G/S/R/B/St/Gl/M/Mg | Strand L/G/S/R/B/St/Gl/M/Mg | Pool pig | Sea pig | Strand pig',
+    '   Time       | Tide    | Open | High | Pool L/G/S/R/B/St/Gl/M/Mg | Pocket L/G/S/R/B/St/Gl/M/Mg | Sea L/G/S/R/B/St/Gl/M/Mg | Strand L/G/S/R/B/St/Gl/M/Mg | Pool pig | Pocket pig | Sea pig | Strand pig',
   );
-  console.log('   ' + '-'.repeat(148));
+  console.log('   ' + '-'.repeat(188));
   function lineageCounts(region: RegionLineages): string {
     return `${region.lucents}/${region.grazers}/${region.skimmers}/${region.reedwells}/${region.rainbells}/${region.siltstitchers}/${region.glassLimpets}/${region.cargoMites}/${region.marlgrubs}`;
   }
@@ -930,7 +987,7 @@ export function printReport(report: HarnessReport): void {
   for (const i of basinRows) {
     const b = report.basins[i];
     console.log(
-      `   ${formatTime(b.worldTime).padEnd(10)} | ${b.tide.padEnd(7)} | ${b.connected ? 'yes' : ' no'} | ${lineageCounts(b.pool).padEnd(23)} | ${lineageCounts(b.sea).padEnd(22)} | ${lineageCounts(b.strandline).padEnd(25)} | ${b.poolPigment.toFixed(2).padStart(8)} | ${b.seaPigment.toFixed(2).padStart(7)} | ${b.strandlinePigment.toFixed(2).padStart(10)}`,
+      `   ${formatTime(b.worldTime).padEnd(10)} | ${b.tide.padEnd(7)} | ${b.connected ? 'yes' : ' no'} | ${b.pocketConnected ? 'yes' : ' no'} | ${lineageCounts(b.pool).padEnd(23)} | ${lineageCounts(b.pocket).padEnd(25)} | ${lineageCounts(b.sea).padEnd(22)} | ${lineageCounts(b.strandline).padEnd(25)} | ${b.poolPigment.toFixed(2).padStart(8)} | ${b.pocketPigment.toFixed(2).padStart(10)} | ${b.seaPigment.toFixed(2).padStart(7)} | ${b.strandlinePigment.toFixed(2).padStart(10)}`,
     );
   }
 
@@ -953,6 +1010,10 @@ export function printReport(report: HarnessReport): void {
   console.log(`   Tide pigment out: ${report.ledger.tidePigmentOut.toFixed(3)}`);
   console.log(`   Tide arrivals: ${report.ledger.tideArrivals}`);
   console.log(`   Tide departures: ${report.ledger.tideDepartures}`);
+  console.log(`   Pocket pigment in: ${report.ledger.pocketPigmentIn.toFixed(3)}`);
+  console.log(`   Pocket pigment out: ${report.ledger.pocketPigmentOut.toFixed(3)}`);
+  console.log(`   Pocket arrivals: ${report.ledger.pocketArrivals}`);
+  console.log(`   Pocket departures: ${report.ledger.pocketDepartures}`);
   console.log(`   Strandline settled: ${report.ledger.strandlineSettled.toFixed(3)}`);
   console.log(`   Strandline leached: ${report.ledger.strandlineLeached.toFixed(3)}`);
 
@@ -969,7 +1030,7 @@ export function printReport(report: HarnessReport): void {
     `   Seam (capacity = remaining + accrued + dissolved): ${MINERAL_SEAM.capacity} = ${report.conservationCheck.seamRemaining.toFixed(3)} + ${report.conservationCheck.seamAccrued.toFixed(3)} + ${report.conservationCheck.seamDissolved.toFixed(3)} ${report.conservationCheck.seamBalanced ? '✓' : '✗'}`,
   );
   console.log(
-    `   Tide pigment (sea ${report.resources.seaPigment.toFixed(3)} + shore ${report.resources.shorePigment.toFixed(3)}; in ${report.tide.pigmentIn.toFixed(3)} / out ${report.tide.pigmentOut.toFixed(3)} transfers) ${report.conservationCheck.tidePartitioned ? '✓' : '✗'}`,
+    `   Tide pigment (sea ${report.resources.seaPigment.toFixed(3)} + shore ${report.resources.shorePigment.toFixed(3)} + pocket ${report.resources.pocketPigment.toFixed(3)}; in ${report.tide.pigmentIn.toFixed(3)} / out ${report.tide.pigmentOut.toFixed(3)}; pocket in ${report.tide.pocketPigmentIn.toFixed(3)} / out ${report.tide.pocketPigmentOut.toFixed(3)}) ${report.conservationCheck.tidePartitioned ? '✓' : '✗'}`,
   );
   console.log(
     `   Strandline (held ${report.resources.strandlinePigment.toFixed(3)} ≤ sea; settled ${report.ledger.strandlineSettled.toFixed(3)} / leached ${report.ledger.strandlineLeached.toFixed(3)}) ${report.conservationCheck.strandlinePartitioned ? '✓' : '✗'}`,

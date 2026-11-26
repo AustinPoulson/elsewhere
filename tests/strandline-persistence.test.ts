@@ -11,9 +11,17 @@ function previousRevision(world: World): Record<string, unknown> {
   const ledger = previous.ecologyLedger as {
     strandlineSettled?: number;
     strandlineLeached?: number;
+    pocketPigmentIn?: number;
+    pocketPigmentOut?: number;
+    pocketArrivals?: number;
+    pocketDepartures?: number;
   };
   delete ledger.strandlineSettled;
   delete ledger.strandlineLeached;
+  delete ledger.pocketPigmentIn;
+  delete ledger.pocketPigmentOut;
+  delete ledger.pocketArrivals;
+  delete ledger.pocketDepartures;
   return previous;
 }
 
@@ -82,7 +90,7 @@ describe('strandline snapshot revision', () => {
         w.schemaRevision = 20;
       },
       (w) => {
-        w.schemaRevision = 22;
+        w.schemaRevision = 23;
       },
       (w) => {
         (w.ecologyLedger as { strandlineSettled: number }).strandlineSettled = -1;

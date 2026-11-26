@@ -326,7 +326,7 @@ describe('prism snapshot revision', () => {
         w.nextId += 7;
       },
       (w) => {
-        w.schemaRevision = 22;
+        w.schemaRevision = 23;
       },
     ];
     for (const change of changes) {
@@ -374,6 +374,10 @@ describe('prism snapshot revision', () => {
     delete previous.ecologyLedger.tideDepartures;
     delete previous.ecologyLedger.strandlineSettled;
     delete previous.ecologyLedger.strandlineLeached;
+    delete previous.ecologyLedger.pocketPigmentIn;
+    delete previous.ecologyLedger.pocketPigmentOut;
+    delete previous.ecologyLedger.pocketArrivals;
+    delete previous.ecologyLedger.pocketDepartures;
     previous.skimmers = previous.skimmers.map(
       ({ parentId: _parentId, nextBirthAt: _nextBirthAt, ...rest }: Record<string, unknown>) => rest,
     );

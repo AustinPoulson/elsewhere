@@ -2,13 +2,16 @@ export const OPENING_WIDTH = 1440;
 export const OPENING_HEIGHT = 1000;
 export const WORLD_WIDTH = 1440;
 export const WORLD_HEIGHT = 1560;
-export const SCHEMA_REVISION = 21;
+export const SCHEMA_REVISION = 22;
 export const FIXED_STEP = 1 / 30;
 export const MAX_POOLS = 2;
 export const MAX_LINKS = 1;
 export const MAX_CHANNEL_ARROWS = 4;
 export const MAX_TIDE_ARROWS = 4;
+export const MAX_POCKET_ARROWS = 2;
 export const SEA_BODY_CAP = 8;
+export const POCKET_BODY_CAP = 6;
+export const POCKET_SEDIMENT_CAP = 24;
 export const SEA_SEDIMENT_CAP = 48;
 export const STRANDLINE_GRAIN_CAP = 24;
 export const STRANDLINE_REMAIN_CAP = 12;
@@ -37,7 +40,7 @@ export interface Point {
   y: number;
 }
 export interface HabitatPool {
-  id: 1 | 2 | 3;
+  id: 1 | 2 | 3 | 4;
   x: number;
   y: number;
   rx: number;
@@ -239,6 +242,10 @@ export interface EcologyLedger {
   tideDepartures: number;
   strandlineSettled: number;
   strandlineLeached: number;
+  pocketPigmentIn: number;
+  pocketPigmentOut: number;
+  pocketArrivals: number;
+  pocketDepartures: number;
 }
 export interface LightSource extends Point {
   id: number;
@@ -288,7 +295,7 @@ export interface ShoreMemory {
 }
 export interface World {
   version: 3;
-  schemaRevision: 21;
+  schemaRevision: 22;
   lastSeenAt: number | null;
   seamAccrued: number;
   pools: HabitatPool[];
@@ -364,6 +371,9 @@ export interface WorldStats {
   seaBodies: number;
   strandlinePigment: number;
   strandlineBodies: number;
+  pocketConnected: boolean;
+  pocketPigment: number;
+  pocketBodies: number;
 }
 
 // One shared coastline formula; linked pools and the channel live in habitat.ts.
