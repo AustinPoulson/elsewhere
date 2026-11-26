@@ -7,7 +7,9 @@ import {
   TIDE_MOUTH_WIDTH,
   TIDE_PERIOD,
   inSea,
+  inStrandline,
   mouthSegment,
+  strandlinePoint,
   syncTide,
   tideConnectedAt,
   tideFlowAt,
@@ -16,18 +18,22 @@ import {
   type TideRegion,
 } from '../habitat';
 
-export { tideConnectedAt, tideFlowAt, tideHeightAt, tideRegion };
+export { tideConnectedAt, tideFlowAt, tideHeightAt, tideRegion, inStrandline };
 import { confinePosition } from '../geometry';
 import { baselineTraits } from '../traits';
+import { blendHue } from '../species/resources';
 import {
   LIMITS,
   SEA_BODY_CAP,
   SEA_SEDIMENT_CAP,
+  STRANDLINE_GRAIN_CAP,
+  STRANDLINE_REMAIN_CAP,
   type CargoMite,
   type Grazer,
   type Marlgrub,
   type Organism,
   type Point,
+  type Sediment,
   type Siltstitcher,
   type Skimmer,
   type World,
@@ -36,6 +42,7 @@ import {
 const TAU = Math.PI * 2;
 const WASH_CHANCE = 0.16;
 const WASH_DISTANCE = 40;
+const STRANDLINE_LEACH = 0.005;
 export const SEA_LUCENTS = 4;
 export const SEA_GRAINS = 8;
 
@@ -79,6 +86,17 @@ export function tideNote(elapsed: number): string {
   return connected
     ? 'The tide is falling. The mouth is still open.'
     : 'The tide is falling. The pool is cut off from the sea.';
+}
+
+export function strandNote(world: World): string {
+  const pigment = pigmentOnStrandline(world);
+  const connected = tideConnectedAt(world.elapsed);
+  if (pigment < 0.05) {
+    return connected
+      ? 'A strandline lies on the sea side of the mouth. Wrack has not settled yet.'
+      : 'A strandline lies on the sea side of the mouth. The wrack waits while the pool is cut off.';
+  }
+  return `A strandline on the sea side of the mouth holds ${pigment.toFixed(1)} pigment.`;
 }
 
 export function initializeSea(world: World): void {
@@ -207,6 +225,46 @@ export function pigmentInSea(world: World): number {
   return total;
 }
 
+export function pigmentOnStrandline(world: World): number {
+  let total = 0;
+  for (const grain of world.sediment) if (inStrandline(grain.x, grain.y)) total += grain.strength;
+  for (const remain of world.remains) if (inStrandline(remain.x, remain.y)) total += remain.pigment;
+  for (const fossil of world.fossils) if (inStrandline(fossil.x, fossil.y)) total += fossil.pigment;
+  for (const nest of world.nests) if (inStrandline(nest.x, nest.y)) total += nest.pigment;
+  for (const body of [
+    ...world.organisms,
+    ...world.grazers,
+    ...world.skimmers,
+    ...world.siltstitchers,
+    ...world.reedwells,
+    ...world.rainbells,
+    ...world.glassLimpets,
+    ...world.cargoMites,
+    ...world.marlgrubs,
+  ]) {
+    if (inStrandline(body.x, body.y)) total += carriedPigment(body);
+  }
+  return total;
+}
+
+export function strandBodyCount(world: World): number {
+  let count = 0;
+  for (const body of [
+    ...world.organisms,
+    ...world.grazers,
+    ...world.skimmers,
+    ...world.siltstitchers,
+    ...world.reedwells,
+    ...world.rainbells,
+    ...world.glassLimpets,
+    ...world.cargoMites,
+    ...world.marlgrubs,
+  ]) {
+    if (inStrandline(body.x, body.y)) count++;
+  }
+  return count;
+}
+
 export function pigmentOnShore(world: World): number {
   let total = 0;
   for (const grain of world.sediment) if (!inSea(grain.x, grain.y)) total += grain.strength;
@@ -318,10 +376,95 @@ function washOnce(world: World): void {
   shoveAlongTide(body, world.elapsed, margin);
 }
 
+function crossedToSea(body: Point & { id: number }, before: Map<number, TideRegion>): boolean {
+  const previous = before.get(body.id);
+  const next = tideRegion(body.x, body.y);
+  return next === 'sea' && (previous === 'pool' || previous === 'mouth');
+}
+
+function placeOnStrandline(body: Point, id: number, tick: number): void {
+  const point = strandlinePoint(tick, id);
+  body.x = point.x;
+  body.y = point.y;
+}
+
+function countOnStrandline(items: Point[]): number {
+  let count = 0;
+  for (const item of items) if (inStrandline(item.x, item.y)) count++;
+  return count;
+}
+
+function settleWrackItem(
+  world: World,
+  before: Map<number, TideRegion>,
+  item: Point & { id: number },
+  occupied: { count: number },
+  cap: number,
+  pigment: number,
+): void {
+  if (!crossedToSea(item, before)) return;
+  if (inStrandline(item.x, item.y)) {
+    world.ecologyLedger.strandPigmentIn += pigment;
+    return;
+  }
+  if (occupied.count >= cap) return;
+  placeOnStrandline(item, item.id, world.tick);
+  occupied.count += 1;
+  world.ecologyLedger.strandPigmentIn += pigment;
+}
+
+function settleEbbWrack(world: World, before: Map<number, TideRegion>): void {
+  if (tideFlowAt(world.elapsed) <= 0) return;
+  const grains = { count: countOnStrandline(world.sediment) };
+  const remains = { count: countOnStrandline(world.remains) + countOnStrandline(world.fossils) };
+  for (const grain of world.sediment) {
+    settleWrackItem(world, before, grain, grains, STRANDLINE_GRAIN_CAP, grain.strength);
+  }
+  for (const remain of world.remains) {
+    settleWrackItem(world, before, remain, remains, STRANDLINE_REMAIN_CAP, remain.pigment);
+  }
+  for (const fossil of world.fossils) {
+    settleWrackItem(world, before, fossil, remains, STRANDLINE_REMAIN_CAP, fossil.pigment);
+  }
+  for (const body of [...world.siltstitchers, ...world.glassLimpets, ...world.marlgrubs]) {
+    if (!crossedToSea(body, before) || inStrandline(body.x, body.y)) continue;
+    placeOnStrandline(body, body.id, world.tick);
+  }
+}
+
+function leachStrandline(world: World): void {
+  if (world.tick % 6 !== 1) return;
+  const wrack: Sediment[] = [];
+  const sea: Sediment[] = [];
+  for (const grain of world.sediment) {
+    if (!(grain.strength > 0)) continue;
+    if (inStrandline(grain.x, grain.y)) wrack.push(grain);
+    else if (inSea(grain.x, grain.y) && grain.strength < 1) sea.push(grain);
+  }
+  if (wrack.length === 0) return;
+  const source = wrack[Math.floor(world.tick / 6) % wrack.length];
+  let dest: Sediment | undefined;
+  for (const grain of sea) {
+    if (!dest || grain.strength > dest.strength || (grain.strength === dest.strength && grain.id < dest.id))
+      dest = grain;
+  }
+  if (!dest) return;
+  const moved = Math.min(STRANDLINE_LEACH, source.strength, Math.max(0, 1 - dest.strength));
+  if (!(moved > 0)) return;
+  dest.hue = blendHue(dest.hue, source.hue, dest.strength, moved);
+  dest.strength += moved;
+  source.strength -= moved;
+  world.ecologyLedger.strandPigmentOut += moved;
+}
+
 export function applyTide(world: World, before: Map<number, TideRegion>): void {
   syncTide(world.elapsed);
   washOnce(world);
-  if (before.size > 0) accountCrossings(world, before);
+  if (before.size > 0) {
+    accountCrossings(world, before);
+    settleEbbWrack(world, before);
+  }
+  leachStrandline(world);
 }
 
 export function beginTideStep(world: World): Map<number, TideRegion> {

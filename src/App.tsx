@@ -38,7 +38,7 @@ import { lockedColorReturning } from './world/environment/locked-return';
 import { unusedNestsSlumping } from './world/environment/nest-slump';
 import { unusedRemainsSlumping } from './world/environment/remain-slump';
 import { getSeason } from './world/environment/seasons';
-import { tideNote } from './world/environment/tide';
+import { strandNote, tideNote } from './world/environment/tide';
 import { describeBulk, describeDrive } from './world/traits';
 import { MAX_CURRENTS } from './world/actions/current';
 import { FOSSIL_LABEL } from './world/species/fossils';
@@ -1113,6 +1113,7 @@ export function App() {
   const weather = effectiveWeather(worldRef.current);
   const season = getSeason(worldRef.current.elapsed);
   const tide = tideNote(worldRef.current.elapsed);
+  const strand = strandNote(worldRef.current);
   const shoreMemoryNote = describeShoreMemory(shoreMemory);
 
   return (
@@ -1324,6 +1325,12 @@ export function App() {
           {stats.tideConnected
             ? ` ${stats.seaBodies} ${stats.seaBodies === 1 ? 'body' : 'bodies'} offshore; ${stats.seaPigment.toFixed(1)} pigment in the sea.`
             : ` The sea holds ${stats.seaBodies} ${stats.seaBodies === 1 ? 'body' : 'bodies'} and ${stats.seaPigment.toFixed(1)} pigment.`}
+        </div>
+        <div className="strand-readout" aria-live="polite">
+          {strand}
+          {stats.strandBodies > 0
+            ? ` ${stats.strandBodies} ${stats.strandBodies === 1 ? 'body' : 'bodies'} on the wrack.`
+            : ''}
         </div>
         {unusedNestsSlumping(worldRef.current) ? (
           <div className="slump-readout" aria-live="polite">
@@ -1891,6 +1898,19 @@ export function App() {
                       with its own pigment and a few coarse lives. Opening worlds pay for that sea from conserved color.
                       An old save receives the empty basin, not a gifted population. The observations list names the
                       tide for everyone, including a screen reader. Reduced motion keeps the indicator still.
+                    </p>
+                  </div>
+                </div>
+                <div className="guide-entry">
+                  <span className="entry-number">25</span>
+                  <div>
+                    <h3>The strandline</h3>
+                    <p>
+                      Color that leaves the pool on the ebb settles on a wrack line at the sea side of the mouth instead
+                      of spreading into the basin. Bodies already in the sea can feed there from that settled color, and
+                      the next flood can carry them back. Nothing is granted; the wrack holds only pigment and remains
+                      that really crossed. An old save receives an empty strandline. The observations list names it;
+                      reduced motion keeps the mark still.
                     </p>
                   </div>
                 </div>

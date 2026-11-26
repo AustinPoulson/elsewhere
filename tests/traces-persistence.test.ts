@@ -33,6 +33,8 @@ function previousRevision(world: World): Record<string, unknown> {
   delete previous.ecologyLedger.tidePigmentOut;
   delete previous.ecologyLedger.tideArrivals;
   delete previous.ecologyLedger.tideDepartures;
+  delete previous.ecologyLedger.strandPigmentIn;
+  delete previous.ecologyLedger.strandPigmentOut;
   return previous;
 }
 
@@ -186,7 +188,7 @@ describe('away-trace snapshot revision', () => {
         w.schemaRevision = 14;
       },
       (w) => {
-        w.schemaRevision = 21;
+        w.schemaRevision = 22;
       },
       (w) => {
         w.awayTraces = Array.from({ length: TRACE_MARK_CAP + 1 }, () => sampleTrace(0));

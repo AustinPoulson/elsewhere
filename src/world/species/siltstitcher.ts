@@ -1,4 +1,5 @@
 import { confinePosition } from '../geometry';
+import { inSea, inStrandline, strandlinePoint, tideConnectedAt } from '../habitat';
 import {
   LIMITS,
   isInPool,
@@ -47,6 +48,55 @@ function returnHome(body: Siltstitcher): void {
   body.mode = 'returning';
   body.destination = null;
   body.blockedFor = 0;
+}
+
+function refillFromGrain(body: Siltstitcher, grain: Sediment, dt: number, mayLoadCargo: boolean): void {
+  const reserve = Math.min(
+    grain.strength,
+    Math.max(0, siltstitcherReserveCapacity(body.traits) - body.reserve),
+    dt * RULE.reserveRefillRate * body.traits.drive,
+  );
+  if (reserve > 0) {
+    body.hue = blendHue(body.hue, grain.hue, body.body + body.reserve + body.cargo, reserve);
+    grain.strength -= reserve;
+    body.reserve += reserve;
+  }
+  if (!mayLoadCargo) return;
+  const cargo = Math.min(
+    grain.strength,
+    Math.max(0, RULE.cargoCapacity - body.cargo),
+    dt * RULE.cargoRefillRate * body.traits.drive,
+  );
+  if (cargo > 0) {
+    body.hue = blendHue(body.hue, grain.hue, body.body + body.reserve + body.cargo, cargo);
+    grain.strength -= cargo;
+    body.cargo += cargo;
+  }
+}
+
+function nearestStrandGrain(world: World, body: Point): Sediment | undefined {
+  let nearest: Sediment | undefined;
+  let best = Infinity;
+  for (const grain of world.sediment) {
+    if (!(grain.strength > 0) || !inStrandline(grain.x, grain.y)) continue;
+    const distance = Math.hypot(grain.x - body.x, grain.y - body.y);
+    if (distance < best || (distance === best && (!nearest || grain.id < nearest.id))) {
+      best = distance;
+      nearest = grain;
+    }
+  }
+  return nearest;
+}
+
+function forageStrandline(world: World, body: Siltstitcher, dt: number): void {
+  const grain = nearestStrandGrain(world, body);
+  const target = grain ?? strandlinePoint(world.tick, body.id);
+  const arrived = Math.hypot(target.x - body.x, target.y - body.y) <= RULE.homeReach;
+  if (!arrived) {
+    move(body, target, dt);
+    return;
+  }
+  if (grain) refillFromGrain(body, grain, dt, true);
 }
 
 function refill(world: World, body: Siltstitcher, nest: Nest, dt: number, mayLoadCargo: boolean): void {
@@ -200,7 +250,10 @@ function updateOne(world: World, body: Siltstitcher, dt: number): void {
   const phase = (world.tick + body.id) % 6 === 0;
   body.vx = 0;
   body.vy = 0;
-  if (!home) returnHome(body);
+  const atHome = home ? Math.hypot(home.x - body.x, home.y - body.y) <= RULE.homeReach : false;
+  const isolatedAtSea = inSea(body.x, body.y) && !atHome && !tideConnectedAt(world.elapsed);
+  if (isolatedAtSea) forageStrandline(world, body, dt);
+  else if (!home) returnHome(body);
   else if (body.mode === 'home' || body.mode === 'returning') {
     const atHome = Math.hypot(home.x - body.x, home.y - body.y) <= RULE.homeReach;
     if (!atHome) move(body, home, dt);

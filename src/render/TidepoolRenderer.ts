@@ -702,6 +702,12 @@ export class TidepoolRenderer {
         alpha: 0.12 + height * 0.14,
       });
     }
+    const mouth = mouthSegment();
+    const wrackPulse = time === 0 ? 0 : Math.sin(time * 0.09) * 0.02;
+    this.tideWash.ellipse(mouth.bx + mouth.ux * 18, mouth.by + mouth.uy * 18, 54, 16).fill({
+      color: 0xc4b08a,
+      alpha: 0.12 + wrackPulse + Math.min(0.18, world.ecologyLedger.strandPigmentIn * 0.02),
+    });
   }
 
   private drawChannelCurrent(world: World): void {

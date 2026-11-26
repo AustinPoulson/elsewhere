@@ -1,5 +1,5 @@
 import { sedimentCurrentVelocity } from '../currents';
-import { containingPool, shoreRho } from '../habitat';
+import { containingPool, inStrandline, shoreRho } from '../habitat';
 import type { GlassLimpet, Sediment, Traits, World } from '../types';
 import { baselineTraits, mutateTraits } from '../traits';
 import { rainIntensityAt } from '../weather';
@@ -54,6 +54,7 @@ function childSite(parent: GlassLimpet): { x: number; y: number } | null {
 }
 
 function grainInFlow(world: World, grain: Sediment): boolean {
+  if (inStrandline(grain.x, grain.y)) return true;
   if (rainIntensityAt(world, grain.x, grain.y) > 0) return true;
   const velocity = sedimentCurrentVelocity(world, grain);
   return Math.hypot(velocity.x, velocity.y) >= RULE.currentFeedSpeed;

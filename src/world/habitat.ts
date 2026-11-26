@@ -14,6 +14,9 @@ export const TIDE_PERIOD = 360;
 export const TIDE_CONNECT = 0.32;
 export const TIDE_FLOW = 3.6;
 export const TIDE_INFLUENCE = 24;
+export const STRANDLINE_RHO_MIN = 0.76;
+export const STRANDLINE_RHO_MAX = 0.88;
+export const STRANDLINE_SPAN = 110;
 const POOL_RADIUS_EXTENT = 1.11;
 
 function clamp(value: number, low: number, high: number): number {
@@ -285,6 +288,29 @@ export function inInletPool(x: number, y: number, margin = 0): boolean {
 
 export function inSea(x: number, y: number, margin = 0): boolean {
   return inEllipse(x, y, SEA_POOL, margin);
+}
+
+export function inStrandline(x: number, y: number): boolean {
+  if (!inSea(x, y)) return false;
+  const rho = shoreRho(x, y, SEA_POOL);
+  if (rho < STRANDLINE_RHO_MIN || rho > STRANDLINE_RHO_MAX) return false;
+  const link = mouth();
+  return Math.hypot(x - link.bx, y - link.by) <= STRANDLINE_SPAN;
+}
+
+export function strandlinePoint(tick: number, id: number): Point {
+  const link = mouth();
+  const mouthAngle = Math.atan2((link.by - SEA_POOL.y) / SEA_POOL.ry, (link.bx - SEA_POOL.x) / SEA_POOL.rx);
+  const spread = ((tick * 0.61803398875 + id * 0.7548776662466927) % 1) - 0.5;
+  const angle = mouthAngle + spread * 0.85;
+  const rho = STRANDLINE_RHO_MIN + 0.02 + ((tick + id) % 7) * 0.012;
+  const radius = poolRadius(angle);
+  const point = {
+    x: SEA_POOL.x + Math.cos(angle) * rho * radius * SEA_POOL.rx,
+    y: SEA_POOL.y + Math.sin(angle) * rho * radius * SEA_POOL.ry,
+  };
+  confineToWater(point, 8);
+  return point;
 }
 
 export function inTideMouth(x: number, y: number, margin = 0): boolean {

@@ -177,6 +177,8 @@ function previous(world: World): Record<string, any> {
     'tidePigmentOut',
     'tideArrivals',
     'tideDepartures',
+    'strandPigmentIn',
+    'strandPigmentOut',
   ])
     delete result.ecologyLedger[key];
   return result;
@@ -279,6 +281,8 @@ describe('siltstitcher snapshot revision', () => {
       'tidePigmentOut',
       'tideArrivals',
       'tideDepartures',
+      'strandPigmentIn',
+      'strandPigmentOut',
     ]) {
       expect(oldLedger[key]).toBe(0);
       delete oldLedger[key];
@@ -571,7 +575,7 @@ describe('siltstitcher snapshot revision', () => {
         w.siltstitchers = Array.from({ length: 7 }, () => ({ ...w.siltstitchers[0], id: w.nextId++ }));
       },
       (w) => {
-        w.schemaRevision = 21;
+        w.schemaRevision = 22;
       },
       (w) => {
         delete w.siltstitchers[0].parentId;
@@ -687,6 +691,8 @@ describe('siltstitcher snapshot revision', () => {
     delete previous.ecologyLedger.tidePigmentOut;
     delete previous.ecologyLedger.tideArrivals;
     delete previous.ecologyLedger.tideDepartures;
+    delete previous.ecologyLedger.strandPigmentIn;
+    delete previous.ecologyLedger.strandPigmentOut;
     previous.siltstitchers = previous.siltstitchers.map(
       ({ parentId: _parentId, nextBirthAt: _nextBirthAt, ...rest }: Record<string, unknown>) => rest,
     );

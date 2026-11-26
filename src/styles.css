@@ -854,6 +854,14 @@ h1 em {
   max-width: 280px;
   color: #8fb8b2;
 }
+.strand-readout {
+  margin-top: 6px;
+  font-size: 10px;
+  letter-spacing: 0;
+  line-height: 1.45;
+  max-width: 280px;
+  color: #c4b08a;
+}
 .slump-readout {
   margin-top: 6px;
   font-size: 10px;
@@ -1012,6 +1020,7 @@ h1 em {
   .seam-readout,
   .deep-readout,
   .tide-readout,
+  .strand-readout,
   .slump-readout,
   .remain-slump-readout,
   .locked-return-readout,
