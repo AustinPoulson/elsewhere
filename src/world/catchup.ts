@@ -1,4 +1,5 @@
 import { describeDeepChange, pigmentInDeep, remainsInDeep } from './environment/depth';
+import { describeStrandlineChange, pigmentOnStrandline } from './environment/strandline';
 import { describeSeamChange, seamRemaining } from './environment/mineral-seam';
 import { describeSeasonChange } from './environment/seasons';
 import { heldFossilPigment } from './species/fossils';
@@ -63,6 +64,7 @@ export interface ResourceSnapshot {
   seamRemaining: number;
   seamDissolved: number;
   deepPigment: number;
+  strandlinePigment: number;
 }
 
 export interface CatchUpJournal {
@@ -146,6 +148,7 @@ export function resourceSnapshot(world: World): ResourceSnapshot {
     seamRemaining: seamRemaining(world),
     seamDissolved: world.ecologyLedger.seamDissolved,
     deepPigment: pigmentInDeep(world) + remainsInDeep(world),
+    strandlinePigment: pigmentOnStrandline(world),
   };
 }
 
@@ -315,6 +318,7 @@ function finishCatchUp(
           inletDelta: colorInInlet(world) - inletBefore,
           inletBodiesDelta: livingInInlet(world) - inletBodiesBefore,
           channelOccupied: channelOccupied(world),
+          strandlineDelta: after.strandlinePigment - before.strandlinePigment,
         });
   const held = holdTracesAcrossCatchUp(world.awayTraces, world.elapsed - startedElapsed);
   const next = recordAwayTraces(held, world.shoreMemory, traces, world.elapsed);
@@ -357,6 +361,8 @@ export function composeJournal(
     if (seamLine) lines.push(seamLine);
     const deepLine = describeDeepChange(before.deepPigment, after.deepPigment);
     if (deepLine) lines.push(deepLine);
+    const strandlineLine = describeStrandlineChange(before.strandlinePigment, after.strandlinePigment);
+    if (strandlineLine) lines.push(strandlineLine);
   }
 
   for (const species of SPECIES) {

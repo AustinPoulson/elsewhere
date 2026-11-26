@@ -14,11 +14,15 @@ function previousRevision(world: World): Record<string, unknown> {
     tidePigmentOut?: number;
     tideArrivals?: number;
     tideDepartures?: number;
+    strandlineSettled?: number;
+    strandlineLeached?: number;
   };
   delete ledger.tidePigmentIn;
   delete ledger.tidePigmentOut;
   delete ledger.tideArrivals;
   delete ledger.tideDepartures;
+  delete ledger.strandlineSettled;
+  delete ledger.strandlineLeached;
   return previous;
 }
 
@@ -49,6 +53,8 @@ describe('tide snapshot revision', () => {
     expect(migrated.ecologyLedger.tidePigmentOut).toBe(0);
     expect(migrated.ecologyLedger.tideArrivals).toBe(0);
     expect(migrated.ecologyLedger.tideDepartures).toBe(0);
+    expect(migrated.ecologyLedger.strandlineSettled).toBe(0);
+    expect(migrated.ecologyLedger.strandlineLeached).toBe(0);
     expect(JSON.stringify(old)).toBe(source);
     expect(restoreWorld(serializeWorld(migrated))).toEqual(migrated);
   });
@@ -83,7 +89,7 @@ describe('tide snapshot revision', () => {
         w.schemaRevision = 19;
       },
       (w) => {
-        w.schemaRevision = 21;
+        w.schemaRevision = 22;
       },
       (w) => {
         (w.ecologyLedger as { tideArrivals: number }).tideArrivals = -1;

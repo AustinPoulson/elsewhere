@@ -180,7 +180,7 @@ describe('versioned weather calls', () => {
         delete world.schemaRevision;
       },
       (world) => {
-        world.schemaRevision = 21;
+        world.schemaRevision = 22;
       },
       (world) => {
         world.weatherCall = null;

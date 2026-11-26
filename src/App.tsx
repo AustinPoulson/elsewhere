@@ -33,6 +33,7 @@ import { restoreWorld, serializeWorld } from './world/persistence';
 import { callRain, effectiveWeather } from './world/weather';
 import { getDaylight } from './world/environment/daylight';
 import { inDeepWater } from './world/environment/depth';
+import { inStrandline, strandlineNote } from './world/environment/strandline';
 import { MINERAL_SEAM } from './world/environment/mineral-seam';
 import { lockedColorReturning } from './world/environment/locked-return';
 import { unusedNestsSlumping } from './world/environment/nest-slump';
@@ -125,6 +126,7 @@ function worldDaysMeta(days: number): string {
 }
 
 function waterPlace(x: number, y: number): string | null {
+  if (inStrandline(x, y)) return 'On the strandline';
   return inDeepWater(x, y) ? 'In the deeper water' : null;
 }
 
@@ -1325,6 +1327,9 @@ export function App() {
             ? ` ${stats.seaBodies} ${stats.seaBodies === 1 ? 'body' : 'bodies'} offshore; ${stats.seaPigment.toFixed(1)} pigment in the sea.`
             : ` The sea holds ${stats.seaBodies} ${stats.seaBodies === 1 ? 'body' : 'bodies'} and ${stats.seaPigment.toFixed(1)} pigment.`}
         </div>
+        <div className="strandline-readout" aria-live="polite">
+          {strandlineNote(worldRef.current)}
+        </div>
         {unusedNestsSlumping(worldRef.current) ? (
           <div className="slump-readout" aria-live="polite">
             Unused nests are slumping their color toward fuller homes.
@@ -1891,6 +1896,21 @@ export function App() {
                       with its own pigment and a few coarse lives. Opening worlds pay for that sea from conserved color.
                       An old save receives the empty basin, not a gifted population. The observations list names the
                       tide for everyone, including a screen reader. Reduced motion keeps the indicator still.
+                    </p>
+                  </div>
+                </div>
+                <div className="guide-entry">
+                  <span className="entry-number">25</span>
+                  <div>
+                    <h3>A strandline beyond the mouth</h3>
+                    <p>
+                      Pigment, grains, and remains that leave the pool on the ebb settle on a small wrack line on the
+                      sea side of the mouth instead of dispersing. That color is already paid; nothing is granted. The
+                      band is bounded and slowly leaches back into the sea&apos;s ordinary pigment. Visitor bodies
+                      already offshore can feed or found there by the same paid rules they use in the pool, and the next
+                      flood can carry them back. Opening worlds and old saves receive the empty strandline, not a gifted
+                      population. The observations list names it; reduced motion keeps the stain still; portrait keeps
+                      the same world coordinates.
                     </p>
                   </div>
                 </div>

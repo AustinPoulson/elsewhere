@@ -40,6 +40,7 @@ const quietResources: ResourceSnapshot = {
   seamRemaining: MINERAL_SEAM.capacity,
   seamDissolved: 0,
   deepPigment: 0,
+  strandlinePigment: 0,
 };
 
 describe('mineral seam physics', () => {

@@ -61,6 +61,7 @@ const quietResources: ResourceSnapshot = {
   seamRemaining: 24,
   seamDissolved: 0,
   deepPigment: 0,
+  strandlinePigment: 0,
 };
 
 function facts(overrides: Partial<Parameters<typeof composeAwayTraces>[0]> = {}) {
@@ -72,6 +73,7 @@ function facts(overrides: Partial<Parameters<typeof composeAwayTraces>[0]> = {})
     inletDelta: 0,
     inletBodiesDelta: 0,
     channelOccupied: false,
+    strandlineDelta: 0,
     ...overrides,
   };
 }
@@ -247,7 +249,7 @@ describe('catch-up writes traces into the save without touching ledgers', () => 
   });
 
   it('stores unfaded marks in revision 15 without changing the simulated world', () => {
-    expect(SCHEMA_REVISION).toBe(20);
+    expect(SCHEMA_REVISION).toBe(21);
     const world = createWorld(1);
     const live = createWorld(1);
     expect(world.awayTraces).toEqual([]);

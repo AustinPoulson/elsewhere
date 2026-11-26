@@ -20,6 +20,8 @@ function previousRevision(world: World): Record<string, unknown> {
   delete previous.ecologyLedger.tidePigmentOut;
   delete previous.ecologyLedger.tideArrivals;
   delete previous.ecologyLedger.tideDepartures;
+  delete previous.ecologyLedger.strandlineSettled;
+  delete previous.ecologyLedger.strandlineLeached;
   for (const remain of previous.remains ?? []) delete remain.source;
   return previous;
 }
@@ -84,7 +86,7 @@ describe('fossil snapshot revision', () => {
         w.schemaRevision = 11;
       },
       (w) => {
-        w.schemaRevision = 21;
+        w.schemaRevision = 22;
       },
       (w) => {
         w.fossils[0].pigment = 1.3;

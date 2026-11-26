@@ -147,6 +147,7 @@ describe('fossil burial', () => {
         seamRemaining: 24,
         seamDissolved: 0,
         deepPigment: 0,
+        strandlinePigment: 0,
       },
       {
         loosePigment: 1,
@@ -157,6 +158,7 @@ describe('fossil burial', () => {
         seamRemaining: 24,
         seamDissolved: 0,
         deepPigment: 0,
+        strandlinePigment: 0,
       },
       80,
     );

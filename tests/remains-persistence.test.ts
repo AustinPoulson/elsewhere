@@ -19,6 +19,8 @@ const remainsLedgerKeys = [
   'tidePigmentOut',
   'tideArrivals',
   'tideDepartures',
+  'strandlineSettled',
+  'strandlineLeached',
 ] as const;
 
 function previousRevision(world: World): Record<string, any> {
@@ -104,7 +106,7 @@ describe('remains snapshot revision', () => {
         w.schemaRevision = 9;
       },
       (w) => {
-        w.schemaRevision = 21;
+        w.schemaRevision = 22;
       },
       (w) => {
         w.remains[0].pigment = 2.1;
@@ -189,6 +191,8 @@ describe('remains snapshot revision', () => {
     delete previous.ecologyLedger.tidePigmentOut;
     delete previous.ecologyLedger.tideArrivals;
     delete previous.ecologyLedger.tideDepartures;
+    delete previous.ecologyLedger.strandlineSettled;
+    delete previous.ecologyLedger.strandlineLeached;
     previous.marlgrubs = previous.marlgrubs.map(
       ({ parentId: _parentId, nextBirthAt: _nextBirthAt, ...rest }: Record<string, unknown>) => rest,
     );

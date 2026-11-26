@@ -171,6 +171,7 @@ describe('safe shower study', () => {
       inletDelta: 0,
       inletBodiesDelta: 0,
       channelOccupied: true,
+      strandlineDelta: 0,
     });
     const before = serializeWorld(personal);
     const eraWorld = createWorld(44);

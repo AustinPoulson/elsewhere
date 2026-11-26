@@ -247,7 +247,7 @@ function inChannel(x: number, y: number, margin: number): boolean {
   return distanceToSegment(x, y) <= half;
 }
 
-function inMouth(x: number, y: number, margin: number): boolean {
+export function inMouth(x: number, y: number, margin = 0): boolean {
   const half = TIDE_MOUTH_WIDTH / 2 - margin;
   if (half <= 0) return false;
   const link = mouth();

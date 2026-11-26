@@ -48,6 +48,7 @@ const quietResources: ResourceSnapshot = {
   seamRemaining: 24,
   seamDissolved: 0,
   deepPigment: 0,
+  strandlinePigment: 0,
 };
 
 describe('season math', () => {

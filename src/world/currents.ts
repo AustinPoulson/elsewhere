@@ -1,6 +1,7 @@
 import { CURRENT_SPEED, MAX_CURRENT_SPEED, SEDIMENT_DRIFT, currentStrength } from './actions/current';
 import { depthAt, settleVelocity, stillScale } from './environment/depth';
 import { washShorePoint } from './environment/shore-wash';
+import { inStrandline, strandlineSettleVelocity, wrackPigment } from './environment/strandline';
 import { confinePosition } from './geometry';
 import { channelVelocity, tideVelocity } from './habitat';
 import { effectiveWeather } from './weather';
@@ -8,6 +9,7 @@ import type { Point, World } from './types';
 
 const driftVelocity: Point = { x: 0, y: 0 };
 const settleScratch: Point = { x: 0, y: 0 };
+const wrackScratch: Point = { x: 0, y: 0 };
 const tideScratch: Point = { x: 0, y: 0 };
 
 function currentVelocity(world: World, body: Point, scale: number, out: Point, settle = false): Point {
@@ -38,6 +40,9 @@ function currentVelocity(world: World, body: Point, scale: number, out: Point, s
     settleVelocity(body, settleScratch);
     out.x += settleScratch.x;
     out.y += settleScratch.y;
+    strandlineSettleVelocity(body, world.elapsed, wrackScratch);
+    out.x += wrackScratch.x;
+    out.y += wrackScratch.y;
   }
   return out;
 }
@@ -47,11 +52,15 @@ export function sedimentCurrentVelocity(world: World, grain: Point): Point {
 }
 
 function drift(world: World, body: Point, dt: number, scale: number, margin: number, settle = false): void {
+  const wasOnBand = settle && inStrandline(body.x, body.y);
   const velocity = currentVelocity(world, body, scale, driftVelocity, settle);
   if (velocity.x === 0 && velocity.y === 0) return;
   body.x += velocity.x * dt;
   body.y += velocity.y * dt;
   confinePosition(body, margin);
+  if (settle && !wasOnBand && inStrandline(body.x, body.y)) {
+    world.ecologyLedger.strandlineSettled += wrackPigment(body);
+  }
 }
 
 function inPaidCurrent(world: World, point: Point): boolean {
