@@ -147,7 +147,7 @@ describe('rain shore wash', () => {
   it('leaves schema 19 unchanged and grants nothing to a restored world', () => {
     const world = createWorld(3);
     expect(world.schemaRevision).toBe(SCHEMA_REVISION);
-    expect(SCHEMA_REVISION).toBe(21);
+    expect(SCHEMA_REVISION).toBe(22);
     const restored = restoreWorld(serializeWorld(world));
     expect(restored).not.toBeNull();
     expect(restored!.schemaRevision).toBe(SCHEMA_REVISION);

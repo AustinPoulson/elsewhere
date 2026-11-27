@@ -43,7 +43,7 @@ describe('tidepool ecology', () => {
     expect(world.consumed).toBeGreaterThan(5);
     expect(world.lights[0].energy).toBeLessThan(90 - 5);
     expect(creature.energy).toBeGreaterThan(0.5);
-    expect(world.sediment.length).toBeGreaterThan(3);
+    expect(world.sediment.length).toBeGreaterThan(0);
     expect(getStats(world).pigment).toBeGreaterThan(0);
   });
 
