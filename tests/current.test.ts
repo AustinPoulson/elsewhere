@@ -246,7 +246,7 @@ describe('current save revisions', () => {
         w.currents = null;
       },
       (w) => {
-        w.schemaRevision = 22;
+        w.schemaRevision = 23;
       },
       (w) => {
         w.currents[0].x = 0;

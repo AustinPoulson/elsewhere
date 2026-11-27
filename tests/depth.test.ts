@@ -47,6 +47,7 @@ const quietResources: ResourceSnapshot = {
   seamDissolved: 0,
   deepPigment: 0,
   strandlinePigment: 0,
+  precipitated: 0,
 };
 
 describe('deeper basin physics', () => {
@@ -150,9 +151,9 @@ describe('deeper basin physics', () => {
   });
 
   it('opens with the habitat only: no extra life, pigment, or energy', () => {
-    expect(SCHEMA_REVISION).toBe(21);
+    expect(SCHEMA_REVISION).toBe(22);
     const world = createWorld(1);
-    expect(world.schemaRevision).toBe(21);
+    expect(world.schemaRevision).toBe(SCHEMA_REVISION);
     expect(world.organisms).toHaveLength(28);
     expect(world.grazers).toHaveLength(4);
     expect(world.sediment).toHaveLength(56);
@@ -161,7 +162,7 @@ describe('deeper basin physics', () => {
     expect(getStats(world).deepPigment).toBeGreaterThanOrEqual(0);
     expect(restoreWorld(serializeWorld(world))).toEqual(world);
     const previous = structuredClone(world) as unknown as Record<string, unknown>;
-    previous.schemaRevision = 22;
+    previous.schemaRevision = 23;
     expect(restoreWorld(JSON.stringify(previous))).toBeNull();
   });
 

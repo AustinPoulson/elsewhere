@@ -36,6 +36,7 @@ import { inDeepWater } from './world/environment/depth';
 import { inStrandline, strandlineNote } from './world/environment/strandline';
 import { MINERAL_SEAM } from './world/environment/mineral-seam';
 import { lockedColorReturning } from './world/environment/locked-return';
+import { looseColorSettling } from './world/environment/precipitation';
 import { unusedNestsSlumping } from './world/environment/nest-slump';
 import { unusedRemainsSlumping } from './world/environment/remain-slump';
 import { getSeason } from './world/environment/seasons';
@@ -1345,6 +1346,11 @@ export function App() {
             Shell catch is returning to the shore.
           </div>
         ) : null}
+        {looseColorSettling(worldRef.current) ? (
+          <div className="precipitate-readout" aria-live="polite">
+            Loose color is settling into grains.
+          </div>
+        ) : null}
         {visibleAwayTraces(awayTraces, stats.elapsed).length > 0 ? (
           <div className="trace-readout" aria-live="polite">
             Faint marks remain from time away.
@@ -1911,6 +1917,19 @@ export function App() {
                       flood can carry them back. Opening worlds and old saves receive the empty strandline, not a gifted
                       population. The observations list names it; reduced motion keeps the stain still; portrait keeps
                       the same world coordinates.
+                    </p>
+                  </div>
+                </div>
+                <div className="guide-entry">
+                  <span className="entry-number">26</span>
+                  <div>
+                    <h3>Loose color settles into grains</h3>
+                    <p>
+                      In still, calm water a small fraction of loose pigment slowly precipitates onto the nearest
+                      underfilled coarse grain in the same basin, or forms a new grain only within the existing grain
+                      cap. The pool does this while cut off at low tide; the sea does it away from the north mouth; the
+                      deep basin stays still even when the mouth is open. Grain color comes out of loose pigment;
+                      nothing is granted. The observations list names the settling while it happens.
                     </p>
                   </div>
                 </div>

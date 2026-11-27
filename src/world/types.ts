@@ -2,7 +2,7 @@ export const OPENING_WIDTH = 1440;
 export const OPENING_HEIGHT = 1000;
 export const WORLD_WIDTH = 1440;
 export const WORLD_HEIGHT = 1560;
-export const SCHEMA_REVISION = 21;
+export const SCHEMA_REVISION = 22;
 export const FIXED_STEP = 1 / 30;
 export const MAX_POOLS = 2;
 export const MAX_LINKS = 1;
@@ -239,6 +239,7 @@ export interface EcologyLedger {
   tideDepartures: number;
   strandlineSettled: number;
   strandlineLeached: number;
+  precipitated: number;
 }
 export interface LightSource extends Point {
   id: number;
@@ -288,7 +289,7 @@ export interface ShoreMemory {
 }
 export interface World {
   version: 3;
-  schemaRevision: 21;
+  schemaRevision: 22;
   lastSeenAt: number | null;
   seamAccrued: number;
   pools: HabitatPool[];

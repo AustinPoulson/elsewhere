@@ -97,6 +97,7 @@ describe('headless harness', () => {
     expect(quiet.conservationCheck.remainsBalanced).toBe(true);
     expect(quiet.conservationCheck.fossilsBalanced).toBe(true);
     expect(quiet.conservationCheck.tidePartitioned).toBe(true);
+    expect(quiet.conservationCheck.precipitationBalanced).toBe(true);
     expect(quiet.founding.glassLimpet.polls).toBeGreaterThan(0);
     expect(quiet.foundingStock.length).toBeGreaterThan(1);
     expect(

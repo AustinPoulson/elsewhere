@@ -25,6 +25,7 @@ import {
 } from './habitat';
 import { applyTide, beginTideStep, initializeSea, pigmentInSea, seaBodyCount } from './environment/tide';
 import { compactStrandline, leachStrandline, pigmentOnStrandline, strandlineBodyCount } from './environment/strandline';
+import { precipitateLooseColor } from './environment/precipitation';
 import { CALM_LIGHT_REACH, lightReachAt } from './weather';
 import { applyCurrentDrift } from './currents';
 import { confinePosition } from './geometry';
@@ -237,6 +238,7 @@ export function createWorld(seed = 20261006): World {
       tideDepartures: 0,
       strandlineSettled: 0,
       strandlineLeached: 0,
+      precipitated: 0,
     },
     seed: normalizedSeed,
     randomState: normalizedSeed,
@@ -530,6 +532,7 @@ export function stepWorld(world: World, dt = FIXED_STEP): void {
   slumpUnusedNests(world);
   slumpUnusedRemains(world);
   returnLockedColor(world);
+  precipitateLooseColor(world);
   syncAttachedCargoMites(world);
   for (const light of world.lights) {
     light.age += dt;

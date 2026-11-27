@@ -143,6 +143,7 @@ describe('strandline wrack', () => {
     expect(report.conservationCheck.seamBalanced).toBe(true);
     expect(report.conservationCheck.tidePartitioned).toBe(true);
     expect(report.conservationCheck.strandlinePartitioned).toBe(true);
+    expect(report.conservationCheck.precipitationBalanced).toBe(true);
     expect(report.resources.strandlinePigment).toBeLessThanOrEqual(report.resources.seaPigment + 1e-9);
   });
 });

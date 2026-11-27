@@ -11,9 +11,11 @@ function previousRevision(world: World): Record<string, unknown> {
   const ledger = previous.ecologyLedger as {
     strandlineSettled?: number;
     strandlineLeached?: number;
+    precipitated?: number;
   };
   delete ledger.strandlineSettled;
   delete ledger.strandlineLeached;
+  delete ledger.precipitated;
   return previous;
 }
 
@@ -82,7 +84,7 @@ describe('strandline snapshot revision', () => {
         w.schemaRevision = 20;
       },
       (w) => {
-        w.schemaRevision = 22;
+        w.schemaRevision = 23;
       },
       (w) => {
         (w.ecologyLedger as { strandlineSettled: number }).strandlineSettled = -1;

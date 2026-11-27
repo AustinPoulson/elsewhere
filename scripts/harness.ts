@@ -182,6 +182,7 @@ export interface HarnessReport {
     seamBalanced: boolean;
     tidePartitioned: boolean;
     strandlinePartitioned: boolean;
+    precipitationBalanced: boolean;
     note: string;
   };
 }
@@ -693,7 +694,8 @@ export function runHarness(config: HarnessConfig): HarnessReport {
         world.ecologyLedger.strandlineSettled >= 0 &&
         world.ecologyLedger.strandlineLeached >= 0 &&
         pigmentOnStrandline(world) <= pigmentInSea(world) + 1e-9,
-      note: 'Remains created equal held plus consumed plus decayed. Fossil pigment equals fossils formed; it is paid remain color, not a new population. Seam remaining plus accrued plus dissolved equals the finite vein. Tide pigment in and out are transfers of already-paid color, not new pigment. Strandline settled and leached are transfers of color that crossed the mouth, not new pigment; held wrack is a subset of sea pigment. Daylight and visitor light correlate with pigment rather than matching because of the energy floor, fade, and night.',
+      precipitationBalanced: Number.isFinite(world.ecologyLedger.precipitated) && world.ecologyLedger.precipitated >= 0,
+      note: 'Remains created equal held plus consumed plus decayed. Fossil pigment equals fossils formed; it is paid remain color, not a new population. Seam remaining plus accrued plus dissolved equals the finite vein. Tide pigment in and out are transfers of already-paid color, not new pigment. Strandline settled and leached are transfers of color that crossed the mouth, not new pigment; held wrack is a subset of sea pigment. Precipitation is a transfer of already-paid loose pigment onto grains, not new color. Daylight and visitor light correlate with pigment rather than matching because of the energy floor, fade, and night.',
     },
   };
 }
@@ -955,6 +957,7 @@ export function printReport(report: HarnessReport): void {
   console.log(`   Tide departures: ${report.ledger.tideDepartures}`);
   console.log(`   Strandline settled: ${report.ledger.strandlineSettled.toFixed(3)}`);
   console.log(`   Strandline leached: ${report.ledger.strandlineLeached.toFixed(3)}`);
+  console.log(`   Precipitated: ${report.ledger.precipitated.toFixed(3)}`);
 
   console.log(`\n⚖️  Conservation Check`);
   console.log(`   Input (consumed + remaining + ambient): ${report.conservationCheck.inputLight.toFixed(2)}`);
@@ -973,6 +976,9 @@ export function printReport(report: HarnessReport): void {
   );
   console.log(
     `   Strandline (held ${report.resources.strandlinePigment.toFixed(3)} ≤ sea; settled ${report.ledger.strandlineSettled.toFixed(3)} / leached ${report.ledger.strandlineLeached.toFixed(3)}) ${report.conservationCheck.strandlinePartitioned ? '✓' : '✗'}`,
+  );
+  console.log(
+    `   Precipitation (moved ${report.ledger.precipitated.toFixed(3)} from fines onto grains) ${report.conservationCheck.precipitationBalanced ? '✓' : '✗'}`,
   );
   console.log(`   Note: ${report.conservationCheck.note}`);
 

@@ -1,4 +1,5 @@
 import { describeDeepChange, pigmentInDeep, remainsInDeep } from './environment/depth';
+import { describePrecipitationChange } from './environment/precipitation';
 import { describeStrandlineChange, pigmentOnStrandline } from './environment/strandline';
 import { describeSeamChange, seamRemaining } from './environment/mineral-seam';
 import { describeSeasonChange } from './environment/seasons';
@@ -65,6 +66,7 @@ export interface ResourceSnapshot {
   seamDissolved: number;
   deepPigment: number;
   strandlinePigment: number;
+  precipitated: number;
 }
 
 export interface CatchUpJournal {
@@ -149,6 +151,7 @@ export function resourceSnapshot(world: World): ResourceSnapshot {
     seamDissolved: world.ecologyLedger.seamDissolved,
     deepPigment: pigmentInDeep(world) + remainsInDeep(world),
     strandlinePigment: pigmentOnStrandline(world),
+    precipitated: world.ecologyLedger.precipitated,
   };
 }
 
@@ -363,6 +366,8 @@ export function composeJournal(
     if (deepLine) lines.push(deepLine);
     const strandlineLine = describeStrandlineChange(before.strandlinePigment, after.strandlinePigment);
     if (strandlineLine) lines.push(strandlineLine);
+    const precipitationLine = describePrecipitationChange(before.precipitated, after.precipitated);
+    if (precipitationLine) lines.push(precipitationLine);
   }
 
   for (const species of SPECIES) {
