@@ -248,6 +248,7 @@ const FOSSIL_LEDGER_KEYS = ['fossilsFormed'] as const;
 const SEAM_LEDGER_KEYS = ['seamDissolved'] as const;
 const TIDE_LEDGER_KEYS = ['tidePigmentIn', 'tidePigmentOut', 'tideArrivals', 'tideDepartures'] as const;
 const STRANDLINE_LEDGER_KEYS = ['strandlineSettled', 'strandlineLeached'] as const;
+const PRECIPITATE_LEDGER_KEYS = ['precipitatedPigment'] as const;
 
 function ledger(
   value: unknown,
@@ -262,6 +263,7 @@ function ledger(
   seam: boolean,
   tide: boolean,
   strandline: boolean,
+  precipitate: boolean,
 ): boolean {
   return (
     record(value) &&
@@ -298,7 +300,10 @@ function ledger(
       : TIDE_LEDGER_KEYS.every((key) => !(key in value))) &&
     (strandline
       ? STRANDLINE_LEDGER_KEYS.every((key) => range(value[key], 0, MAX_NUMBER))
-      : STRANDLINE_LEDGER_KEYS.every((key) => !(key in value)))
+      : STRANDLINE_LEDGER_KEYS.every((key) => !(key in value))) &&
+    (precipitate
+      ? PRECIPITATE_LEDGER_KEYS.every((key) => range(value[key], 0, MAX_NUMBER))
+      : PRECIPITATE_LEDGER_KEYS.every((key) => !(key in value)))
   );
 }
 
@@ -575,7 +580,8 @@ function marlgrub(value: unknown, elapsed: number, nextId: number, withTraits = 
 }
 
 type PrePrismOrganism = Omit<Organism, 'pigmentCredit'>;
-type Revision20Ledger = Omit<EcologyLedger, (typeof STRANDLINE_LEDGER_KEYS)[number]>;
+type Revision21Ledger = Omit<EcologyLedger, (typeof PRECIPITATE_LEDGER_KEYS)[number]>;
+type Revision20Ledger = Omit<Revision21Ledger, (typeof STRANDLINE_LEDGER_KEYS)[number]>;
 type Revision19Ledger = Omit<Revision20Ledger, (typeof TIDE_LEDGER_KEYS)[number]>;
 type Revision13Ledger = Omit<Revision19Ledger, (typeof SEAM_LEDGER_KEYS)[number]>;
 type Revision11Ledger = Omit<Revision13Ledger, (typeof FOSSIL_LEDGER_KEYS)[number]>;
@@ -588,7 +594,11 @@ type RainbellLedger = Omit<Revision6Ledger, (typeof SILTSTITCHER_LEDGER_KEYS)[nu
 type ReedwellLedger = Omit<RainbellLedger, (typeof RAINBELL_LEDGER_KEYS)[number]>;
 type PrismLedger = Omit<ReedwellLedger, (typeof REEDWELL_LEDGER_KEYS)[number]>;
 type Revision18GlassLimpet = Omit<GlassLimpet, 'parentId' | 'nextBirthAt'>;
-type Revision20World = Omit<World, 'schemaRevision' | 'ecologyLedger'> & {
+type Revision21World = Omit<World, 'schemaRevision' | 'ecologyLedger'> & {
+  schemaRevision: 21;
+  ecologyLedger: Revision21Ledger;
+};
+type Revision20World = Omit<Revision21World, 'schemaRevision' | 'ecologyLedger'> & {
   schemaRevision: 20;
   ecologyLedger: Revision20Ledger;
 };
@@ -937,7 +947,7 @@ function migrateRevision19To20(previous: Revision19World): Revision20World {
   };
 }
 
-function migrateRevision20To21(previous: Revision20World): World {
+function migrateRevision20To21(previous: Revision20World): Revision21World {
   return {
     ...previous,
     schemaRevision: 21,
@@ -945,6 +955,17 @@ function migrateRevision20To21(previous: Revision20World): World {
       ...previous.ecologyLedger,
       strandlineSettled: 0,
       strandlineLeached: 0,
+    },
+  };
+}
+
+function migrateRevision21To22(previous: Revision21World): World {
+  return {
+    ...previous,
+    schemaRevision: 22,
+    ecologyLedger: {
+      ...previous.ecologyLedger,
+      precipitatedPigment: 0,
     },
   };
 }
@@ -976,13 +997,13 @@ export function restoreWorld(input: string): World | null {
 
   if (
     (parsed.version === 3 &&
-      (!integer(parsed.schemaRevision, 1, 21) || !weatherCall(parsed.weatherCall, parsed.elapsed))) ||
+      (!integer(parsed.schemaRevision, 1, 22) || !weatherCall(parsed.weatherCall, parsed.elapsed))) ||
     (parsed.version !== 3 && ('schemaRevision' in parsed || 'weatherCall' in parsed || 'currents' in parsed))
   )
     return null;
   syncTide(parsed.elapsed as number);
   let currents: Current[] = [];
-  if (parsed.version === 3 && integer(parsed.schemaRevision, 2, 21)) {
+  if (parsed.version === 3 && integer(parsed.schemaRevision, 2, 22)) {
     if (
       !Array.isArray(parsed.currents) ||
       parsed.currents.length > MAX_CURRENTS ||
@@ -992,7 +1013,8 @@ export function restoreWorld(input: string): World | null {
     currents = parsed.currents as Current[];
   } else if ('currents' in parsed) return null;
 
-  const strandlineRevision = parsed.version === 3 && parsed.schemaRevision === 21;
+  const precipitateRevision = parsed.version === 3 && parsed.schemaRevision === 22;
+  const strandlineRevision = parsed.version === 3 && (parsed.schemaRevision === 21 || precipitateRevision);
   const tideRevision = parsed.version === 3 && (parsed.schemaRevision === 20 || strandlineRevision);
   const limpetLineageRevision = parsed.version === 3 && (parsed.schemaRevision === 19 || tideRevision);
   const grubLineageRevision = parsed.version === 3 && (parsed.schemaRevision === 18 || limpetLineageRevision);
@@ -1048,6 +1070,7 @@ export function restoreWorld(input: string): World | null {
         seamRevision,
         tideRevision,
         strandlineRevision,
+        precipitateRevision,
       )
     )
       return null;
@@ -1654,35 +1677,50 @@ export function restoreWorld(input: string): World | null {
             ecologyLedger: { ...(parsed.ecologyLedger as Revision20Ledger) },
           }
         : migrateRevision19To20(revision19);
-    return strandlineRevision
+    const revision21: Revision21World = precipitateRevision
       ? {
           ...revision20,
           schemaRevision: 21,
+          ecologyLedger: { ...(parsed.ecologyLedger as Revision21Ledger) },
+        }
+      : parsed.schemaRevision === 21 || strandlineRevision
+        ? {
+            ...revision20,
+            schemaRevision: 21,
+            ecologyLedger: { ...(parsed.ecologyLedger as Revision21Ledger) },
+          }
+        : migrateRevision20To21(revision20);
+    return precipitateRevision
+      ? {
+          ...revision21,
+          schemaRevision: 22,
           ecologyLedger: { ...(parsed.ecologyLedger as EcologyLedger) },
         }
-      : migrateRevision20To21(revision20);
+      : migrateRevision21To22(revision21);
   }
   let legacy: LegacyWorld = { ...ecology, version: parsed.version };
   if (legacy.version === 1) legacy = migrateV1ToV2(legacy);
-  return migrateRevision20To21(
-    migrateRevision19To20(
-      migrateRevision18To19(
-        migrateRevision17To18(
-          migrateRevision16To17(
-            migrateRevision15To16(
-              migrateRevision14To15(
-                migrateRevision13To14(
-                  migrateRevision12To13(
-                    migrateRevision11To12(
-                      migrateRevision10To11(
-                        migrateRevision9To10(
-                          migrateRevision8To9(
-                            migrateRevision7To8(
-                              migrateRevision6To7(
-                                migrateRevision5To6(
-                                  migrateRevision4To5(
-                                    migrateRevision3To4(
-                                      migrateRevision2To3(migrateRevision1To2(migrateV2ToV3(legacy))),
+  return migrateRevision21To22(
+    migrateRevision20To21(
+      migrateRevision19To20(
+        migrateRevision18To19(
+          migrateRevision17To18(
+            migrateRevision16To17(
+              migrateRevision15To16(
+                migrateRevision14To15(
+                  migrateRevision13To14(
+                    migrateRevision12To13(
+                      migrateRevision11To12(
+                        migrateRevision10To11(
+                          migrateRevision9To10(
+                            migrateRevision8To9(
+                              migrateRevision7To8(
+                                migrateRevision6To7(
+                                  migrateRevision5To6(
+                                    migrateRevision4To5(
+                                      migrateRevision3To4(
+                                        migrateRevision2To3(migrateRevision1To2(migrateV2ToV3(legacy))),
+                                      ),
                                     ),
                                   ),
                                 ),

@@ -886,6 +886,14 @@ h1 em {
   max-width: 280px;
   color: #9aa78a;
 }
+.precipitate-readout {
+  margin-top: 6px;
+  font-size: 10px;
+  letter-spacing: 0;
+  line-height: 1.45;
+  max-width: 280px;
+  color: #a8b48c;
+}
 .trace-readout {
   margin-top: 6px;
   font-size: 10px;
@@ -1024,6 +1032,7 @@ h1 em {
   .slump-readout,
   .remain-slump-readout,
   .locked-return-readout,
+  .precipitate-readout,
   .trace-readout {
     font-size: 9px;
     max-width: min(280px, calc(100vw - 48px));

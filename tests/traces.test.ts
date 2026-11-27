@@ -249,7 +249,7 @@ describe('catch-up writes traces into the save without touching ledgers', () => 
   });
 
   it('stores unfaded marks in revision 15 without changing the simulated world', () => {
-    expect(SCHEMA_REVISION).toBe(21);
+    expect(SCHEMA_REVISION).toBe(22);
     const world = createWorld(1);
     const live = createWorld(1);
     expect(world.awayTraces).toEqual([]);

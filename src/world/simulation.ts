@@ -47,6 +47,7 @@ import { compactShoreResources } from './environment/shore-wash';
 import { returnLockedColor } from './environment/locked-return';
 import { slumpUnusedNests } from './environment/nest-slump';
 import { slumpUnusedRemains } from './environment/remain-slump';
+import { precipitateLooseColor } from './environment/precipitate';
 
 const TAU = Math.PI * 2;
 const ENERGY_FLOOR = 0.12;
@@ -237,6 +238,7 @@ export function createWorld(seed = 20261006): World {
       tideDepartures: 0,
       strandlineSettled: 0,
       strandlineLeached: 0,
+      precipitatedPigment: 0,
     },
     seed: normalizedSeed,
     randomState: normalizedSeed,
@@ -530,6 +532,7 @@ export function stepWorld(world: World, dt = FIXED_STEP): void {
   slumpUnusedNests(world);
   slumpUnusedRemains(world);
   returnLockedColor(world);
+  precipitateLooseColor(world);
   syncAttachedCargoMites(world);
   for (const light of world.lights) {
     light.age += dt;

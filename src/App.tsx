@@ -38,6 +38,7 @@ import { MINERAL_SEAM } from './world/environment/mineral-seam';
 import { lockedColorReturning } from './world/environment/locked-return';
 import { unusedNestsSlumping } from './world/environment/nest-slump';
 import { unusedRemainsSlumping } from './world/environment/remain-slump';
+import { looseColorSettling } from './world/environment/precipitate';
 import { getSeason } from './world/environment/seasons';
 import { tideNote } from './world/environment/tide';
 import { describeBulk, describeDrive } from './world/traits';
@@ -1345,6 +1346,11 @@ export function App() {
             Shell catch is returning to the shore.
           </div>
         ) : null}
+        {looseColorSettling(worldRef.current) ? (
+          <div className="precipitate-readout" aria-live="polite">
+            Loose color is settling into coarser grains.
+          </div>
+        ) : null}
         {visibleAwayTraces(awayTraces, stats.elapsed).length > 0 ? (
           <div className="trace-readout" aria-live="polite">
             Faint marks remain from time away.
@@ -1911,6 +1917,20 @@ export function App() {
                       flood can carry them back. Opening worlds and old saves receive the empty strandline, not a gifted
                       population. The observations list names it; reduced motion keeps the stain still; portrait keeps
                       the same world coordinates.
+                    </p>
+                  </div>
+                </div>
+                <div className="guide-entry">
+                  <span className="entry-number">26</span>
+                  <div>
+                    <h3>Loose color settles into grains</h3>
+                    <p>
+                      In still, calm water — the pool cut off at low tide, the sea away from the mouth, and the deep
+                      basin — fine pigment slowly precipitates onto the nearest underfilled coarse grain in the same
+                      basin. If those grains are full, a new grain can form only inside the existing sediment cap. The
+                      color is already paid; nothing is granted. Tick phase and geometry, never the world PRNG. Opening
+                      worlds and old saves receive the empty ledger, not extra pigment. The observations list names it
+                      while it happens.
                     </p>
                   </div>
                 </div>
